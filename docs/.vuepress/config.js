@@ -23,6 +23,10 @@ export default defineUserConfig({
         link: '/posts/',
       },
       {
+        text: '技术教程',
+        link: '/tutorials/',
+      },
+      {
         text: 'GitHub',
         link: 'https://github.com',
       },
@@ -35,6 +39,14 @@ export default defineUserConfig({
           text: '博客文章',
           children: [
             '/posts/hello-world.md',
+          ],
+        },
+      ],
+      '/tutorials/': [
+        {
+          text: '技术教程',
+          children: [
+            '/tutorials/build-vpn.md',
           ],
         },
       ],
