@@ -42,6 +42,5 @@ export default defineUserConfig({
   }),
 
   // 设置 base，如果部署到 GitHub Pages，需要设置为仓库名
-  // 例如：base: '/blog/'
-  base: '/',
+  base: '/blog/',
 })
