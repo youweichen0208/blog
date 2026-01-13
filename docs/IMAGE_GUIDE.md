@@ -34,6 +34,7 @@ docs/
 - ✅ 配合年月目录结构，管理更清晰
 
 **避免使用**：
+- ❌ `WeChat1234567890.png`（微信截图默认名）
 - ❌ `Screenshot 2024-01-13 at 10.30.45.png`（系统默认截图名）
 - ❌ `IMG_1234.png`（相机默认名）
 - ❌ `image1.png`（无意义名称）
@@ -96,8 +97,9 @@ docs/.vuepress/public/images/posts/
 
 **结果**：
 ```
-Screenshot 2024-01-13 at 10.30.45.png  →  2024-01-13-screenshot-01.png
-Screenshot 2024-01-13 at 10.35.20.png  →  2024-01-13-screenshot-02.png
+WeChat1234567890.png                   →  2024-01-13-screenshot-01.png
+WeChat1234567891.png                   →  2024-01-13-screenshot-02.png
+Screenshot 2024-01-13 at 10.30.45.png  →  2024-01-13-screenshot-03.png
 IMG_1234.png                           →  2024-01-13-image-01.png
 ```
 
@@ -111,11 +113,11 @@ IMG_1234.png                           →  2024-01-13-image-01.png
 
 **交互示例**：
 ```
-文件: Screenshot 2024-01-13 at 10.30.45.png
+文件: WeChat1234567890.png
 请输入描述 (留空跳过): vuepress-setup
 ✓ 重命名为: 2024-01-13-vuepress-setup.png
 
-文件: Screenshot 2024-01-13 at 10.35.20.png
+文件: WeChat1234567891.png
 请输入描述 (留空跳过): github-actions-config
 ✓ 重命名为: 2024-01-13-github-actions-config.png
 ```
@@ -130,9 +132,9 @@ IMG_1234.png                           →  2024-01-13-image-01.png
 
 **结果**：
 ```
-Screenshot 1  →  2024-01-13-vuepress-setup.png
-Screenshot 2  →  2024-01-13-github-actions.png
-Screenshot 3  →  2024-01-13-deployment-success.png
+WeChat1234567890.png  →  2024-01-13-vuepress-setup.png
+WeChat1234567891.png  →  2024-01-13-github-actions.png
+WeChat1234567892.png  →  2024-01-13-deployment-success.png
 ```
 
 ### 移动到目标目录
@@ -182,9 +184,9 @@ mv ~/Downloads/2024-01-13-*.png docs/.vuepress/public/images/posts/2024/01/
 
 1. **截图并保存到下载目录**
    ```
-   ~/Downloads/Screenshot 2024-01-13 at 10.30.45.png
-   ~/Downloads/Screenshot 2024-01-13 at 10.35.20.png
-   ~/Downloads/Screenshot 2024-01-13 at 10.40.15.png
+   ~/Downloads/WeChat1234567890.png
+   ~/Downloads/WeChat1234567891.png
+   ~/Downloads/WeChat1234567892.png
    ```
 
 2. **使用交互模式重命名**

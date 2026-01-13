@@ -28,8 +28,9 @@
 
 **效果**：
 ```
-Screenshot 2024-01-13 at 10.30.45.png  →  2024-01-13-screenshot-01.png
-Screenshot 2024-01-13 at 10.35.20.png  →  2024-01-13-screenshot-02.png
+WeChat1234567890.png                   →  2024-01-13-screenshot-01.png
+WeChat1234567891.png                   →  2024-01-13-screenshot-02.png
+Screenshot 2024-01-13 at 10.30.45.png  →  2024-01-13-screenshot-03.png
 IMG_1234.png                           →  2024-01-13-image-01.png
 ```
 
@@ -55,15 +56,15 @@ IMG_1234.png                           →  2024-01-13-image-01.png
 日期: 2024-01-13
 提示: 输入描述（英文或拼音），留空跳过，输入 'q' 退出
 
-文件 1: Screenshot 2024-01-13 at 10.30.45.png
+文件 1: WeChat1234567890.png
 请输入描述: vuepress-homepage
 ✓ 重命名为: 2024-01-13-vuepress-homepage.png
 
-文件 2: Screenshot 2024-01-13 at 10.35.20.png
+文件 2: WeChat1234567891.png
 请输入描述: config-file
 ✓ 重命名为: 2024-01-13-config-file.png
 
-文件 3: Screenshot 2024-01-13 at 10.40.15.png
+文件 3: WeChat1234567892.png
 请输入描述:
 ⊘ 跳过
 
@@ -128,9 +129,9 @@ IMG_1234.png                           →  2024-01-13-image-01.png
 
 1. **截图保存到下载目录**
    ```
-   ~/Downloads/Screenshot 2024-01-13 at 10.30.45.png
-   ~/Downloads/Screenshot 2024-01-13 at 10.35.20.png
-   ~/Downloads/Screenshot 2024-01-13 at 10.40.15.png
+   ~/Downloads/WeChat1234567890.png
+   ~/Downloads/WeChat1234567891.png
+   ~/Downloads/WeChat1234567892.png
    ```
 
 2. **使用交互模式重命名**
@@ -169,6 +170,8 @@ IMG_1234.png                           →  2024-01-13-image-01.png
 
 | 文件名模式 | 系统/来源 | 重命名后 |
 |-----------|----------|---------|
+| `WeChat*.png` | 微信截图 | `YYYY-MM-DD-screenshot-NN.png` |
+| `企业微信截图*.png` | 企业微信 | `YYYY-MM-DD-screenshot-NN.png` |
 | `Screenshot*.png` | macOS 截图 | `YYYY-MM-DD-screenshot-NN.png` |
 | `截屏*.png` | macOS 中文 | `YYYY-MM-DD-screenshot-NN.png` |
 | `屏幕截图*.png` | Windows | `YYYY-MM-DD-screenshot-NN.png` |

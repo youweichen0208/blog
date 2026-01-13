@@ -35,6 +35,8 @@ ${YELLOW}示例:${NC}
   $0 batch ~/Downloads "vuepress-setup,github-actions,deployment"
 
 ${YELLOW}支持的文件格式:${NC}
+  - WeChat*.png (微信截图)
+  - 企业微信截图*.png (企业微信)
   - Screenshot*.png (macOS 截图)
   - 截屏*.png (macOS 中文)
   - 屏幕截图*.png (Windows)
@@ -68,6 +70,9 @@ fi
 get_files() {
     local dir="$1"
     find "$dir" -maxdepth 1 \( \
+        -name "WeChat*.png" -o \
+        -name "WeChat*.jpg" -o \
+        -name "企业微信截图*.png" -o \
         -name "Screenshot*.png" -o \
         -name "截屏*.png" -o \
         -name "屏幕截图*.png" -o \
