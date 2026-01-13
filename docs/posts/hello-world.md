@@ -22,6 +22,21 @@ date: 2024-01-13
 
 你可以在 `docs/posts/` 目录下创建新的 Markdown 文件来发布新文章。
 
+### 添加图片
+
+图片应保存在 `docs/.vuepress/public/images/` 目录下，然后在文章中引用：
+
+```markdown
+![图片描述](/images/posts/your-folder/image-name.png)
+```
+
+**图片管理建议**：
+- 按文章或日期组织图片目录
+- 使用有意义的文件名（如：`2024-01-13-vuepress-config.png`）
+- 避免使用系统默认的截图名称
+
+详细指南请查看：[图片管理指南](/IMAGE_GUIDE.html)
+
 ### 代码示例
 
 VuePress 支持代码高亮：
