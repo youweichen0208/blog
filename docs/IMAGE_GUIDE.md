@@ -10,14 +10,16 @@ docs/
             ├── posts/          # 博客文章配图
             │   ├── 2024/       # 按年份分类
             │   │   ├── 01/     # 按月份分类
-            │   │   └── 02/
-            │   └── hello-world/  # 或按文章名分类
+            │   │   ├── 02/
+            │   │   └── ...
+            │   └── 2025/
+            │       └── 01/
             └── common/         # 公共图片（logo、头像等）
 ```
 
 ## 图片命名规范
 
-### 方案一：按日期 + 描述命名（推荐）
+采用 **日期 + 描述** 的命名方式：
 
 ```
 2024-01-13-vuepress-setup.png
@@ -26,88 +28,123 @@ docs/
 ```
 
 **优点**：
-- 时间顺序清晰
-- 描述性强，易于查找
-- 避免重名
+- ✅ 时间顺序清晰，便于按时间查找
+- ✅ 描述性强，见名知意
+- ✅ 避免重名冲突
+- ✅ 配合年月目录结构，管理更清晰
 
-### 方案二：按文章 + 序号命名
+**避免使用**：
+- ❌ `Screenshot 2024-01-13 at 10.30.45.png`（系统默认截图名）
+- ❌ `IMG_1234.png`（相机默认名）
+- ❌ `image1.png`（无意义名称）
 
-```
-hello-world-01.png
-hello-world-02.png
-hello-world-03.png
-```
+## 目录组织方式
 
-**优点**：
-- 与文章关联明确
-- 序号简洁
-
-### 方案三：语义化命名
-
-```
-vuepress-homepage-screenshot.png
-github-actions-workflow.png
-blog-architecture-diagram.png
-```
-
-**优点**：
-- 见名知意
-- 便于复用
-
-## 推荐的目录组织方式
-
-### 方式一：按文章分类（推荐用于图片多的文章）
-
-```
-docs/.vuepress/public/images/posts/
-├── hello-world/
-│   ├── screenshot-01.png
-│   ├── screenshot-02.png
-│   └── diagram.png
-├── vuepress-guide/
-│   ├── setup-01.png
-│   └── config-02.png
-└── github-actions/
-    └── workflow.png
-```
-
-### 方式二：按时间分类（推荐用于长期维护）
+按 **年份/月份** 组织图片：
 
 ```
 docs/.vuepress/public/images/posts/
 ├── 2024/
 │   ├── 01/
 │   │   ├── 2024-01-13-vuepress-setup.png
+│   │   ├── 2024-01-13-github-actions.png
 │   │   └── 2024-01-15-deployment.png
-│   └── 02/
-│       └── 2024-02-01-new-feature.png
+│   ├── 02/
+│   │   └── 2024-02-01-new-feature.png
+│   └── 12/
 └── 2025/
     └── 01/
+        └── 2025-01-10-year-summary.png
 ```
+
+**优点**：
+- 长期维护友好
+- 图片按时间自然归档
+- 避免单个目录文件过多
 
 ## 在 Markdown 中使用图片
 
-### 绝对路径（推荐）
+### 基本用法
 
 ```markdown
-![图片描述](/images/posts/hello-world/screenshot-01.png)
-![配置截图](/images/posts/2024/01/2024-01-13-config.png)
+![图片描述](/images/posts/2024/01/2024-01-13-vuepress-setup.png)
 ```
 
-### 相对路径
+### 带标题
 
 ```markdown
-<!-- 如果图片和文章在同一目录 -->
-![图片描述](./screenshot.png)
+![VuePress 配置](/images/posts/2024/01/2024-01-13-config.png "VuePress 配置文件")
 ```
 
-### 带标题和尺寸
+### 控制尺寸
 
 ```markdown
-![VuePress 首页](/images/posts/hello-world/homepage.png "VuePress 首页截图")
+<img src="/images/posts/2024/01/2024-01-13-large-image.png" alt="大图" width="600">
+```
 
-<!-- HTML 方式，可控制尺寸 -->
-<img src="/images/posts/hello-world/large-image.png" alt="大图" width="600">
+## 批量重命名工具
+
+项目提供了 `scripts/rename-images.sh` 脚本，支持三种模式：
+
+### 模式 1：自动模式（快速）
+
+自动将截图重命名为 `日期-screenshot-序号.png`：
+
+```bash
+./scripts/rename-images.sh auto ~/Downloads
+```
+
+**结果**：
+```
+Screenshot 2024-01-13 at 10.30.45.png  →  2024-01-13-screenshot-01.png
+Screenshot 2024-01-13 at 10.35.20.png  →  2024-01-13-screenshot-02.png
+IMG_1234.png                           →  2024-01-13-image-01.png
+```
+
+### 模式 2：交互模式（推荐）
+
+逐个文件询问描述，生成有意义的文件名：
+
+```bash
+./scripts/rename-images.sh interactive ~/Downloads
+```
+
+**交互示例**：
+```
+文件: Screenshot 2024-01-13 at 10.30.45.png
+请输入描述 (留空跳过): vuepress-setup
+✓ 重命名为: 2024-01-13-vuepress-setup.png
+
+文件: Screenshot 2024-01-13 at 10.35.20.png
+请输入描述 (留空跳过): github-actions-config
+✓ 重命名为: 2024-01-13-github-actions-config.png
+```
+
+### 模式 3：批量描述模式
+
+一次性提供多个描述，按顺序重命名：
+
+```bash
+./scripts/rename-images.sh batch ~/Downloads "vuepress-setup,github-actions,deployment-success"
+```
+
+**结果**：
+```
+Screenshot 1  →  2024-01-13-vuepress-setup.png
+Screenshot 2  →  2024-01-13-github-actions.png
+Screenshot 3  →  2024-01-13-deployment-success.png
+```
+
+### 移动到目标目录
+
+重命名后，将图片移动到博客图片目录：
+
+```bash
+# 重命名
+./scripts/rename-images.sh interactive ~/Downloads
+
+# 移动到当前月份目录
+mv ~/Downloads/2024-01-13-*.png docs/.vuepress/public/images/posts/2024/01/
 ```
 
 ## 图片优化建议
@@ -123,98 +160,136 @@ docs/.vuepress/public/images/posts/
 
 - **PNG**：截图、图标、需要透明背景
 - **JPG**：照片、复杂图像
-- **WebP**：现代浏览器，体积更小
-- **SVG**：矢量图、图标
+- **WebP**：现代浏览器，体积更小（推荐）
 
 ### 3. 控制图片尺寸
 
 - 博客宽度通常 800-1200px
 - 截图建议宽度：800px 或 1000px
 - 缩略图：200-400px
+- 避免上传超大原图（如 4K 截图）
 
 ### 4. 使用图床（可选）
 
 如果图片很多，可以使用图床服务：
-- GitHub Issues（免费）
-- 七牛云、阿里云 OSS
-- Cloudinary、Imgur
+- **GitHub Issues**（免费，适合小项目）
+- **七牛云、阿里云 OSS**（国内访问快）
+- **Cloudinary、Imgur**（国外服务）
 
-## 实用脚本
+## 完整工作流示例
 
-### 批量重命名截图
+### 场景：写一篇新文章并添加截图
 
-创建 `scripts/rename-images.sh`：
+1. **截图并保存到下载目录**
+   ```
+   ~/Downloads/Screenshot 2024-01-13 at 10.30.45.png
+   ~/Downloads/Screenshot 2024-01-13 at 10.35.20.png
+   ~/Downloads/Screenshot 2024-01-13 at 10.40.15.png
+   ```
 
-```bash
-#!/bin/bash
-# 将截图重命名为日期格式
+2. **使用交互模式重命名**
+   ```bash
+   cd ~/projects/blog
+   ./scripts/rename-images.sh interactive ~/Downloads
+   ```
 
-DATE=$(date +%Y-%m-%d)
-COUNTER=1
+   依次输入描述：
+   - `vuepress-homepage`
+   - `config-file`
+   - `deployment-success`
 
-for file in Screenshot*.png; do
-  if [ -f "$file" ]; then
-    NEW_NAME="${DATE}-screenshot-$(printf "%02d" $COUNTER).png"
-    mv "$file" "$NEW_NAME"
-    echo "Renamed: $file -> $NEW_NAME"
-    COUNTER=$((COUNTER + 1))
-  fi
-done
-```
+3. **移动到博客目录**
+   ```bash
+   mv ~/Downloads/2024-01-13-*.png docs/.vuepress/public/images/posts/2024/01/
+   ```
 
-### 图片压缩脚本
+4. **在文章中引用**
+   ```markdown
+   ---
+   title: VuePress 博客搭建
+   date: 2024-01-13
+   ---
 
-```bash
-#!/bin/bash
-# 使用 ImageMagick 压缩图片
+   # VuePress 博客搭建
 
-for img in *.png; do
-  convert "$img" -quality 85 -resize 1000x "optimized-$img"
-done
-```
+   ## 首页效果
+
+   ![VuePress 首页](/images/posts/2024/01/2024-01-13-vuepress-homepage.png)
+
+   ## 配置文件
+
+   ![配置文件](/images/posts/2024/01/2024-01-13-config-file.png)
+
+   ## 部署成功
+
+   ![部署成功](/images/posts/2024/01/2024-01-13-deployment-success.png)
+   ```
+
+5. **提交到 Git**
+   ```bash
+   git add docs/.vuepress/public/images/posts/2024/01/
+   git add docs/posts/your-article.md
+   git commit -m "Add new article with images"
+   git push
+   ```
 
 ## 最佳实践
 
-1. **统一命名规范**：团队协作时保持一致
-2. **及时整理**：定期清理未使用的图片
-3. **添加 .gitignore**：排除临时文件
-4. **使用描述性 alt 文本**：有利于 SEO 和无障碍访问
-5. **考虑 CDN**：大量图片时使用 CDN 加速
+1. **及时重命名**：截图后立即重命名，避免积累
+2. **描述要清晰**：使用英文或拼音，避免特殊字符
+3. **定期清理**：删除未使用的图片
+4. **压缩后上传**：减小仓库体积
+5. **使用描述性 alt 文本**：有利于 SEO 和无障碍访问
 
-## 示例：完整的文章图片使用
+## 常见问题
 
-```markdown
----
-title: VuePress 博客搭建指南
-date: 2024-01-13
----
+### Q: 图片路径写错了怎么办？
 
-# VuePress 博客搭建指南
+A: VuePress 开发模式会显示图片加载失败。检查：
+- 路径是否以 `/images/` 开头
+- 年月目录是否正确
+- 文件名是否完全匹配（注意大小写）
 
-## 安装配置
+### Q: 图片太大加载慢怎么办？
 
-首先安装 VuePress：
+A:
+1. 使用 TinyPNG 等工具压缩
+2. 调整截图分辨率（不要用 Retina 原始尺寸）
+3. 考虑使用 WebP 格式
 
-![安装过程](/images/posts/vuepress-guide/2024-01-13-installation.png)
+### Q: 可以用中文命名吗？
 
-## 目录结构
+A: 技术上可以，但不推荐：
+- URL 编码后不美观
+- 可能有兼容性问题
+- 建议用拼音或英文
 
-项目结构如下：
+### Q: 需要每次都创建年月目录吗？
 
-![目录结构](/images/posts/vuepress-guide/2024-01-13-directory-structure.png)
-
-## 配置文件
-
-配置 `config.js`：
-
-![配置文件](/images/posts/vuepress-guide/2024-01-13-config-file.png)
+A: 是的，但可以用脚本自动创建：
+```bash
+mkdir -p docs/.vuepress/public/images/posts/$(date +%Y/%m)
 ```
 
-## 快速开始
+## 快速参考
 
-1. 将截图保存到 `docs/.vuepress/public/images/posts/` 对应目录
-2. 重命名为有意义的名称（如：`2024-01-13-description.png`）
-3. 在 Markdown 中使用 `/images/posts/...` 路径引用
-4. 提交到 Git 并推送
+```bash
+# 交互式重命名（推荐）
+./scripts/rename-images.sh interactive ~/Downloads
 
-就这么简单！
+# 自动重命名
+./scripts/rename-images.sh auto ~/Downloads
+
+# 批量重命名
+./scripts/rename-images.sh batch ~/Downloads "desc1,desc2,desc3"
+
+# 创建当月目录
+mkdir -p docs/.vuepress/public/images/posts/$(date +%Y/%m)
+
+# 移动图片
+mv ~/Downloads/2024-01-13-*.png docs/.vuepress/public/images/posts/2024/01/
+```
+
+---
+
+就这么简单！开始管理你的博客图片吧 📸
