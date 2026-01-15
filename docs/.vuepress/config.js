@@ -31,6 +31,10 @@ export default defineUserConfig({
         link: '/aiops/',
       },
       {
+        text: '数据结构',
+        link: '/data-structures/',
+      },
+      {
         text: 'GitHub',
         link: 'https://github.com',
       },
@@ -59,6 +63,14 @@ export default defineUserConfig({
           text: 'AIOps 专栏',
           children: [
             '/aiops/README.md',
+          ],
+        },
+      ],
+      '/data-structures/': [
+        {
+          text: '数据结构',
+          children: [
+            '/data-structures/README.md',
           ],
         },
       ],
