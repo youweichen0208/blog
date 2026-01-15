@@ -71,6 +71,7 @@ export default defineUserConfig({
           text: '数据结构',
           children: [
             '/data-structures/README.md',
+            '/data-structures/linked-list.md',
           ],
         },
       ],
