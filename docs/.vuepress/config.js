@@ -27,6 +27,10 @@ export default defineUserConfig({
         link: '/tutorials/',
       },
       {
+        text: 'AIOps 专栏',
+        link: '/aiops/',
+      },
+      {
         text: 'GitHub',
         link: 'https://github.com',
       },
@@ -47,6 +51,14 @@ export default defineUserConfig({
           text: '技术教程',
           children: [
             '/tutorials/build-vpn.md',
+          ],
+        },
+      ],
+      '/aiops/': [
+        {
+          text: 'AIOps 专栏',
+          children: [
+            '/aiops/README.md',
           ],
         },
       ],

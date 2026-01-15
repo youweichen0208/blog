@@ -63,6 +63,7 @@ tags:
 ![RackNerd KVM 选择](/images/posts/2026/01/2026-01-13-racknerd-kvm-selection.png)
 
 **推荐配置**：
+
 - CPU: 1 核心
 - RAM: 1GB
 - 存储: 20GB SSD
@@ -77,13 +78,14 @@ tags:
 
 **关键配置项**：
 
-| 配置项 | 推荐值 | 说明 |
-|--------|--------|------|
-| **数据中心** | DC02 (Los Angeles) | 延迟最低，推荐首选 |
-| **操作系统** | Debian 12 (Bookworm) | 稳定性好，软件包新 |
-| **IPv6** | 启用 | 部分地区 IPv6 速度更快 |
+| 配置项       | 推荐值               | 说明                   |
+| ------------ | -------------------- | ---------------------- |
+| **数据中心** | DC02 (Los Angeles)   | 延迟最低，推荐首选     |
+| **操作系统** | Debian 12 (Bookworm) | 稳定性好，软件包新     |
+| **IPv6**     | 启用                 | 部分地区 IPv6 速度更快 |
 
 **为什么选择 Debian？**
+
 - 软件包稳定且更新及时
 - 默认防火墙配置合理
 - 社区支持好，文档完善
@@ -184,7 +186,7 @@ openssl req -x509 -nodes -newkey ec:<(openssl ecparam -name prime256v1) \
 创建服务端配置文件 `/etc/hysteria/config.yaml`：
 
 ```yaml
-listen: :443  # 监听端口，建议使用 443 伪装成 HTTPS
+listen: :443 # 监听端口，建议使用 443 伪装成 HTTPS
 
 tls:
   cert: /etc/hysteria/server.crt
@@ -192,25 +194,25 @@ tls:
 
 auth:
   type: password
-  password: <your-strong-password>  # 修改为强密码
+  password: <your-strong-password> # 修改为强密码
 
 masquerade:
   type: proxy
   proxy:
-    url: https://www.bing.com  # 伪装网站
+    url: https://www.bing.com # 伪装网站
     rewriteHost: true
 
 quic:
-  initStreamReceiveWindow: 8388608      # 8MB
-  maxStreamReceiveWindow: 8388608       # 8MB
-  initConnReceiveWindow: 20971520       # 20MB
-  maxConnReceiveWindow: 20971520        # 20MB
+  initStreamReceiveWindow: 8388608 # 8MB
+  maxStreamReceiveWindow: 8388608 # 8MB
+  initConnReceiveWindow: 20971520 # 20MB
+  maxConnReceiveWindow: 20971520 # 20MB
   maxIdleTimeout: 30s
   maxIncomingStreams: 1024
 
 bandwidth:
-  up: 1 gbps    # 上行带宽限制
-  down: 1 gbps  # 下行带宽限制
+  up: 1 gbps # 上行带宽限制
+  down: 1 gbps # 下行带宽限制
 ```
 
 **配置说明**：
@@ -289,14 +291,14 @@ hysteria2://<password>@<server-ip>:<port>/?insecure=1&sni=www.bing.com#<name>
 
 **参数说明**：
 
-| 参数 | 说明 |
-|------|------|
-| `password` | 服务端配置的密码 |
-| `server-ip` | VPS 的公网 IP |
-| `port` | 服务端监听端口（默认 443） |
-| `insecure=1` | 跳过证书验证（自签名证书需要） |
-| `sni=www.bing.com` | TLS SNI，与服务端证书 CN 一致 |
-| `#name` | 连接名称（可选） |
+| 参数               | 说明                           |
+| ------------------ | ------------------------------ |
+| `password`         | 服务端配置的密码               |
+| `server-ip`        | VPS 的公网 IP                  |
+| `port`             | 服务端监听端口（默认 443）     |
+| `insecure=1`       | 跳过证书验证（自签名证书需要） |
+| `sni=www.bing.com` | TLS SNI，与服务端证书 CN 一致  |
+| `#name`            | 连接名称（可选）               |
 
 **示例**：
 
@@ -320,11 +322,11 @@ hysteria2://mypassword@74.48.72.24:443/?insecure=1&sni=www.bing.com#RackNerd-LA
 
 **关键配置项**：
 
-| 配置项 | 推荐值 | 说明 |
-|--------|--------|------|
-| **系统代理** | 自动配置 | 自动设置系统代理 |
+| 配置项       | 推荐值      | 说明                     |
+| ------------ | ----------- | ------------------------ |
+| **系统代理** | 自动配置    | 自动设置系统代理         |
 | **路由模式** | 绕过大陆 IP | 国内流量直连，国外走代理 |
-| **带宽限制** | 1000 Mbps | 根据本地网络调整 |
+| **带宽限制** | 1000 Mbps   | 根据本地网络调整         |
 
 #### Linux / CLI
 
@@ -390,6 +392,7 @@ ping <server-ip>
 ```
 
 **参考值**：
+
 - 中国大陆到洛杉矶：150-200ms
 - 中国大陆到圣何塞：180-220ms
 
