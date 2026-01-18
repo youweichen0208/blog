@@ -60,7 +60,7 @@ tags:
 
 访问 RackNerd 官网，选择 KVM VPS 产品线：
 
-![RackNerd KVM 选择](/images/posts/2026/01/2026-01-13-racknerd-kvm-selection.png)
+![RackNerd KVM 选择](../.vitepress/public/images/posts/2026/01/2026-01-13-racknerd-kvm-selection.png)
 
 **推荐配置**：
 
@@ -74,7 +74,7 @@ tags:
 
 配置页面：https://my.racknerd.com/cart.php?a=confproduct&i=0
 
-![RackNerd 配置](/images/posts/2026/01/2026-01-13-racknerd-config.png)
+![RackNerd 配置](../.vitepress/public/images/posts/2026/01/2026-01-13-racknerd-config.png)
 
 **关键配置项**：
 
@@ -306,7 +306,7 @@ hysteria2://<password>@<server-ip>:<port>/?insecure=1&sni=www.bing.com#<name>
 hysteria2://mypassword@74.48.72.24:443/?insecure=1&sni=www.bing.com#RackNerd-LA
 ```
 
-![Hysteria2 配置](/images/posts/2026/01/2026-01-13-hysteria2-config.png)
+![Hysteria2 配置](../.vitepress/public/images/posts/2026/01/2026-01-13-hysteria2-config.png)
 
 ### 3.2 客户端软件配置
 
@@ -318,7 +318,7 @@ hysteria2://mypassword@74.48.72.24:443/?insecure=1&sni=www.bing.com#RackNerd-LA
 2. 导入 Hysteria2 连接 URI
 3. 配置系统代理
 
-![Hysteria2 客户端配置](/images/posts/2026/01/2026-01-13-hysteria2-client.png)
+![Hysteria2 客户端配置](../.vitepress/public/images/posts/2026/01/2026-01-13-hysteria2-client.png)
 
 **关键配置项**：
 
