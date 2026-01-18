@@ -29,6 +29,33 @@ tags:
 - **代理协议**：Hysteria2 (基于 QUIC/UDP)
 - **传输层**：UDP over IPv4/IPv6
 
+### A.协议层（运输工具）
+
+- **Hysteria 2:** 这是你使用的“运输方式”。它基于 UDP, 特别适合高丢包，高延迟的跨境链路。
+- **HTTP/SOCKS5:** 这是代理的“接口协议”。
+- 在 v2rayN 里看到的**Mixed Port（10808）** 就是混合接口。
+- 终端通过`export http_proxy=...`命令，就是告诉系统：“请把我的流量打包成 HTTP 格式，交给 10808 这个门口的代理程序”。
+
+### B. 端口（出入口）
+
+- **本地端口（10808）**：这是我们本地电脑内部的“校门”，v2rayN 在这里等着接手我们终端的流量。
+
+- **远端接口 （443/13727）**： 这是你服务器上的“大门”。数据包跨越太平洋后，要进入服务器的这个门才能被 Hysteria 识别。
+
+### v2rayN 的核心功能
+
+v2rayN 是一个终端**管理工具**。我可以把它想象成一个“万能播放器”，而我租用的服务器信息（比如 Hysteria2 节点）就是“视频文件”。有了这个播放器，我才能读取并运行这些复杂的网络协议。
+
+#### v2rayN 的核心功能
+
+- **多协议支持**：它支持目前主流的所有加密协议，包括你正在使用的 Hysteria 2，以及经典的 VMess、VLESS、Trojan、Shadowsocks 等。
+
+- **内核切换**：它内置了不同的“引擎”（内核），比如 Xray-core 或 sing-box。你之前在截图里看到的配置项就属于这些内核。
+
+- **路由分流**：这是它最强大的功能。它可以自动判断：访问百度、淘宝走“直连”（不经过代理），访问 Google、GitHub 走“代理”。这样既不影响国内网速，又能上外网。
+
+- **本地端口转发**：它会在你的电脑上开启一个本地门户（比如你配置的 10808 端口），让其他软件（如 Chrome、终端、Termius）可以通过这个门户连接到你的服务器。
+
 ---
 
 ## 1. VPS 服务器准备
@@ -52,15 +79,13 @@ tags:
 - **性能优异**：接近物理机性能，I/O 和网络性能好
 - **灵活性高**：可自定义内核参数，支持 BBR 等拥塞控制算法
 
-相比之下，OpenVZ 是容器虚拟化，共享宿主机内核，无法自定义网络栈。
-
 #### 购买步骤
 
 **Step 1: 选择 KVM VPS 套餐**
 
 访问 RackNerd 官网，选择 KVM VPS 产品线：
 
-![RackNerd KVM 选择](../.vitepress/public/images/posts/2026/01/2026-01-13-racknerd-kvm-selection.png)
+![RackNerd KVM 选择](/images/posts/2026/01/2026-01-13-racknerd-kvm-selection.png)
 
 **推荐配置**：
 
@@ -74,7 +99,7 @@ tags:
 
 配置页面：https://my.racknerd.com/cart.php?a=confproduct&i=0
 
-![RackNerd 配置](../.vitepress/public/images/posts/2026/01/2026-01-13-racknerd-config.png)
+![RackNerd 配置](/images/posts/2026/01/2026-01-13-racknerd-config.png)
 
 **关键配置项**：
 
@@ -163,206 +188,27 @@ lsmod | grep bbr
 bash <(curl -fsSL https://get.hy2.sh/)
 ```
 
-安装完成后，Hysteria2 会被安装到 `/usr/local/bin/hysteria`。
-
-#### 生成配置文件
-
-创建配置目录：
-
-```bash
-mkdir -p /etc/hysteria
-```
-
-生成自签名证书（用于 TLS）：
-
-```bash
-openssl req -x509 -nodes -newkey ec:<(openssl ecparam -name prime256v1) \
-  -keyout /etc/hysteria/server.key \
-  -out /etc/hysteria/server.crt \
-  -subj "/CN=www.bing.com" \
-  -days 36500
-```
-
-创建服务端配置文件 `/etc/hysteria/config.yaml`：
-
-```yaml
-listen: :443 # 监听端口，建议使用 443 伪装成 HTTPS
-
-tls:
-  cert: /etc/hysteria/server.crt
-  key: /etc/hysteria/server.key
-
-auth:
-  type: password
-  password: <your-strong-password> # 修改为强密码
-
-masquerade:
-  type: proxy
-  proxy:
-    url: https://www.bing.com # 伪装网站
-    rewriteHost: true
-
-quic:
-  initStreamReceiveWindow: 8388608 # 8MB
-  maxStreamReceiveWindow: 8388608 # 8MB
-  initConnReceiveWindow: 20971520 # 20MB
-  maxConnReceiveWindow: 20971520 # 20MB
-  maxIdleTimeout: 30s
-  maxIncomingStreams: 1024
-
-bandwidth:
-  up: 1 gbps # 上行带宽限制
-  down: 1 gbps # 下行带宽限制
-```
-
-**配置说明**：
-
-- `listen`: 监听端口，443 端口可以伪装成 HTTPS 流量
-- `masquerade`: 当非 Hysteria 客户端访问时，伪装成正常网站
-- `quic`: QUIC 协议参数，调大窗口可提升高带宽场景性能
-- `bandwidth`: 带宽限制，根据 VPS 实际带宽调整
-
-#### 配置防火墙
-
-```bash
-# 启用 UFW 防火墙
-ufw enable
-
-# 允许 SSH（避免被锁在外面）
-ufw allow 22/tcp
-
-# 允许 Hysteria2 端口（UDP）
-ufw allow 443/udp
-
-# 查看防火墙状态
-ufw status
-```
-
-#### 启动 Hysteria2 服务
-
-创建 systemd 服务文件 `/etc/systemd/system/hysteria.service`：
-
-```ini
-[Unit]
-Description=Hysteria Server
-After=network.target
-
-[Service]
-Type=simple
-ExecStart=/usr/local/bin/hysteria server -c /etc/hysteria/config.yaml
-Restart=on-failure
-RestartSec=10s
-
-[Install]
-WantedBy=multi-user.target
-```
-
-启动服务：
-
-```bash
-systemctl daemon-reload
-systemctl enable hysteria
-systemctl start hysteria
-```
-
-检查服务状态：
-
-```bash
-systemctl status hysteria
-```
-
-查看日志：
-
-```bash
-journalctl -u hysteria -f
-```
-
 ---
 
-## 3. 客户端配置
+## 3. 代理
 
-### 3.1 生成连接 URI
+代理（Proxy）在计算机网络中扮演着“中间人”的角色。简单来说，它是一台位于你的设备（电脑、手机）和目标服务器（如 GitHub、Google）之间的服务器。
 
-Hysteria2 使用 URI 格式的连接字符串：
+当你通过代理访问网页时，数据流不再是直连，而是经历一个中转过程。
 
-```
-hysteria2://<password>@<server-ip>:<port>/?insecure=1&sni=www.bing.com#<name>
-```
+### 3.1 代理的基本工作流程
 
-**参数说明**：
+在没有代理的情况下，你的请求直接发给服务器；有了代理后，流程变为：
 
-| 参数               | 说明                           |
-| ------------------ | ------------------------------ |
-| `password`         | 服务端配置的密码               |
-| `server-ip`        | VPS 的公网 IP                  |
-| `port`             | 服务端监听端口（默认 443）     |
-| `insecure=1`       | 跳过证书验证（自签名证书需要） |
-| `sni=www.bing.com` | TLS SNI，与服务端证书 CN 一致  |
-| `#name`            | 连接名称（可选）               |
+1. **发起请求**：你的设备把请求发给代理服务器。
+2. **代为请求**：代理服务器接收到请求后，用它自己的身份去访问目标服务器。
+3. **传回数据**：代理服务器拿到目标服务器的数据，再转交给你的设备。
 
-**示例**：
+### 3.2 为什么我们要使用代理？（核心功能）
 
-```
-hysteria2://mypassword@74.48.72.24:443/?insecure=1&sni=www.bing.com#RackNerd-LA
-```
-
-![Hysteria2 配置](../.vitepress/public/images/posts/2026/01/2026-01-13-hysteria2-config.png)
-
-### 3.2 客户端软件配置
-
-#### macOS / Windows
-
-推荐使用 **Clash Verge** 或 **V2rayN**：
-
-1. 下载并安装客户端
-2. 导入 Hysteria2 连接 URI
-3. 配置系统代理
-
-![Hysteria2 客户端配置](../.vitepress/public/images/posts/2026/01/2026-01-13-hysteria2-client.png)
-
-**关键配置项**：
-
-| 配置项       | 推荐值      | 说明                     |
-| ------------ | ----------- | ------------------------ |
-| **系统代理** | 自动配置    | 自动设置系统代理         |
-| **路由模式** | 绕过大陆 IP | 国内流量直连，国外走代理 |
-| **带宽限制** | 1000 Mbps   | 根据本地网络调整         |
-
-#### Linux / CLI
-
-安装 Hysteria2 客户端：
-
-```bash
-bash <(curl -fsSL https://get.hy2.sh/)
-```
-
-创建客户端配置文件 `~/.config/hysteria/config.yaml`：
-
-```yaml
-server: <server-ip>:443
-
-auth: <your-password>
-
-tls:
-  sni: www.bing.com
-  insecure: true
-
-bandwidth:
-  up: 100 mbps
-  down: 500 mbps
-
-socks5:
-  listen: 127.0.0.1:1080
-
-http:
-  listen: 127.0.0.1:8080
-```
-
-启动客户端：
-
-```bash
-hysteria client -c ~/.config/hysteria/config.yaml
-```
+- **突破访问限制（翻墙）**： 你的 ISP（运营商）屏蔽掉了 Github 以及海外的 IP 地址。代理服务器（如你的 Racknerd VPS）位于海外，它可以自由的访问 Github。我们可以通过加密通道(Hysteria)连上 VPS,VPS 帮我抓取网页再回传给我们。
+- **隐藏真实身份（隐私）：** 目标服务器看到的 IP 地址是代理服务器的，而不是你家里的宽带 IP。这在保护隐私和防止攻击时非常有用。
+- **网络加速与调优**： 正如将端口改为`443`并限制`Max Bandwidth`一样，优秀的代理协议（如 Hysteria 2）可以通过更聪明的发包算法，在恶劣的网络环境下跑出比直连更快的速度。
 
 ---
 
@@ -396,126 +242,9 @@ ping <server-ip>
 - 中国大陆到洛杉矶：150-200ms
 - 中国大陆到圣何塞：180-220ms
 
-### 4.3 性能调优建议
-
-#### 服务端优化
-
-1. **调整 UDP 缓冲区大小**：
-
-```bash
-echo "net.core.rmem_max=2500000" >> /etc/sysctl.conf
-echo "net.core.wmem_max=2500000" >> /etc/sysctl.conf
-sysctl -p
-```
-
-2. **启用 TCP Fast Open**：
-
-```bash
-echo "net.ipv4.tcp_fastopen=3" >> /etc/sysctl.conf
-sysctl -p
-```
-
-#### 客户端优化
-
-1. **根据实际网络调整带宽参数**
-2. **使用有线网络而非 Wi-Fi**
-3. **关闭不必要的后台网络应用**
-
----
-
-## 5. 安全加固
-
-### 5.1 修改 SSH 端口
-
-编辑 `/etc/ssh/sshd_config`：
-
-```bash
-Port 2222  # 修改为非标准端口
-PermitRootLogin no  # 禁止 root 直接登录
-PasswordAuthentication no  # 禁用密码登录，仅允许密钥
-```
-
-重启 SSH 服务：
-
-```bash
-systemctl restart sshd
-```
-
-### 5.2 配置 fail2ban
-
-防止暴力破解：
-
-```bash
-apt install -y fail2ban
-systemctl enable fail2ban
-systemctl start fail2ban
-```
-
-### 5.3 定期更新系统
-
-```bash
-apt update && apt upgrade -y
-```
-
----
-
-## 6. 故障排查
-
-### 6.1 连接失败
-
-**检查服务端状态**：
-
-```bash
-systemctl status hysteria
-journalctl -u hysteria -n 50
-```
-
-**检查防火墙**：
-
-```bash
-ufw status
-```
-
-**检查端口监听**：
-
-```bash
-ss -tulnp | grep hysteria
-```
-
-### 6.2 速度慢
-
-1. **检查服务端带宽限制**：调整 `config.yaml` 中的 `bandwidth` 参数
-2. **检查客户端带宽设置**：不要设置过高或过低
-3. **测试 VPS 网络质量**：使用 `mtr` 或 `traceroute`
-
-```bash
-mtr <server-ip>
-```
-
-### 6.3 频繁断连
-
-1. **调整 QUIC 超时参数**：增大 `maxIdleTimeout`
-2. **检查 NAT 超时**：部分路由器 UDP NAT 超时较短
-3. **启用 Keep-Alive**：在客户端配置中添加
-
----
-
 ## 7. 参考资源
 
 - [Hysteria2 官方文档](https://v2.hysteria.network/)
 - [QUIC 协议规范](https://www.rfc-editor.org/rfc/rfc9000.html)
 - [BBR 拥塞控制算法论文](https://research.google/pubs/pub45646/)
 - [RackNerd 官网](https://www.racknerd.com/)
-
----
-
-## 总结
-
-本文介绍了基于 Hysteria2 协议搭建高性能代理服务器的完整流程，包括：
-
-- VPS 选择与购买
-- Hysteria2 服务端部署与配置
-- 客户端连接与优化
-- 性能调优与安全加固
-
-Hysteria2 基于 QUIC 协议，相比传统 TCP 代理具有更低的延迟和更好的抗丢包能力，适合高延迟、高丢包的网络环境。通过合理配置和优化，可以获得接近 VPS 带宽上限的传输速度。
