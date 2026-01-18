@@ -242,7 +242,68 @@ ping <server-ip>
 - 中国大陆到洛杉矶：150-200ms
 - 中国大陆到圣何塞：180-220ms
 
-## 7. 参考资源
+## 5. 配置降低延迟
+
+### step 1: 修改外部端口
+
+通过 ssh 进入购买的圣何塞节点
+step 1：在终端输入命令：`sudo nano /etc/hysteria/config.yaml`
+![Hysteria2 服务器配置](/images/posts/2026/01/2026-01-13-hysteria2-server-config.png)
+并将端口改为 443
+
+### Step 2: 安装 ufw
+
+安装 `ufw`（Uncomplicated Firewall）
+由于延迟优化需要开放`52000/udp`端口，我们首先确认系统在使用哪种防火墙，或者直接安装`ufw`。
+
+#### 1. 为什么会有 UFW？
+
+在 Linux 底层，真正的防火墙拦截是由一个叫 iptables 的内核组件完成的。但是 iptables 的命令非常复杂且难以记忆（例如：iptables -A INPUT -p udp --dport 52000 -j ACCEPT）。 UFW 就像是给 iptables 套上了一个“极简外壳”，让你能用人类听得懂的语言来管理安全规则。
+
+#### 2. UFW 的核心逻辑
+
+UFW 的工作方式非常直观，通常只需两个动作：允许 (Allow) 或 拒绝 (Deny)。
+
+允许流量：比如你为了让 Hysteria 2 正常工作，运行了 sudo ufw allow 443/udp。这句话的意思就是：“请打开 443 端口的大门，允许 UDP 协议的包进来。”
+
+拒绝流量：比如你想封禁某个恶意 IP，只需运行 sudo ufw deny from 1.2.3.4。
+
+如果你的系统是 Debian 或 Ubuntu，直接运行以下命令安装即可：
+
+```bash
+# 1. 更新包列表
+apt update
+# 2. 安装 ufw
+apt install ufw -y
+# 3. 非常重要：在开启防火墙前先允许 SSH，否则你会断开连接！
+ufw allow ssh
+# 4. 开启你的 Hysteria 端口
+ufw allow 52000/udp
+# 5. 正式启用防火墙
+ufw enable
+```
+
+### Step 3:服务器端：调整防火墙
+
+由于我们之前可能没开启 443 的 UDP 权限，或者系统环境变化，建议重新运行：
+
+```bash
+sudo ufw allow 443/udp
+```
+
+### Step 4: 客户端：修改 v2rayN/shadowrocket 设置
+
+打开 v2rayN 界面：
+
+1. 将**Port**栏改为`443`。
+   ![v2rayN 端口配置](/images/posts/2026/01/2026-01-13-v2rayn-port-config.png)
+2. 同步优化带宽（关键）：为了尝试进一步降低延迟，在`Max bandwidth`处尝试更保守的设置：
+   ![v2rayN 带宽配置](/images/posts/2026/01/2026-01-13-v2rayn-bandwidth-config.png)
+
+- Down: `100`
+- Up: `20`
+
+## 6. 参考资源
 
 - [Hysteria2 官方文档](https://v2.hysteria.network/)
 - [QUIC 协议规范](https://www.rfc-editor.org/rfc/rfc9000.html)
