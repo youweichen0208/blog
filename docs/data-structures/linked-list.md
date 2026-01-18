@@ -50,6 +50,7 @@ public class Solution {
 **关键点 - 为什么必须判断 `pA == null` 而不是 `pA.next == null`**：
 
 如果使用 `pA.next == null` 作为判断条件：
+
 ```java
 // ❌ 错误写法
 pA = (pA.next == null) ? headB : pA.next;
@@ -58,6 +59,7 @@ pA = (pA.next == null) ? headB : pA.next;
 会导致两个问题：
 
 1. **无限循环**：指针会在最后一个节点就切换，永远不会走到 `null`
+
    - 例如：A: 1→2→null，B: 3→4→null
    - pA 在节点 2 时切换到 headB，在节点 4 时切换到 headA
    - 不断循环，永远不会相遇
@@ -68,5 +70,6 @@ pA = (pA.next == null) ? headB : pA.next;
    - 如果指针不能走到 `null`，无交点的情况下循环永远不会结束
 
 **正确做法**：必须让指针走到 `null`，这样才能保证：
+
 - 路径长度完全相等（包括走到 null 的那一步）
 - 循环能够正确终止
