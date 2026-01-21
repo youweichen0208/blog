@@ -14,10 +14,12 @@ date: 2026-01-21
 ### 1.1 生活中的递归例子
 
 **俄罗斯套娃**：
+
 - 打开一个娃娃，里面还有一个娃娃
 - 继续打开，直到最小的娃娃（终止条件）
 
 **电影《盗梦空间》**：
+
 - 梦中梦中梦...
 - 最终回到现实（终止条件）
 
@@ -28,13 +30,13 @@ date: 2026-01-21
 **必须有一个明确的停止条件**，否则会无限递归导致栈溢出。
 
 ```java
-// ❌ 错误：没有终止条件
+// 错误：没有终止条件
 public void badRecursion(int n) {
     System.out.println(n);
     badRecursion(n - 1);  // 永远不会停止！
 }
 
-// ✅ 正确：有终止条件
+// 正确：有终止条件
 public void goodRecursion(int n) {
     if (n <= 0) {  // 终止条件
         return;
@@ -234,15 +236,15 @@ public int factorialIterative(int n) {
 
 **适合递归的场景**：
 
-- ✅ 问题本身具有递归性质（树、图遍历）
-- ✅ 代码更简洁易懂
-- ✅ 分治算法（归并排序、快速排序）
+- 问题本身具有递归性质（树、图遍历）
+- 代码更简洁易懂
+- 分治算法（归并排序、快速排序）
 
 **不适合递归的场景**：
 
-- ❌ 递归深度太大（栈溢出风险）
-- ❌ 有大量重复计算（需要优化）
-- ❌ 简单的线性问题（循环更高效）
+- 递归深度太大（栈溢出风险）
+- 有大量重复计算（需要优化）
+- 简单的线性问题（循环更高效）
 
 ## 8. 二叉树递归（进阶）
 
@@ -305,7 +307,7 @@ public TreeNode invertTree(TreeNode root) {
 }
 ```
 
-### 8.3 二叉树的最近公共祖先 ⭐
+### 8.3 二叉树的最近公共祖先
 
 **问题描述**：
 
@@ -318,10 +320,12 @@ public TreeNode invertTree(TreeNode root) {
 这是一道经典的递归问题，核心思想是：
 
 1. **递归终止条件**：
+
    - 如果当前节点为空，返回 null
    - 如果当前节点等于 p 或 q，返回当前节点
 
 2. **递归搜索**：
+
    - 在左子树中查找 p 和 q
    - 在右子树中查找 p 和 q
 
@@ -503,7 +507,7 @@ public int factorial(int n) {
 ### 11.1 忘记终止条件
 
 ```java
-// ❌ 会导致栈溢出
+// 会导致栈溢出
 public int bad(int n) {
     return n + bad(n - 1);  // 没有终止条件
 }
@@ -512,7 +516,7 @@ public int bad(int n) {
 ### 11.2 终止条件错误
 
 ```java
-// ❌ n=0 时会继续递归
+// n=0 时会继续递归
 public int factorial(int n) {
     if (n == 1) return 1;  // 应该是 n <= 1
     return n * factorial(n - 1);
@@ -522,7 +526,7 @@ public int factorial(int n) {
 ### 11.3 没有返回值
 
 ```java
-// ❌ 缺少 return
+// 缺少 return
 public int sum(int n) {
     if (n == 1) return 1;
     n + sum(n - 1);  // 应该是 return n + sum(n - 1);
@@ -532,13 +536,13 @@ public int sum(int n) {
 ### 11.4 判断逻辑放错位置
 
 ```java
-// ❌ 错误：在获取 left 和 right 之前判断
+// 错误：在获取 left 和 right 之前判断
 public TreeNode lowestCommonAncestor(TreeNode root, TreeNode p, TreeNode q) {
     if (root == null || root == p || root == q) {
         return root;
     }
 
-    // ❌ 这时候 left 和 right 还没有值！
+    //  这时候 left 和 right 还没有值！
     if (left != null && right != null) {  // 编译错误
         return root;
     }
@@ -564,7 +568,7 @@ public TreeNode lowestCommonAncestor(TreeNode root, TreeNode p, TreeNode q) {
 ### 进阶题
 
 5. **二叉树的所有路径**
-6. **二叉树的最近公共祖先** ⭐
+6. **二叉树的最近公共祖先**
 7. **合并两个有序链表**
 8. **二叉树的层序遍历**
 
@@ -588,19 +592,19 @@ public TreeNode lowestCommonAncestor(TreeNode root, TreeNode p, TreeNode q) {
 
 ### 递归三要素
 
-| 要素 | 说明 | 示例 |
-|------|------|------|
-| **终止条件** | 什么时候停止递归 | `if (root == null) return null;` |
-| **递归调用** | 如何缩小问题规模 | `lowestCommonAncestor(root.left, p, q)` |
-| **返回值** | 如何利用子问题的结果 | `return left != null ? left : right;` |
+| 要素         | 说明                 | 示例                                    |
+| ------------ | -------------------- | --------------------------------------- |
+| **终止条件** | 什么时候停止递归     | `if (root == null) return null;`        |
+| **递归调用** | 如何缩小问题规模     | `lowestCommonAncestor(root.left, p, q)` |
+| **返回值**   | 如何利用子问题的结果 | `return left != null ? left : right;`   |
 
 ### 递归 vs 迭代
 
-| 特性 | 递归 | 迭代 |
-|------|------|------|
-| **代码简洁性** | ✅ 简洁优雅 | ❌ 相对复杂 |
-| **空间复杂度** | ❌ O(n) 栈空间 | ✅ O(1) |
-| **性能** | ❌ 函数调用开销 | ✅ 更快 |
-| **适用场景** | 树、图、分治 | 简单循环 |
+| 特性           | 递归         | 迭代     |
+| -------------- | ------------ | -------- |
+| **代码简洁性** | 简洁优雅     | 相对复杂 |
+| **空间复杂度** | O(n) 栈空间  | O(1)     |
+| **性能**       | 函数调用开销 | 更快     |
+| **适用场景**   | 树、图、分治 | 简单循环 |
 
 掌握递归，你就掌握了解决复杂问题的强大工具！
