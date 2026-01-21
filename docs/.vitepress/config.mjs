@@ -49,6 +49,7 @@ export default defineConfig({
           text: '数据结构',
           items: [
             { text: '概述', link: '/data-structures/' },
+            { text: '递归详解', link: '/data-structures/recursion' },
             { text: '链表', link: '/data-structures/linked-list' },
           ],
         },
