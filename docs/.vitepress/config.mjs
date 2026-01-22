@@ -41,6 +41,7 @@ export default defineConfig({
           items: [
             { text: '概述', link: '/aiops/' },
             { text: '智能体', link: '/aiops/agent' },
+            { text: 'RAG 实战指南', link: '/aiops/rag' },
           ],
         },
       ],
