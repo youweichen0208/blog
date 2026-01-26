@@ -42,6 +42,7 @@ export default defineConfig({
             { text: '概述', link: '/aiops/' },
             { text: '智能体 Coze', link: '/aiops/coze' },
             { text: 'RAG 实战指南', link: '/aiops/rag' },
+            { text: 'Prometheus + Grafana 监控', link: '/aiops/prometheus' },
           ],
         },
       ],
