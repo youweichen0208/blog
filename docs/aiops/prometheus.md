@@ -369,14 +369,56 @@ networks:
 EOF
 ```
 
-### 3.5 启动服务
+### 3.5 下载 Docker 镜像（可选）
+
+在启动服务前，可以先手动下载镜像，避免首次启动时等待时间过长。
+
+```bash
+# 下载 Prometheus 镜像
+docker pull prom/prometheus:latest
+
+# 下载 Grafana 镜像
+docker pull grafana/grafana:latest
+
+# 下载 Node Exporter 镜像
+docker pull prom/node-exporter:latest
+
+# 下载 Alertmanager 镜像
+docker pull prom/alertmanager:latest
+
+# 查看已下载的镜像
+docker images | grep -E "prometheus|grafana|alertmanager|node-exporter"
+```
+
+**说明**：
+
+- 如果不手动下载，`docker-compose up -d` 会自动拉取所需镜像
+- 手动下载的好处是可以看到下载进度，避免首次启动时长时间等待
+- 镜像大小：
+  - Prometheus: ~200MB
+  - Grafana: ~300MB
+  - Node Exporter: ~20MB
+  - Alertmanager: ~60MB
+
+### 3.6 启动服务
 
 ```bash
 cd /opt/monitoring
 docker-compose up -d
 ```
 
-### 3.6 验证部署
+**首次启动说明**：
+
+如果之前没有手动下载镜像，Docker Compose 会自动执行以下操作：
+
+1. 拉取所需的 Docker 镜像
+2. 创建 Docker 网络（monitoring）
+3. 创建 Docker 卷（prometheus-data、grafana-data、alertmanager-data）
+4. 启动所有容器
+
+启动过程可能需要 1-3 分钟，取决于网络速度。
+
+### 3.7 验证部署
 
 **Step 4**：检查服务状态
 
