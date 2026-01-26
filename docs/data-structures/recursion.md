@@ -417,6 +417,173 @@ lowestCommonAncestor(3, 5, 4)
 - **时间复杂度**：O(n)，需要遍历所有节点
 - **空间复杂度**：O(n)，递归栈的深度
 
+### 8.4 回文链表（递归的巧妙应用）
+
+**问题描述**：
+
+给你一个单链表的头节点 `head`，请你判断该链表是否为回文链表。如果是，返回 `true`；否则，返回 `false`。
+
+**示例**：
+
+```
+输入：head = [1,2,2,1]
+输出：true
+
+输入：head = [1,2]
+输出：false
+```
+
+**递归解法思路**：
+
+利用递归的特性：递归会先到达链表末尾，然后在回溯时从后往前比较。这是一个理解递归执行顺序的绝佳例子！
+
+**代码实现**：
+
+```java
+class Solution {
+    private ListNode frontPointer;
+
+    public boolean isPalindrome(ListNode head) {
+        frontPointer = head;
+        return recursiveCheck(head);
+    }
+
+    private boolean recursiveCheck(ListNode currentNode) {
+        if (currentNode != null) {
+            // 递归到链表末尾
+            if (!recursiveCheck(currentNode.next)) {
+                return false;
+            }
+            // 回溯时比较
+            if (currentNode.val != frontPointer.val) {
+                return false;
+            }
+            // 前指针向后移动
+            frontPointer = frontPointer.next;
+        }
+        return true;
+    }
+}
+```
+
+**核心机制解析**：
+
+这道题最巧妙的地方在于 `frontPointer` 如何与回溯时的节点保持对应。关键在于理解**递归的执行顺序**和 **frontPointer 的移动时机**：
+
+1. **递进阶段**：`frontPointer` **不移动**，一直停留在头节点
+2. **回归阶段**：每次比较后，`frontPointer` 才向前移动一步
+
+**执行过程图解**（链表：1 → 2 → 2 → 1）：
+
+```
+阶段一：递进（Winding）- frontPointer 不动
+
+recursiveCheck(node1)  // frontPointer = node1 (不动)
+  └─ recursiveCheck(node2)  // frontPointer = node1 (不动)
+       └─ recursiveCheck(node3)  // frontPointer = node1 (不动)
+            └─ recursiveCheck(node4)  // frontPointer = node1 (不动)
+                 └─ recursiveCheck(null)  // 返回 true
+
+阶段二：回归（Unwinding）- 开始比较和移动
+
+第 1 次比较（最深层返回）：
+在 recursiveCheck(node4) 中：
+  currentNode.val = 1 (node4)
+  frontPointer.val = 1 (node1)  ← 还是头节点
+  比较：1 == 1 ✓
+  frontPointer = frontPointer.next  ← 移动到 node2
+
+第 2 次比较：
+在 recursiveCheck(node3) 中：
+  currentNode.val = 2 (node3)
+  frontPointer.val = 2 (node2)  ← 已移动到第二个节点
+  比较：2 == 2 ✓
+  frontPointer = frontPointer.next  ← 移动到 node3
+
+第 3 次比较：
+在 recursiveCheck(node2) 中：
+  currentNode.val = 2 (node2)
+  frontPointer.val = 2 (node3)  ← 已移动到第三个节点
+  比较：2 == 2 ✓
+  frontPointer = frontPointer.next  ← 移动到 node4
+
+第 4 次比较：
+在 recursiveCheck(node1) 中：
+  currentNode.val = 1 (node1)
+  frontPointer.val = 1 (node4)  ← 已移动到第四个节点
+  比较：1 == 1 ✓
+```
+
+**为什么能保证对应？**
+
+1. **递归栈**：保证 `currentNode` 从后往前遍历（node4 → node3 → node2 → node1）
+2. **延迟执行**：比较代码在递归返回后才执行
+3. **同步移动**：`frontPointer` 在每次比较后向前移动（node1 → node2 → node3 → node4）
+4. **自然对应**：两个指针从两端向中间移动，自然形成对应关系
+
+**可视化对比**：
+
+```
+链表：1 → 2 → 2 → 1
+
+递进阶段（frontPointer 不动）：
+frontPointer
+    ↓
+    1 → 2 → 2 → 1
+                ↑
+          递归到这里
+
+回归阶段（开始比较和移动）：
+
+第 1 次：
+frontPointer
+    ↓
+    1 → 2 → 2 → 1
+                ↑
+          currentNode
+比较 1 == 1 ✓，frontPointer 右移
+
+第 2 次：
+    frontPointer
+        ↓
+    1 → 2 → 2 → 1
+            ↑
+      currentNode
+比较 2 == 2 ✓，frontPointer 右移
+
+第 3 次：
+        frontPointer
+            ↓
+    1 → 2 → 2 → 1
+        ↑
+  currentNode
+比较 2 == 2 ✓，frontPointer 右移
+
+第 4 次：
+            frontPointer
+                ↓
+    1 → 2 → 2 → 1
+    ↑
+currentNode
+比较 1 == 1 ✓
+```
+
+**关键要点**：
+
+- 利用**调用栈**实现了"从后往前"的遍历
+- 用**类变量**实现了"从前往后"的遍历
+- 两者在回溯过程中完美同步
+- 这是递归的巧妙之处：一次遍历实现双向比较
+
+**复杂度分析**：
+
+- **时间复杂度**：O(n)
+- **空间复杂度**：O(n)，递归调用栈的深度
+
+**其他解法对比**：
+
+虽然递归解法很优雅，但实际面试中更推荐使用**反转后半部分链表**的方法（空间复杂度 O(1)）。递归解法的价值在于帮助理解递归的执行机制。
+
 ## 9. 递归的三种遍历顺序
 
 ### 9.1 前序遍历（Pre-order）
