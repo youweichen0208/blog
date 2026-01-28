@@ -834,6 +834,430 @@ if (currentNode.val != frontPointer.val) {  // ← 等递归返回才执行
 
 这就是为什么递归能够如此优雅地解决回文链表问题！
 
+---
+
+### 8.4.2 深入理解：return 的传递机制
+
+很多人会有疑问：**递归函数最外层的 return 是不是直接返回最终结果？最外层的 return 是不是最后执行？**
+
+让我们深入理解这两个问题。
+
+#### 问题一：return 是直接返回最终结果吗？
+
+**答案：不是！每层的 return 都只返回给它的上一层调用者。**
+
+`return` 语句本身不知道自己在第几层，它只是把结果返回给**调用它的那一层**。
+
+#### return 的本质
+
+```java
+// return 的作用：
+// 1. 结束当前函数
+// 2. 把值返回给调用者
+
+int result = someFunction();  // ← 调用者在这里接收返回值
+```
+
+#### 阶乘函数的 return 传递链
+
+```java
+public int factorial(int n) {
+    if (n <= 1) {
+        return 1;  // ← 终止条件的 return
+    }
+    return n * factorial(n - 1);  // ← 递归调用的 return
+}
+
+// 调用
+int result = factorial(3);
+```
+
+**执行过程**：
+
+```
+═══════════════════════════════════════════════════════════
+第 1 层：factorial(3)
+═══════════════════════════════════════════════════════════
+n = 3
+执行：return 3 * factorial(2)
+      └─ 需要先计算 factorial(2)
+
+═══════════════════════════════════════════════════════════
+第 2 层：factorial(2)
+═══════════════════════════════════════════════════════════
+n = 2
+执行：return 2 * factorial(1)
+      └─ 需要先计算 factorial(1)
+
+═══════════════════════════════════════════════════════════
+第 3 层：factorial(1)
+═══════════════════════════════════════════════════════════
+n = 1
+执行：return 1  ← 返回给第 2 层
+      ↑
+      └─ 这个 return 只返回给 factorial(2)
+      └─ 不是直接返回给最外层！
+
+═══════════════════════════════════════════════════════════
+回到第 2 层：factorial(2)
+═══════════════════════════════════════════════════════════
+factorial(1) 返回了 1
+计算：2 * 1 = 2
+执行：return 2  ← 返回给第 1 层
+      ↑
+      └─ 这个 return 只返回给 factorial(3)
+      └─ 还不是最终结果！
+
+═══════════════════════════════════════════════════════════
+回到第 1 层：factorial(3)
+═══════════════════════════════════════════════════════════
+factorial(2) 返回了 2
+计算：3 * 2 = 6
+执行：return 6  ← 返回给最外层调用者
+      ↑
+      └─ 这个 return 才返回给 result = factorial(3)
+      └─ 这才是最终结果！
+```
+
+#### 可视化：return 的传递链
+
+```
+调用链（递进）：
+result = factorial(3)
+           ↓
+         factorial(3)
+           ↓
+         factorial(2)
+           ↓
+         factorial(1)
+           ↓
+         return 1
+
+返回链（回归）- 每个 return 只返回给上一层：
+result = factorial(3)  ← 最终接收 6
+           ↑
+         return 6  ← factorial(3) 返回
+           ↑
+         return 2  ← factorial(2) 返回
+           ↑
+         return 1  ← factorial(1) 返回
+```
+
+#### 回文链表的 return 传递
+
+```java
+private boolean recursiveCheck(ListNode currentNode) {
+    if (currentNode != null) {
+        if (!recursiveCheck(currentNode.next)) {
+            return false;
+        }
+        if (currentNode.val != frontPointer.val) {
+            return false;
+        }
+        frontPointer = frontPointer.next;
+    }
+    return true;  // ← 这个 return 只返回给上一层！
+}
+```
+
+**执行过程**：
+
+```
+═══════════════════════════════════════════════════════════
+第 1 层：recursiveCheck(node1)
+═══════════════════════════════════════════════════════════
+调用 recursiveCheck(node2)，等待返回...
+
+═══════════════════════════════════════════════════════════
+第 2 层：recursiveCheck(node2)
+═══════════════════════════════════════════════════════════
+调用 recursiveCheck(node3)，等待返回...
+
+═══════════════════════════════════════════════════════════
+第 3 层：recursiveCheck(node3)
+═══════════════════════════════════════════════════════════
+调用 recursiveCheck(null)，等待返回...
+
+═══════════════════════════════════════════════════════════
+第 4 层：recursiveCheck(null)
+═══════════════════════════════════════════════════════════
+currentNode == null
+return true  ← 返回给第 3 层（不是最外层！）
+
+═══════════════════════════════════════════════════════════
+回到第 3 层：recursiveCheck(node3)
+═══════════════════════════════════════════════════════════
+接收到 true，执行比较和移动
+return true  ← 返回给第 2 层（不是最外层！）
+
+═══════════════════════════════════════════════════════════
+回到第 2 层：recursiveCheck(node2)
+═══════════════════════════════════════════════════════════
+接收到 true，执行比较和移动
+return true  ← 返回给第 1 层（不是最外层！）
+
+═══════════════════════════════════════════════════════════
+回到第 1 层：recursiveCheck(node1)
+═══════════════════════════════════════════════════════════
+接收到 true，执行比较和移动
+return true  ← 返回给最外层调用者（这才是最终结果！）
+```
+
+#### 类比：接力赛
+
+```
+递归的 return 就像接力赛：
+
+第 4 层 (最深层)
+  return true
+    ↓ 传递给
+第 3 层
+  return true
+    ↓ 传递给
+第 2 层
+  return true
+    ↓ 传递给
+第 1 层
+  return true
+    ↓ 传递给
+最外层调用者 ← 最终接收结果
+
+每个人只负责传递给下一个人，
+不是直接传递给终点！
+```
+
+---
+
+#### 问题二：最外层的 return 是最后执行吗？
+
+**答案：不一定！取决于 return 语句的位置。**
+
+让我们看几种情况：
+
+#### 情况 1：return 在函数末尾（最常见）
+
+```java
+private boolean recursiveCheck(ListNode currentNode) {
+    if (currentNode != null) {
+        if (!recursiveCheck(currentNode.next)) {
+            return false;  // ← 提前返回
+        }
+        if (currentNode.val != frontPointer.val) {
+            return false;  // ← 提前返回
+        }
+        frontPointer = frontPointer.next;
+    }
+    return true;  // ← 最后执行（如果没有提前返回）
+}
+```
+
+**执行顺序**：
+
+```
+if (currentNode != null) {
+    ① 递归调用
+    ② 比较
+    ③ 移动
+}
+④ return true  ← 最后执行
+```
+
+**结论**：如果没有提前返回，末尾的 return 确实是最后执行的。
+
+#### 情况 2：return 在递归调用之前（前序位置）
+
+```java
+public void preorder(TreeNode root) {
+    if (root == null) {
+        return;  // ← 终止条件，可能提前返回
+    }
+
+    System.out.println(root.val);  // ← 先执行这个
+    preorder(root.left);           // ← 再递归
+    preorder(root.right);
+    // ← 没有显式 return，函数自动返回
+}
+```
+
+**执行顺序**：
+
+```
+① 打印当前节点  ← 先执行
+② 递归左子树
+③ 递归右子树
+④ 函数结束（隐式 return）
+```
+
+**结论**：前序遍历中，打印操作在递归之前，所以先执行。
+
+#### 情况 3：return 在递归调用之后（后序位置）
+
+```java
+public int maxDepth(TreeNode root) {
+    if (root == null) {
+        return 0;  // ← 终止条件
+    }
+
+    int leftDepth = maxDepth(root.left);   // ← 先递归
+    int rightDepth = maxDepth(root.right); // ← 再递归
+
+    return Math.max(leftDepth, rightDepth) + 1;  // ← 最后计算并返回
+}
+```
+
+**执行顺序**：
+
+```
+① 递归左子树
+② 递归右子树
+③ 计算最大深度
+④ return 结果  ← 最后执行
+```
+
+**结论**：后序遍历中，计算操作在递归之后，所以最后执行。
+
+#### 情况 4：多个 return 语句
+
+```java
+public int factorial(int n) {
+    if (n <= 1) {
+        return 1;  // ← 终止条件，提前返回
+    }
+    return n * factorial(n - 1);  // ← 递归情况
+}
+```
+
+**执行顺序**：
+
+```
+如果 n <= 1：
+  return 1  ← 直接返回，后面的代码不执行
+
+如果 n > 1：
+  ① 计算 factorial(n - 1)
+  ② 计算 n * 结果
+  ③ return 结果
+```
+
+**结论**：如果满足终止条件，会提前返回，后面的 return 不会执行。
+
+#### 详细对比：不同位置的 return
+
+```java
+// 示例 1：return 在末尾
+public boolean check1(int n) {
+    if (n > 0) {
+        check1(n - 1);  // ① 递归
+        System.out.println(n);  // ② 打印
+    }
+    return true;  // ③ 最后执行
+}
+
+// 示例 2：return 在中间
+public boolean check2(int n) {
+    if (n <= 0) {
+        return true;  // ① 提前返回
+    }
+    check2(n - 1);  // ② 递归
+    System.out.println(n);  // ③ 打印
+    return true;  // ④ 最后执行（如果没有提前返回）
+}
+
+// 示例 3：return 在递归之前
+public boolean check3(int n) {
+    if (n <= 0) {
+        return true;  // ① 提前返回
+    }
+    System.out.println(n);  // ② 先打印
+    return check3(n - 1);  // ③ 递归并返回结果
+}
+```
+
+#### 关键理解
+
+**1. "最外层的 return" 有两个含义**：
+
+- **代码结构上的最外层**：函数末尾的 return 语句
+- **调用栈上的最外层**：第一次调用递归函数
+
+**2. 执行顺序取决于代码位置**：
+
+```java
+// return 在末尾 → 最后执行
+public void func1() {
+    递归调用();
+    其他操作();
+    return;  // ← 最后执行
+}
+
+// return 在开头 → 可能提前执行
+public void func2() {
+    if (终止条件) {
+        return;  // ← 提前返回
+    }
+    递归调用();
+    return;  // ← 或者最后执行
+}
+```
+
+**3. 回归阶段的执行顺序**：
+
+```
+递归调用之前的代码 → 递进阶段执行
+递归调用之后的代码 → 回归阶段执行
+```
+
+#### 实际例子：回文链表
+
+```java
+private boolean recursiveCheck(ListNode currentNode) {
+    if (currentNode != null) {
+        // ═══════════════════════════════════════
+        // 递进阶段
+        // ═══════════════════════════════════════
+        if (!recursiveCheck(currentNode.next)) {
+            return false;  // ← 如果子调用返回 false，提前返回
+        }
+
+        // ═══════════════════════════════════════
+        // 回归阶段
+        // ═══════════════════════════════════════
+        if (currentNode.val != frontPointer.val) {
+            return false;  // ← 如果不匹配，提前返回
+        }
+        frontPointer = frontPointer.next;
+    }
+    return true;  // ← 如果没有提前返回，最后执行这个
+}
+```
+
+**执行顺序总结**：
+
+1. 如果 `currentNode == null`：直接执行 `return true`（最后一行）
+2. 如果递归调用返回 `false`：提前 `return false`
+3. 如果比较不匹配：提前 `return false`
+4. 如果都通过：执行到最后的 `return true`
+
+#### 核心总结
+
+**关于 return 的传递**：
+1. ❌ **错误**：最外层的 return 直接返回最终结果
+2. ✅ **正确**：每层的 return 都只返回给它的上一层调用者
+3. ✅ return 语句本身不知道自己在第几层
+4. ✅ 返回值通过调用栈一层层传递
+
+**关于 return 的执行顺序**：
+1. ❌ **错误**：最外层的 return 一定最后执行
+2. ✅ **正确**：取决于 return 语句在代码中的位置
+3. ✅ 如果有多个 return，可能会提前返回
+4. ✅ 函数末尾的 return 只有在没有提前返回时才执行
+
+**形象比喻**：
+- return 不是"电梯"（直达最外层）
+- return 是"楼梯"（一层层往上走）
+- 每层都要经过，不能跳过
+- 但可以在任何一层"下车"（提前返回）
+
 ## 9. 递归的三种遍历顺序
 
 ### 9.1 前序遍历（Pre-order）
