@@ -584,6 +584,256 @@ currentNode
 
 虽然递归解法很优雅，但实际面试中更推荐使用**反转后半部分链表**的方法（空间复杂度 O(1)）。递归解法的价值在于帮助理解递归的执行机制。
 
+---
+
+### 8.4.1 深入理解：递归代码的执行顺序
+
+很多人对递归的"回归"过程感到困惑：**回归是在递进完成后立即开始吗？回归阶段具体执行哪些代码？**
+
+让我们深入剖析这个问题。
+
+#### 代码结构分析
+
+```java
+private boolean recursiveCheck(ListNode currentNode) {
+    if (currentNode != null) {
+        // ═══════════════════════════════════════
+        // ① 递归调用（递进阶段）
+        // ═══════════════════════════════════════
+        if (!recursiveCheck(currentNode.next)) {
+            return false;
+        }
+        // ↑↑↑ 执行到这里就跳到下一层递归了
+        // ↑↑↑ 下面的代码暂时不执行！
+
+        // ═══════════════════════════════════════
+        // ② 比较操作（回归阶段）
+        // ═══════════════════════════════════════
+        if (currentNode.val != frontPointer.val) {
+            return false;
+        }
+
+        // ═══════════════════════════════════════
+        // ③ 移动指针（回归阶段）
+        // ═══════════════════════════════════════
+        frontPointer = frontPointer.next;
+    }
+    return true;
+}
+```
+
+**关键理解**：
+
+- **递进阶段**：只执行 ①（递归调用），②③ 完全不执行
+- **回归阶段**：不再执行 ①，只执行 ②③
+- **原因**：递归调用就像一个"暂停按钮"，后面的代码要等递归返回后才执行
+
+#### 完整执行流程（链表：1 → 2 → 1）
+
+**阶段一：递进（只执行 ①，不执行 ②③）**
+
+```
+═══════════════════════════════════════════════════════════
+调用 recursiveCheck(node1)
+═══════════════════════════════════════════════════════════
+frontPointer = node1
+currentNode = node1
+
+执行：if (currentNode != null) → true
+执行：① if (!recursiveCheck(node2)) → 调用 recursiveCheck(node2)
+      ↑
+      └─ 跳转到新的函数调用，②③ 还没执行！
+
+═══════════════════════════════════════════════════════════
+调用 recursiveCheck(node2)
+═══════════════════════════════════════════════════════════
+frontPointer = node1（没变！）
+currentNode = node2
+
+执行：if (currentNode != null) → true
+执行：① if (!recursiveCheck(node3)) → 调用 recursiveCheck(node3)
+      ↑
+      └─ 跳转到新的函数调用，②③ 还没执行！
+
+═══════════════════════════════════════════════════════════
+调用 recursiveCheck(node3)
+═══════════════════════════════════════════════════════════
+frontPointer = node1（还是没变！）
+currentNode = node3
+
+执行：if (currentNode != null) → true
+执行：① if (!recursiveCheck(null)) → 调用 recursiveCheck(null)
+      ↑
+      └─ 跳转到新的函数调用，②③ 还没执行！
+
+═══════════════════════════════════════════════════════════
+调用 recursiveCheck(null)  ← 到达终止条件！
+═══════════════════════════════════════════════════════════
+currentNode = null
+
+执行：if (currentNode != null) → false
+执行：return true  ← 直接返回，开始回归！
+```
+
+**此时的状态**：
+- ✅ 所有的 ① 都执行完了（递进完成）
+- ❌ 所有的 ②③ 都还没执行（等待回归）
+- 📚 调用栈里有 4 层函数调用
+- 🔍 frontPointer 一直停留在 node1
+
+**阶段二：回归（执行 ②③，不再执行 ①）**
+
+```
+═══════════════════════════════════════════════════════════
+回到 recursiveCheck(node3)  ← 从 ① 之后继续执行
+═══════════════════════════════════════════════════════════
+frontPointer = node1
+currentNode = node3
+
+① recursiveCheck(null) 已经返回 true 了
+   继续执行下面的代码：
+
+② 执行：if (node3.val != frontPointer.val)
+         if (1 != 1) → false，不返回
+
+③ 执行：frontPointer = frontPointer.next
+         frontPointer 从 node1 移动到 node2
+
+执行：return true  ← 返回到上一层
+
+═══════════════════════════════════════════════════════════
+回到 recursiveCheck(node2)  ← 从 ① 之后继续执行
+═══════════════════════════════════════════════════════════
+frontPointer = node2（刚才移动过了）
+currentNode = node2
+
+① recursiveCheck(node3) 已经返回 true 了
+   继续执行下面的代码：
+
+② 执行：if (node2.val != frontPointer.val)
+         if (2 != 2) → false，不返回
+
+③ 执行：frontPointer = frontPointer.next
+         frontPointer 从 node2 移动到 node3
+
+执行：return true  ← 返回到上一层
+
+═══════════════════════════════════════════════════════════
+回到 recursiveCheck(node1)  ← 从 ① 之后继续执行
+═══════════════════════════════════════════════════════════
+frontPointer = node3（刚才移动过了）
+currentNode = node1
+
+① recursiveCheck(node2) 已经返回 true 了
+   继续执行下面的代码：
+
+② 执行：if (node1.val != frontPointer.val)
+         if (1 != 1) → false，不返回
+
+③ 执行：frontPointer = frontPointer.next
+         frontPointer 从 node3 移动到 null
+
+执行：return true  ← 返回到最外层，完成！
+```
+
+#### 可视化对比
+
+```
+代码结构：
+┌─────────────────────────────────────┐
+│ if (currentNode != null) {          │
+│                                     │
+│   ① 递归调用 ← 递进阶段只执行这里    │
+│   ↓                                 │
+│   【暂停线】                         │
+│   ↓                                 │
+│   ② 比较 ← 回归阶段才执行这里        │
+│   ③ 移动 ← 回归阶段才执行这里        │
+│ }                                   │
+│ return true                         │
+└─────────────────────────────────────┘
+
+执行顺序：
+递进：① → ① → ① → ① (到达终止条件)
+       ↓   ↓   ↓   ↓
+回归：      ②③ ← ②③ ← ②③ ← ②③
+```
+
+#### 调用栈的变化
+
+```
+递进阶段（栈不断增长）：
+
+栈顶 → | recursiveCheck(null)      | ← 到达终止条件
+       | recursiveCheck(node3)     | ← ②③ 未执行
+       | recursiveCheck(node2)     | ← ②③ 未执行
+栈底 → | recursiveCheck(node1)     | ← ②③ 未执行
+
+═══════════════════════════════════════
+
+回归阶段（栈不断弹出，执行 ②③）：
+
+第 1 次弹出：
+栈顶 → | recursiveCheck(node3)     | ← 执行 ②③
+       | recursiveCheck(node2)     |
+栈底 → | recursiveCheck(node1)     |
+
+第 2 次弹出：
+栈顶 → | recursiveCheck(node2)     | ← 执行 ②③
+栈底 → | recursiveCheck(node1)     |
+
+第 3 次弹出：
+栈顶 → | recursiveCheck(node1)     | ← 执行 ②③
+```
+
+#### 为什么会这样？
+
+这是**函数调用的本质**：
+
+```java
+// 当你写这样的代码：
+int result = someFunction();
+System.out.println(result);
+
+// 执行顺序是：
+// 1. 调用 someFunction()
+// 2. 等待 someFunction() 返回
+// 3. 把返回值赋给 result
+// 4. 执行 println
+```
+
+在递归中也一样：
+
+```java
+if (!recursiveCheck(currentNode.next)) {  // ← 执行到这里
+    return false;
+}
+// ↑ 必须等 recursiveCheck 返回后，才能继续执行下面的代码
+if (currentNode.val != frontPointer.val) {  // ← 等递归返回才执行
+    return false;
+}
+```
+
+#### 核心总结
+
+**回归的时机**：
+1. ✅ 递归到达终止条件后，**立即**开始回归
+2. ✅ 回归时，会执行递归调用**之后**的代码（②③）
+3. ✅ 回归是**自动**的，由调用栈机制保证
+
+**执行顺序**：
+- **递进阶段**：只执行递归调用（①），后面的代码（②③）不执行
+- **回归阶段**：不再执行递归调用（①），只执行后面的代码（②③）
+- **关键点**：递归调用就像一个"暂停按钮"，按下后后面的代码都要等待
+
+**回文链表的巧妙之处**：
+1. 利用递归栈实现"从后往前"遍历（currentNode）
+2. 利用类变量实现"从前往后"遍历（frontPointer）
+3. 在回归阶段同步比较和移动
+4. 一次遍历完成双向检查
+
+这就是为什么递归能够如此优雅地解决回文链表问题！
+
 ## 9. 递归的三种遍历顺序
 
 ### 9.1 前序遍历（Pre-order）

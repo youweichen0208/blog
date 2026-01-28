@@ -14,6 +14,7 @@ export default defineConfig({
       { text: '技术教程', link: '/tutorials/' },
       { text: 'AIOps 专栏', link: '/aiops/' },
       { text: '数据结构', link: '/data-structures/' },
+      { text: 'MCP 教程', link: '/mcp/' },
       { text: 'GitHub', link: 'https://github.com' },
     ],
 
@@ -53,6 +54,19 @@ export default defineConfig({
             { text: '概述', link: '/data-structures/' },
             { text: '递归详解', link: '/data-structures/recursion' },
             { text: '链表', link: '/data-structures/linked-list' },
+          ],
+        },
+      ],
+      '/mcp/': [
+        {
+          text: 'MCP 教程',
+          items: [
+            { text: '概述', link: '/mcp/' },
+            { text: '快速入门', link: '/mcp/getting-started' },
+            { text: '传输协议详解', link: '/mcp/transport' },
+            { text: 'Claude 配置', link: '/mcp/claude-config' },
+            { text: '构建 MCP 服务器', link: '/mcp/build-server' },
+            { text: '运维实战', link: '/mcp/devops-practice' },
           ],
         },
       ],
