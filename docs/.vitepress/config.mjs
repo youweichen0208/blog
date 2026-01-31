@@ -33,6 +33,7 @@ export default defineConfig({
           text: '技术教程',
           items: [
             { text: 'VPN 搭建教程', link: '/tutorials/build-vpn' },
+            { text: 'Jenkins CI/CD 实战', link: '/tutorials/jenkins-cicd' },
           ],
         },
       ],
