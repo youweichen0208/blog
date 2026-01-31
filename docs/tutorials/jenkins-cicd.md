@@ -581,9 +581,632 @@ node {
 
 ---
 
-## 5. 创建第一个 Pipeline
+## 5. Jenkins 项目类型对比
 
-### 5.1 创建 Pipeline Job
+### 5.1 两种主要项目类型
+
+Jenkins 提供两种主要的项目类型，适用于不同的场景：
+
+#### Freestyle Project（自由风格项目）
+
+**特点**：
+- 通过 Web UI 图形界面配置
+- 点击选项卡填写配置
+- 适合简单的构建任务
+- 学习曲线平缓，容易上手
+
+**适用场景**：
+- 简单的自动化测试
+- 单一的构建任务
+- 团队不熟悉代码化配置
+- 快速搭建 CI 环境
+
+#### Pipeline Project（流水线项目）
+
+**特点**：
+- 使用 Jenkinsfile 代码定义
+- 所有配置都在代码中
+- 支持复杂的流程控制
+- 可以版本控制
+
+**适用场景**：
+- 复杂的 CI/CD 流程
+- 多阶段部署
+- 需要版本控制配置
+- 团队协作开发
+
+### 5.2 对比表格
+
+| 特性 | Freestyle Project | Pipeline Project |
+|------|------------------|------------------|
+| **配置方式** | Web UI 图形界面 | Jenkinsfile 代码 |
+| **学习难度** | ⭐ 简单 | ⭐⭐⭐ 中等 |
+| **灵活性** | ⭐⭐ 有限 | ⭐⭐⭐⭐⭐ 非常灵活 |
+| **版本控制** | ❌ 不支持 | ✅ 支持（Jenkinsfile） |
+| **复杂流程** | ❌ 不适合 | ✅ 非常适合 |
+| **并行执行** | ❌ 不支持 | ✅ 支持 |
+| **条件执行** | ⭐ 有限 | ⭐⭐⭐⭐⭐ 完全支持 |
+| **可视化** | ✅ 配置界面友好 | ⭐⭐⭐ Blue Ocean 插件 |
+| **适合场景** | 简单测试、构建 | 复杂 CI/CD 流程 |
+
+### 5.3 配置方式对比
+
+**Freestyle Project 配置**：
+```
+在 Jenkins Web UI 上：
+1. 点击"新建任务" → 选择"构建一个自由风格的软件项目"
+2. 在 General 填写项目信息
+3. 在 Source Code Management 配置 Git
+4. 在 Build Triggers 配置触发条件
+5. 在 Build 添加构建步骤（Execute shell）
+6. 在 Post-build Actions 配置构建后操作
+7. 点击"保存"
+```
+
+**Pipeline Project 配置**：
+```
+在项目根目录创建 Jenkinsfile：
+
+pipeline {
+    agent any
+    stages {
+        stage('Build') {
+            steps {
+                sh 'npm install'
+            }
+        }
+        stage('Test') {
+            steps {
+                sh 'npm test'
+            }
+        }
+    }
+}
+```
+
+---
+
+## 6. 创建 Freestyle Project（自由风格项目）
+
+### 6.1 创建第一个 Freestyle Job
+
+#### 步骤 1：创建项目
+
+1. 登录 Jenkins Web UI
+2. 点击"新建任务"
+3. 输入任务名称：`my-first-test`
+4. 选择"构建一个自由风格的软件项目"
+5. 点击"确定"
+
+#### 步骤 2：配置 General（基本信息）
+
+```
+General
+├── 描述: 我的第一个自动化测试项目
+├── ☑ 丢弃旧的构建
+│   ├── 保持构建的天数: 7
+│   └── 保持构建的最大个数: 10
+└── ☑ GitHub 项目
+    └── 项目 URL: https://github.com/your-username/test-project
+```
+
+**配置说明**：
+- **丢弃旧的构建**：避免占用过多磁盘空间
+- **保持天数/个数**：根据需求调整，测试项目建议保留 7-10 次
+
+#### 步骤 3：配置 Source Code Management（源码管理）
+
+```
+Source Code Management
+└── ☑ Git
+    ├── Repository URL: https://github.com/your-username/test-project.git
+    ├── Credentials: 选择或添加 Git 凭据
+    └── Branches to build
+        └── Branch Specifier: */main
+```
+
+**重要说明**：
+- Jenkins 会自动 clone 代码到 workspace
+- 每次构建会自动 pull 最新代码
+- 不需要在 shell 里手动 git clone
+
+**添加 Git 凭据**：
+1. 点击 Credentials 旁的"添加"
+2. 选择"Username with password"
+3. 填写 GitHub 用户名和密码（或 Personal Access Token）
+4. ID: `github-credentials`
+5. 点击"添加"
+
+#### 步骤 4：配置 Build Triggers（构建触发器）
+
+```
+Build Triggers
+├── ☑ GitHub hook trigger for GITScm polling
+│   └── 说明: Git push 时自动触发构建
+│
+├── ☑ Poll SCM
+│   └── Schedule: H/5 * * * *
+│       └── 说明: 每 5 分钟检查一次代码变化
+│
+└── ☑ Build periodically
+    └── Schedule: H 2 * * *
+        └── 说明: 每天凌晨 2 点自动构建
+```
+
+**Cron 语法说明**：
+```
+H/5 * * * *
+│   │ │ │ │
+│   │ │ │ └─ 星期几 (0-7)
+│   │ │ └─── 月份 (1-12)
+│   │ └───── 日期 (1-31)
+│   └─────── 小时 (0-23)
+└─────────── 分钟 (0-59, H 表示哈希值)
+```
+
+**常用 Cron 表达式**：
+- `H/5 * * * *` - 每 5 分钟
+- `H/15 * * * *` - 每 15 分钟
+- `H 2 * * *` - 每天凌晨 2 点
+- `H 2 * * 1-5` - 工作日凌晨 2 点
+- `H 0 * * 0` - 每周日午夜
+
+#### 步骤 5：配置 Build Environment（构建环境）
+
+```
+Build Environment
+├── ☑ Delete workspace before build starts
+│   └── 说明: 每次构建前清理 workspace，确保环境干净
+│
+├── ☑ Add timestamps to the Console Output
+│   └── 说明: 在日志中显示时间戳
+│
+└── ☑ Use secret text(s) or file(s)
+    └── 说明: 使用加密的密钥或配置文件
+```
+
+#### 步骤 6：配置 Build（构建步骤）
+
+点击"增加构建步骤" → 选择"Execute shell"
+
+**示例 1：Python 自动化测试**
+
+```bash
+#!/bin/bash
+set -e  # 遇到错误立即退出
+
+echo "=========================================="
+echo "开始执行自动化测试"
+echo "当前目录: $(pwd)"
+echo "当前分支: $(git branch --show-current)"
+echo "=========================================="
+
+# 创建虚拟环境
+if [ ! -d "venv" ]; then
+    echo "创建 Python 虚拟环境..."
+    python3 -m venv venv
+fi
+
+# 激活虚拟环境
+source venv/bin/activate
+
+# 升级 pip
+pip install --upgrade pip
+
+# 安装依赖
+echo "安装项目依赖..."
+pip install -r requirements.txt
+
+# 运行测试
+echo "运行自动化测试..."
+pytest tests/ \
+    --html=report.html \
+    --self-contained-html \
+    --junitxml=results.xml \
+    --cov=src \
+    --cov-report=html \
+    -v
+
+# 检查测试结果
+if [ $? -eq 0 ]; then
+    echo "✅ 所有测试通过！"
+else
+    echo "❌ 测试失败！"
+    exit 1
+fi
+```
+
+**示例 2：带环境变量的测试**
+
+```bash
+#!/bin/bash
+set -e
+
+# 设置测试环境变量
+export TEST_ENV=staging
+export API_URL=https://api-staging.company.com
+export TIMEOUT=30
+
+echo "测试环境: ${TEST_ENV}"
+echo "API 地址: ${API_URL}"
+
+# 激活虚拟环境
+source venv/bin/activate || {
+    python3 -m venv venv
+    source venv/bin/activate
+}
+
+# 安装依赖
+pip install -r requirements.txt
+
+# 运行测试
+pytest tests/ \
+    --env=${TEST_ENV} \
+    --base-url=${API_URL} \
+    --timeout=${TIMEOUT} \
+    --html=report.html \
+    --junitxml=results.xml \
+    -v
+
+echo "测试完成！"
+```
+
+**示例 3：Node.js 项目测试**
+
+```bash
+#!/bin/bash
+set -e
+
+echo "Node 版本: $(node -v)"
+echo "NPM 版本: $(npm -v)"
+
+# 安装依赖
+npm install
+
+# 运行 lint
+npm run lint
+
+# 运行测试
+npm test
+
+# 构建项目
+npm run build
+
+echo "构建成功！"
+```
+
+#### 步骤 7：配置 Post-build Actions（构建后操作）
+
+**添加测试报告发布**：
+
+1. 点击"增加构建后操作步骤"
+2. 选择"Publish JUnit test result report"
+3. 配置：
+   ```
+   Test report XMLs: results.xml
+   ☑ Retain long standard output/error
+   ```
+
+**添加 HTML 报告发布**：
+
+1. 点击"增加构建后操作步骤"
+2. 选择"Publish HTML reports"
+3. 配置：
+   ```
+   HTML directory to archive: .
+   Index page[s]: report.html
+   Report title: Test Report
+   ☑ Keep past HTML reports
+   ```
+
+**添加邮件通知**：
+
+1. 点击"增加构建后操作步骤"
+2. 选择"E-mail Notification"
+3. 配置：
+   ```
+   Recipients: team@company.com
+   ☑ Send e-mail for every unstable build
+   ☑ Send separate e-mails to individuals who broke the build
+   ```
+
+#### 步骤 8：保存并运行
+
+1. 点击"保存"
+2. 点击"立即构建"
+3. 查看"控制台输出"
+
+### 6.2 查看构建结果
+
+#### 控制台输出示例
+
+```
+Started by user admin
+Running as SYSTEM
+Building in workspace /var/lib/jenkins/workspace/my-first-test
+The recommended git tool is: NONE
+using credential github-credentials
+ > git rev-parse --resolve-git-dir /var/lib/jenkins/workspace/my-first-test/.git
+Fetching changes from the remote Git repository
+ > git config remote.origin.url https://github.com/your-username/test-project.git
+Fetching upstream changes from https://github.com/your-username/test-project.git
+ > git fetch --tags --progress https://github.com/your-username/test-project.git
+ > git rev-parse refs/remotes/origin/main^{commit}
+Checking out Revision abc123def456 (refs/remotes/origin/main)
+ > git config core.sparsecheckout
+ > git checkout -f abc123def456
+Commit message: "Add new test cases"
+[my-first-test] $ /bin/sh -xe /tmp/jenkins1234567890.sh
++ echo ==========================================
+==========================================
++ echo 开始执行自动化测试
+开始执行自动化测试
++ pwd
+/var/lib/jenkins/workspace/my-first-test
++ git branch --show-current
+main
++ echo ==========================================
+==========================================
++ [ ! -d venv ]
++ echo 创建 Python 虚拟环境...
+创建 Python 虚拟环境...
++ python3 -m venv venv
++ source venv/bin/activate
++ pip install --upgrade pip
+Successfully installed pip-23.0.1
++ echo 安装项目依赖...
+安装项目依赖...
++ pip install -r requirements.txt
+Successfully installed pytest-7.4.0 pytest-html-3.2.0
++ echo 运行自动化测试...
+运行自动化测试...
++ pytest tests/ --html=report.html --junitxml=results.xml -v
+========================= test session starts =========================
+platform linux -- Python 3.9.16, pytest-7.4.0
+collected 15 items
+
+tests/test_api.py::test_login PASSED                           [  6%]
+tests/test_api.py::test_logout PASSED                          [ 13%]
+tests/test_api.py::test_get_user_info PASSED                   [ 20%]
+tests/test_order.py::test_create_order PASSED                  [ 26%]
+tests/test_order.py::test_cancel_order PASSED                  [ 33%]
+tests/test_order.py::test_list_orders PASSED                   [ 40%]
+tests/test_payment.py::test_pay_success PASSED                 [ 46%]
+tests/test_payment.py::test_pay_failed PASSED                  [ 53%]
+tests/test_search.py::test_search_product PASSED               [ 60%]
+tests/test_search.py::test_search_empty PASSED                 [ 66%]
+tests/test_cart.py::test_add_to_cart PASSED                    [ 73%]
+tests/test_cart.py::test_remove_from_cart PASSED               [ 80%]
+tests/test_cart.py::test_clear_cart PASSED                     [ 86%]
+tests/test_checkout.py::test_checkout_success PASSED           [ 93%]
+tests/test_checkout.py::test_checkout_failed PASSED            [100%]
+
+========================= 15 passed in 5.23s ==========================
++ [ 0 -eq 0 ]
++ echo ✅ 所有测试通过！
+✅ 所有测试通过！
+Recording test results
+[htmlpublisher] Archiving HTML reports...
+[htmlpublisher] Archiving at BUILD level /var/lib/jenkins/workspace/my-first-test/report.html to /var/lib/jenkins/jobs/my-first-test/builds/1/htmlreports/Test_20Report
+Finished: SUCCESS
+```
+
+### 6.3 高级配置
+
+#### 参数化构建
+
+允许构建时传入参数：
+
+1. 勾选"This project is parameterized"
+2. 添加参数：
+
+**字符串参数**：
+```
+Name: TEST_ENV
+Default Value: staging
+Description: 测试环境 (dev/staging/prod)
+```
+
+**选择参数**：
+```
+Name: BROWSER
+Choices:
+  chrome
+  firefox
+  safari
+Description: 测试浏览器
+```
+
+**布尔参数**：
+```
+Name: RUN_SMOKE_TEST
+Default Value: true
+Description: 是否运行冒烟测试
+```
+
+在 shell 中使用参数：
+
+```bash
+#!/bin/bash
+echo "测试环境: ${TEST_ENV}"
+echo "浏览器: ${BROWSER}"
+echo "运行冒烟测试: ${RUN_SMOKE_TEST}"
+
+pytest tests/ \
+    --env=${TEST_ENV} \
+    --browser=${BROWSER} \
+    -v
+```
+
+#### 多个构建步骤
+
+可以添加多个 Execute shell 步骤：
+
+**步骤 1：环境检查**
+```bash
+#!/bin/bash
+echo "检查环境..."
+python3 --version
+pip --version
+git --version
+```
+
+**步骤 2：安装依赖**
+```bash
+#!/bin/bash
+echo "安装依赖..."
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+**步骤 3：运行测试**
+```bash
+#!/bin/bash
+echo "运行测试..."
+source venv/bin/activate
+pytest tests/ -v
+```
+
+#### 条件执行
+
+使用 shell 脚本实现条件逻辑：
+
+```bash
+#!/bin/bash
+set -e
+
+# 只在 main 分支运行完整测试
+BRANCH=$(git branch --show-current)
+
+if [ "$BRANCH" = "main" ]; then
+    echo "主分支，运行完整测试..."
+    pytest tests/ -v
+else
+    echo "非主分支，只运行冒烟测试..."
+    pytest tests/ -m smoke -v
+fi
+```
+
+### 6.4 实战案例：完整的自动化测试项目
+
+#### 项目结构
+
+```
+test-automation/
+├── tests/
+│   ├── test_api.py
+│   ├── test_ui.py
+│   └── conftest.py
+├── requirements.txt
+├── pytest.ini
+└── README.md
+```
+
+#### Jenkins Freestyle 完整配置
+
+**General**：
+```
+项目名称: automation-test-suite
+描述: 自动化测试套件
+☑ 丢弃旧的构建
+  保持构建的天数: 7
+  保持构建的最大个数: 10
+☑ This project is parameterized
+  参数: TEST_ENV (staging/production)
+```
+
+**Source Code Management**：
+```
+☑ Git
+  Repository URL: https://github.com/company/test-automation.git
+  Credentials: github-credentials
+  Branch: */main
+```
+
+**Build Triggers**：
+```
+☑ GitHub hook trigger for GITScm polling
+☑ Poll SCM: H/10 * * * *
+```
+
+**Build Environment**：
+```
+☑ Delete workspace before build starts
+☑ Add timestamps to the Console Output
+```
+
+**Build - Execute shell**：
+```bash
+#!/bin/bash
+set -e
+
+echo "=========================================="
+echo "自动化测试开始"
+echo "测试环境: ${TEST_ENV}"
+echo "构建编号: ${BUILD_NUMBER}"
+echo "构建 URL: ${BUILD_URL}"
+echo "=========================================="
+
+# 创建并激活虚拟环境
+python3 -m venv venv
+source venv/bin/activate
+
+# 安装依赖
+pip install --upgrade pip
+pip install -r requirements.txt
+
+# 运行测试
+pytest tests/ \
+    --env=${TEST_ENV} \
+    --html=report.html \
+    --self-contained-html \
+    --junitxml=results.xml \
+    --cov=tests \
+    --cov-report=html \
+    --cov-report=term \
+    -v \
+    --tb=short
+
+# 保存退出码
+TEST_EXIT_CODE=$?
+
+# 输出测试统计
+echo "=========================================="
+if [ $TEST_EXIT_CODE -eq 0 ]; then
+    echo "✅ 测试通过"
+else
+    echo "❌ 测试失败"
+fi
+echo "=========================================="
+
+exit $TEST_EXIT_CODE
+```
+
+**Post-build Actions**：
+```
+1. Publish JUnit test result report
+   Test report XMLs: results.xml
+
+2. Publish HTML reports
+   HTML directory: .
+   Index page: report.html
+   Report title: Test Report
+
+3. Publish HTML reports (Coverage)
+   HTML directory: htmlcov
+   Index page: index.html
+   Report title: Coverage Report
+
+4. E-mail Notification
+   Recipients: qa-team@company.com
+```
+
+---
+
+## 7. 创建第一个 Pipeline
+
+### 7.1 创建 Pipeline Job
 
 1. 点击"新建任务"
 2. 输入任务名称：`hello-pipeline`
