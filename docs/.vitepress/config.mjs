@@ -15,6 +15,9 @@ export default defineConfig({
       { text: 'AIOps 专栏', link: '/aiops/' },
       { text: '数据结构', link: '/data-structures/' },
       { text: 'MCP 教程', link: '/mcp/' },
+      { text: 'Go 语言', link: '/go/' },
+      { text: 'CLI 开发', link: '/cli/' },
+      { text: 'Agent 开发', link: '/agent/' },
       { text: 'GitHub', link: 'https://github.com' },
     ],
 
@@ -68,6 +71,30 @@ export default defineConfig({
             { text: 'Claude 配置', link: '/mcp/claude-config' },
             { text: '构建 MCP 服务器', link: '/mcp/build-server' },
             { text: '运维实战', link: '/mcp/devops-practice' },
+          ],
+        },
+      ],
+      '/go/': [
+        {
+          text: 'Go 语言',
+          items: [
+            { text: '简介', link: '/go/' },
+          ],
+        },
+      ],
+      '/cli/': [
+        {
+          text: 'CLI 开发',
+          items: [
+            { text: '概述', link: '/cli/' },
+          ],
+        },
+      ],
+      '/agent/': [
+        {
+          text: 'Agent 开发',
+          items: [
+            { text: '概述', link: '/agent/' },
           ],
         },
       ],
