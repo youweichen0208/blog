@@ -1,5 +1,61 @@
 # Go 语言
 
+## 在 Mac 上安装 Go
+
+### 方式一：Homebrew（推荐）
+
+```bash
+# 安装 Homebrew（如果还没有）
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# 安装 Go
+brew install go
+
+# 验证安装
+go version
+# 输出示例：go version go1.22.4 darwin/arm64
+```
+
+### 方式二：官网下载安装包
+
+1. 访问 [https://go.dev/dl/](https://go.dev/dl/)
+2. 下载 `.pkg` 安装包（Apple Silicon 选 `arm64`，Intel Mac 选 `amd64`）
+3. 双击安装包，按提示完成安装
+4. 打开终端验证：
+
+```bash
+go version
+```
+
+### 配置环境变量
+
+安装完成后，配置工作目录（`GOPATH`）和代理（国内加速）：
+
+```bash
+# 编辑 shell 配置文件（zsh 用户）
+echo 'export GOPATH=$HOME/go' >> ~/.zshrc
+echo 'export PATH=$PATH:$GOPATH/bin' >> ~/.zshrc
+echo 'export GOPROXY=https://goproxy.cn,direct' >> ~/.zshrc
+
+# 使配置生效
+source ~/.zshrc
+
+# 验证
+go env GOPATH
+go env GOPROXY
+```
+
+> **说明**：`GOPROXY=https://goproxy.cn` 是国内镜像，下载依赖速度更快。
+
+### 安装 VS Code Go 插件（可选）
+
+如果使用 VS Code 开发：
+
+1. 安装 [Go 插件](https://marketplace.visualstudio.com/items?itemName=golang.Go)
+2. 打开命令面板（`Cmd+Shift+P`），执行 `Go: Install/Update Tools`，全选安装
+
+---
+
 ## 简介
 
 Go（又称 Golang）是由 Google 开发的一种静态类型、编译型的开源编程语言。它由 Robert Griesemer、Rob Pike 和 Ken Thompson 在 2007 年开始设计，并于 2009 年正式发布。
