@@ -3,9 +3,10 @@
 ## 如何安装 Go
 
 1. 访问 [https://go.dev/dl/](https://go.dev/dl/)
-2. 下载 `.pkg` 安装包（Apple Silicon 选 `arm64`，Intel Mac 选 `amd64`）
-3. 双击安装包，按提示完成安装
-4. 打开终端验证：
+2. 根据系统下载对应安装包：
+   - **Mac**：下载 `.pkg` 文件（Apple Silicon 选 `arm64`，Intel 选 `amd64`），双击安装
+   - **Windows**：下载 `.msi` 文件，双击运行安装向导，默认安装到 `C:\Program Files\Go`
+3. 安装完成后打开终端验证：
 
 ```bash
 go version
