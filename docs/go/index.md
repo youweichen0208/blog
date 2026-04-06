@@ -2,22 +2,6 @@
 
 ## 在 Mac 上安装 Go
 
-### 方式一：Homebrew（推荐）
-
-```bash
-# 安装 Homebrew（如果还没有）
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-# 安装 Go
-brew install go
-
-# 验证安装
-go version
-# 输出示例：go version go1.22.4 darwin/arm64
-```
-
-### 方式二：官网下载安装包
-
 1. 访问 [https://go.dev/dl/](https://go.dev/dl/)
 2. 下载 `.pkg` 安装包（Apple Silicon 选 `arm64`，Intel Mac 选 `amd64`）
 3. 双击安装包，按提示完成安装
