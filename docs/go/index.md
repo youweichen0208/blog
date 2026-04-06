@@ -1,6 +1,6 @@
 # Go 语言
 
-## 在 Mac 上安装 Go
+## 如何安装 Go
 
 1. 访问 [https://go.dev/dl/](https://go.dev/dl/)
 2. 下载 `.pkg` 安装包（Apple Silicon 选 `arm64`，Intel Mac 选 `amd64`）
