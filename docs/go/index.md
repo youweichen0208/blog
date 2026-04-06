@@ -300,36 +300,107 @@ defer file.Close()  // defer 确保函数结束时关闭文件（类似 Python �
 
 ## 包管理和工具链
 
-### Go Modules（包管理）
+### Go Modules 是什么？
 
-Go 1.11+ 使用 Go Modules 管理依赖，类似 npm 的 package.json 或 Python 的 requirements.txt：
+Go Modules 是 Go 官方的依赖管理系统，从 **Go 1.11** 引入，**Go 1.16 起默认开启**。
+
+**是不是所有项目都需要 `go mod`？**
+
+| 场景 | 需要 go mod？ |
+|------|-------------|
+| 单文件脚本，只用标准库 | 不需要 |
+| 有第三方依赖（如 gin、cobra） | **需要** |
+| 多文件项目 | **需要** |
+| 现代 Go 项目（1.16+） | **几乎都需要** |
+
+简单说：只要你的项目超过一个文件，或者用了任何第三方库，就应该用 `go mod`。
+
+---
+
+### 初始化项目
 
 ```bash
-# 初始化新项目
-go mod init github.com/yourname/project
-
-# 添加依赖（会自动写入 go.mod）
-go get github.com/gin-gonic/gin@latest
-
-# 清理未使用的依赖
-go mod tidy
-
-# 下载所有依赖到本地缓存
-go mod download
+mkdir myproject && cd myproject
+go mod init github.com/yourname/myproject
 ```
 
-生成的 `go.mod` 文件：
+执行后会生成 `go.mod` 文件：
 
-```go
-module github.com/yourname/project
+```
+module github.com/yourname/myproject
+
+go 1.22
+```
+
+> `github.com/yourname/myproject` 是模块名，如果项目不发布到 GitHub，写 `myproject` 也行。
+
+---
+
+### 核心文件说明
+
+**`go.mod`** — 依赖声明文件（类似 npm 的 `package.json`）
+
+```
+module github.com/yourname/myproject
 
 go 1.22
 
 require (
     github.com/gin-gonic/gin v1.9.1
-    github.com/stretchr/testify v1.8.4
+    github.com/spf13/cobra v1.8.0
 )
 ```
+
+**`go.sum`** — 依赖版本锁定文件（类似 `package-lock.json`），**不要手动编辑**，由 Go 自动维护。
+
+---
+
+### 常用命令
+
+```bash
+# 添加依赖（会自动更新 go.mod 和 go.sum）
+go get github.com/gin-gonic/gin@latest
+
+# 添加指定版本
+go get github.com/gin-gonic/gin@v1.9.1
+
+# 清理未使用的依赖 / 补全缺失的依赖
+go mod tidy
+
+# 下载所有依赖到本地缓存
+go mod download
+
+# 查看依赖树
+go mod graph
+
+# 将依赖复制到项目的 vendor 目录（离线场景）
+go mod vendor
+```
+
+---
+
+### 典型工作流
+
+```bash
+# 1. 新建项目
+mkdir myapp && cd myapp
+go mod init myapp
+
+# 2. 写代码，import 了新的第三方包后，执行：
+go mod tidy        # 自动添加缺失依赖，删除未使用依赖
+
+# 3. 编译运行
+go run main.go
+go build -o myapp
+
+# 4. 升级某个依赖
+go get github.com/gin-gonic/gin@latest
+
+# 5. 查看当前所有依赖
+go list -m all
+```
+
+---
 
 ### 常用 Go 命令
 
