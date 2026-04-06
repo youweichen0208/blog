@@ -1,5 +1,31 @@
 import { defineConfig } from 'vitepress'
 
+const aiDevSidebar = [
+  {
+    text: 'MCP 协议',
+    items: [
+      { text: '概述', link: '/mcp/' },
+      { text: '快速入门', link: '/mcp/getting-started' },
+      { text: '传输协议详解', link: '/mcp/transport' },
+      { text: 'Claude 配置', link: '/mcp/claude-config' },
+      { text: '构建 MCP 服务器', link: '/mcp/build-server' },
+      { text: '运维实战', link: '/mcp/devops-practice' },
+    ],
+  },
+  {
+    text: 'CLI 开发',
+    items: [
+      { text: '概述', link: '/cli/' },
+    ],
+  },
+  {
+    text: 'Agent 开发',
+    items: [
+      { text: '概述', link: '/agent/' },
+    ],
+  },
+]
+
 export default defineConfig({
   lang: 'zh-CN',
   title: '我的博客',
@@ -14,10 +40,15 @@ export default defineConfig({
       { text: '技术教程', link: '/tutorials/' },
       { text: 'AIOps 专栏', link: '/aiops/' },
       { text: '数据结构', link: '/data-structures/' },
-      { text: 'MCP 教程', link: '/mcp/' },
       { text: 'Go 语言', link: '/go/' },
-      { text: 'CLI 开发', link: '/cli/' },
-      { text: 'Agent 开发', link: '/agent/' },
+      {
+        text: 'AI 开发',
+        items: [
+          { text: 'MCP 协议', link: '/mcp/' },
+          { text: 'CLI 开发', link: '/cli/' },
+          { text: 'Agent 开发', link: '/agent/' },
+        ],
+      },
       { text: 'GitHub', link: 'https://github.com' },
     ],
 
@@ -61,19 +92,6 @@ export default defineConfig({
           ],
         },
       ],
-      '/mcp/': [
-        {
-          text: 'MCP 教程',
-          items: [
-            { text: '概述', link: '/mcp/' },
-            { text: '快速入门', link: '/mcp/getting-started' },
-            { text: '传输协议详解', link: '/mcp/transport' },
-            { text: 'Claude 配置', link: '/mcp/claude-config' },
-            { text: '构建 MCP 服务器', link: '/mcp/build-server' },
-            { text: '运维实战', link: '/mcp/devops-practice' },
-          ],
-        },
-      ],
       '/go/': [
         {
           text: 'Go 语言',
@@ -82,22 +100,9 @@ export default defineConfig({
           ],
         },
       ],
-      '/cli/': [
-        {
-          text: 'CLI 开发',
-          items: [
-            { text: '概述', link: '/cli/' },
-          ],
-        },
-      ],
-      '/agent/': [
-        {
-          text: 'Agent 开发',
-          items: [
-            { text: '概述', link: '/agent/' },
-          ],
-        },
-      ],
+      '/mcp/': aiDevSidebar,
+      '/cli/': aiDevSidebar,
+      '/agent/': aiDevSidebar,
     },
 
     // 社交链接
