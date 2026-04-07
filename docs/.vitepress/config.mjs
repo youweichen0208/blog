@@ -49,6 +49,7 @@ export default defineConfig({
           { text: 'Agent 开发', link: '/agent/' },
         ],
       },
+      { text: '项目实战', link: '/projects/' },
       { text: 'GitHub', link: 'https://github.com' },
     ],
 
@@ -103,6 +104,15 @@ export default defineConfig({
       '/mcp/': aiDevSidebar,
       '/cli/': aiDevSidebar,
       '/agent/': aiDevSidebar,
+      '/projects/': [
+        {
+          text: '项目实战',
+          items: [
+            { text: '概述', link: '/projects/' },
+            { text: 'CLI + Agent 项目', link: '/projects/cli-agent/' },
+          ],
+        },
+      ],
     },
 
     // 社交链接
