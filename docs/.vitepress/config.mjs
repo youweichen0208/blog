@@ -98,6 +98,7 @@ export default defineConfig({
           text: 'Go 语言',
           items: [
             { text: '简介', link: '/go/' },
+            { text: '指针详解', link: '/go/pointer' },
           ],
         },
       ],
