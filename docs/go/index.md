@@ -79,7 +79,7 @@ Go 语言广泛应用于：
 ## Go 语言快速入门
 
 1. Hello World & 基本结构
-   Go像Java一样有`main`包和`main`函数作为入口，但语法简洁得多：
+   Go 像 Java 一样有`main`包和`main`函数作为入口，但语法简洁得多：
 
 ```go
 package main
@@ -91,10 +91,12 @@ func main() {
 }
 ```
 
-对比一下熟悉的：Java需要class包裹，Python什么都不用。Go在中间--需要`package`和`func main()`，但没有class。
+- `fmt` 是 Go 的标准库之一，全称是 format，负责格式化输入输出。
+
+对比一下熟悉的：Java 需要 class 包裹，Python 什么都不用。Go 在中间--需要`package`和`func main()`，但没有 class。
 
 2. 变量声明
-   Go是静态类型语言（像Java），但有类型推断（像Python的感觉）：
+   Go 是静态类型语言（像 Java），但有类型推断（像 Python 的感觉）：
 
 ```go
 // 显式声明（类似 Java）
@@ -211,7 +213,7 @@ if !exists {
 }
 ```
 
-7. 结构体（代替class）
+7. 结构体（代替 class）
 
 Go 没有 class，用 struct + 方法来实现面向对象：
 
@@ -241,7 +243,7 @@ user.Birthday()
 大写开头 = 公开（exported），小写开头 = 私有。没有 public/private 关键字。
 
 8. 接口（隐式实现）
-   这是Go和Java最大区别--不需要写`implements`
+   这是 Go 和 Java 最大区别--不需要写`implements`
 
 ```go
 type Speaker interface {
@@ -284,7 +286,7 @@ fmt.Println(msg)
 类比：goroutine 像超轻量的线程，channel 像线程安全的队列。
 
 10. 错误处理模式
-    Go没有try/catch，错误处理靠约定
+    Go 没有 try/catch，错误处理靠约定
 
 ```go
 file, err := os.Open("test.txt")
@@ -306,12 +308,12 @@ Go Modules 是 Go 官方的依赖管理系统，从 **Go 1.11** 引入，**Go 1.
 
 **是不是所有项目都需要 `go mod`？**
 
-| 场景 | 需要 go mod？ |
-|------|-------------|
-| 单文件脚本，只用标准库 | 不需要 |
-| 有第三方依赖（如 gin、cobra） | **需要** |
-| 多文件项目 | **需要** |
-| 现代 Go 项目（1.16+） | **几乎都需要** |
+| 场景                          | 需要 go mod？  |
+| ----------------------------- | -------------- |
+| 单文件脚本，只用标准库        | 不需要         |
+| 有第三方依赖（如 gin、cobra） | **需要**       |
+| 多文件项目                    | **需要**       |
+| 现代 Go 项目（1.16+）         | **几乎都需要** |
 
 简单说：只要你的项目超过一个文件，或者用了任何第三方库，就应该用 `go mod`。
 
@@ -747,16 +749,19 @@ curl -X DELETE http://localhost:8080/todos/1
 ### 推荐资源
 
 **官方文档**
+
 - [Go 官网](https://go.dev/)：官方教程和文档
 - [Go by Example](https://gobyexample.com/)：通过示例学习 Go
 - [Effective Go](https://go.dev/doc/effective_go)：Go 编程最佳实践
 
 **书籍推荐**
+
 - 《Go 语言圣经》（The Go Programming Language）
 - 《Go 语言实战》（Go in Action）
 - 《Go Web 编程》
 
 **在线教程**
+
 - [Tour of Go](https://tour.golang.org/)：交互式入门教程
 - [Go 语言中文网](https://studygolang.com/)
 
@@ -765,36 +770,42 @@ curl -X DELETE http://localhost:8080/todos/1
 掌握基础后，可以深入以下方向：
 
 **语言进阶**
+
 - Context 上下文管理
 - 反射（reflection）
 - 泛型（Go 1.18+）
 - 内存管理和 GC 优化
 
 **并发编程**
+
 - Channel 高级模式
 - Select 多路复用
 - sync.WaitGroup / sync.Pool
 - 并发安全的数据结构
 
 **Web 开发**
+
 - Gin/Echo/Fiber 框架
 - gRPC 微服务
 - WebSocket 实时通信
 - GraphQL API
 
 **数据库**
+
 - database/sql 标准库
 - GORM（ORM 框架）
 - Redis 缓存（go-redis）
 - MongoDB（mongo-go-driver）
 
 **测试与调试**
+
 - 单元测试（testing 包）
 - 基准测试（benchmarking）
 - 性能分析（pprof）
 - Mock 测试（gomock）
 
 **DevOps**
+
 - Docker 容器化
 - Kubernetes Operator 开发
 - CLI 工具（Cobra）
