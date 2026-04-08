@@ -216,7 +216,7 @@ fmt.Println(s == nil)  // false！
 ```go
 // 这是 Go 中最常见的坑之一
 func getUser() *User {
-    return nil
+    return nilW
 }
 
 func process() error {
