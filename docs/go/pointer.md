@@ -372,32 +372,14 @@ sp := &s
 // 一般不这么做，直接传切片就行
 ```
 
-## 11. unsafe.Pointer（了解即可）
+|          | 语法    | 本质             | 大小         |
+| -------- | ------- | ---------------- | ------------ |
+| 指针数组 | `[n]*T` | 数组，元素是指针 | n × 指针大小 |
+| 数组指针 | `*[n]T` | 指针，指向数组   | 1 个指针大小 |
 
-`unsafe.Pointer` 可以绕过 Go 的类型安全，进行底层内存操作。日常开发**不要用**。
+**记忆技巧：** 看 `*` 和 `[]` 谁在外面。`[3]*int` → `[]` 在外 → 是个数组；`*[3]int` → `*` 在外 → 是个指针。
 
-```go
-import "unsafe"
-
-x := 42
-// int 指针 → unsafe.Pointer → float64 指针
-p := (*float64)(unsafe.Pointer(&x))
-// 这种转换绕过了类型系统，非常危险
-
-// 获取结构体字段的偏移量
-type User struct {
-    Name string
-    Age  int
-}
-offset := unsafe.Offsetof(User{}.Age)  // Name 之后的偏移量
-
-// 什么时候可能用到：
-// - 与 C 代码交互（cgo）
-// - 极端性能优化
-// - 实现底层库（如 sync.Pool 的内部实现）
-```
-
-## 12. 逃逸分析
+## 11. 逃逸分析
 
 Go 编译器会自动决定变量分配在栈上还是堆上。
 
@@ -480,65 +462,7 @@ func process() Result {
 }
 ```
 
-## 13. 常见面试题
-
-### 题 1：以下代码输出什么？
-
-```go
-func main() {
-    a := 1
-    b := 2
-    swap(&a, &b)
-    fmt.Println(a, b)
-}
-
-func swap(x, y *int) {
-    *x, *y = *y, *x
-}
-// 输出：2 1
-```
-
-**解析：** 通过指针交换了 a 和 b 的值。
-
-### 题 2：以下代码有什么问题？
-
-```go
-func main() {
-    s := []int{1, 2, 3}
-    for _, v := range s {
-        go func() {
-            fmt.Println(v)  // ❌ 所有 goroutine 可能都打印 3
-        }()
-    }
-}
-
-// ✅ 修复：传值或在循环内重新声明
-for _, v := range s {
-    v := v  // 重新声明，捕获当前值
-    go func() {
-        fmt.Println(v)
-    }()
-}
-```
-
-**解析：** 闭包捕获的是变量 v 的地址，而不是值。循环结束时 v 的值是 3，所以所有 goroutine 都可能打印 3。
-
-### 题 3：这段代码安全吗？
-
-```go
-func createUsers() []*User {
-    users := make([]*User, 0, 3)
-    for _, name := range []string{"A", "B", "C"} {
-        u := User{Name: name}
-        users = append(users, &u)  // ✅ 每次循环 u 是新变量，安全
-    }
-    return users
-}
-```
-
-**解析：** 安全。Go 的 `for range` 中，每次迭代的局部变量 `u` 是独立的（Go 1.22+ 行为，之前版本需要注意）。
-
-## 14. 最佳实践
+## 12. 最佳实践
 
 - **小结构体传值，大结构体传指针**。一般超过 3-4 个字段就考虑用指针。
 - **需要修改原值时用指针**，只读时传值更安全。
