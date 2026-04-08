@@ -99,6 +99,12 @@ export default defineConfig({
           items: [
             { text: '简介', link: '/go/' },
             { text: '指针详解', link: '/go/pointer' },
+            { text: '函数', link: '/go/func' },
+            { text: '结构体', link: '/go/struct' },
+            { text: '接口', link: '/go/interface' },
+            { text: '错误处理', link: '/go/error' },
+            { text: 'Goroutine', link: '/go/goroutine' },
+            { text: 'Channel', link: '/go/channel' },
           ],
         },
       ],
