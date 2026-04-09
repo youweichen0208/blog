@@ -118,7 +118,7 @@ export default withMermaid(defineConfig({
           text: '项目实战',
           items: [
             { text: '概述', link: '/projects/' },
-            { text: 'CLI + Agent 项目', link: '/projects/cli-agent/' },
+            { text: 'OpenTaurus 项目', link: '/projects/cli-agent/' },
           ],
         },
       ],
