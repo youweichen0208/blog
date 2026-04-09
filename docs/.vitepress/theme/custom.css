@@ -2,4 +2,34 @@
   width: 100%;
   max-width: 100%;
   height: auto;
+  cursor: zoom-in;
+}
+
+/* Lightbox 遮罩 */
+#mermaid-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.85);
+  align-items: center;
+  justify-content: center;
+  cursor: zoom-out;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+#mermaid-overlay.active {
+  display: flex;
+}
+
+#mermaid-overlay svg {
+  max-width: 100%;
+  max-height: 90vh;
+  width: auto;
+  height: auto;
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  box-sizing: border-box;
 }
