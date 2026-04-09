@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitepress'
+import { withMermaid } from 'vitepress-plugin-mermaid'
 
 const aiDevSidebar = [
   {
@@ -26,7 +27,7 @@ const aiDevSidebar = [
   },
 ]
 
-export default defineConfig({
+export default withMermaid(defineConfig({
   lang: 'zh-CN',
   title: '我的博客',
   description: '基于 VitePress 的个人博客',
@@ -150,4 +151,4 @@ export default defineConfig({
       { icon: 'github', link: 'https://github.com' }
     ],
   },
-})
+}))
