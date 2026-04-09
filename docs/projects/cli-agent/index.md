@@ -1,4 +1,4 @@
-# HWRDS — 华为云 RDS 命令行工具 + 智能 Agent
+# OpenTaurus — 华为云 RDS 命令行工具 + 智能 Agent
 
 ---
 
@@ -31,45 +31,45 @@
 
 ### 2.1 竞品对标分析
 
-| 功能维度          | AWS CLI             | 阿里云 CLI | HWRDS（本项目）     |
-| ----------------- | ------------------- | ---------- | ------------------- |
-| 实例 CRUD         | ✓                   | ✓          | ✓                   |
-| 备份管理          | ✓                   | ✓          | ✓                   |
-| 规格查询          | ✓                   | ✓          | ✓                   |
-| 等待机制 (Waiter) | ✓                   | ✗          | ✓                   |
-| 交互式创建        | ✗                   | ✓          | ✓                   |
-| 多格式输出        | ✓ (table/json/yaml) | ✓ (json)   | ✓ (table/json/yaml) |
-| AI Agent 智能交互 | ✗                   | ✗          | **✓ 创新**          |
-| 自然语言参数补全  | ✗                   | ✗          | **✓ 创新**          |
+| 功能维度          | AWS CLI             | 阿里云 CLI | OpenTaurus（本项目） |
+| ----------------- | ------------------- | ---------- | -------------------- |
+| 实例 CRUD         | ✓                   | ✓          | ✓                    |
+| 备份管理          | ✓                   | ✓          | ✓                    |
+| 规格查询          | ✓                   | ✓          | ✓                    |
+| 等待机制 (Waiter) | ✓                   | ✗          | ✓                    |
+| 交互式创建        | ✗                   | ✓          | ✓                    |
+| 多格式输出        | ✓ (table/json/yaml) | ✓ (json)   | ✓ (table/json/yaml)  |
+| AI Agent 智能交互 | ✗                   | ✗          | **✓ 创新**           |
+| 自然语言参数补全  | ✗                   | ✗          | **✓ 创新**           |
 
-> **竞争优势：** HWRDS 在对标 AWS 和阿里云全部基础功能的同时，创新性地加入 AI Agent 智能交互层，这是竞品均未提供的差异化能力。
+> **竞争优势：** OpenTaurus 在对标 AWS 和阿里云全部基础功能的同时，创新性地加入 AI Agent 智能交互层，这是竞品均未提供的差异化能力。
 
 ### 2.2 核心功能需求
 
 #### Phase 1：CLI 基础能力（第 1-6 周）
 
-| 命令                     | 说明                        | 优先级 | 周次     |
-| ------------------------ | --------------------------- | ------ | -------- |
-| hwrds configure          | 配置 AK/SK/Region/ProjectID | P0     | 第 1 周  |
-| hwrds flavor list        | 查询可用数据库规格          | P0     | 第 2 周  |
-| hwrds instance create    | 创建 RDS 实例 + 等待就绪    | P0     | 第 3 周  |
-| hwrds instance list      | 列出所有实例                | P0     | 第 4 周  |
-| hwrds instance show      | 查看实例详情 + 连接信息     | P0     | 第 4 周  |
-| hwrds instance delete    | 删除实例（二次确认）        | P0     | 第 5 周  |
-| hwrds instance restart   | 重启实例                    | P1     | 第 5 周  |
-| hwrds backup create/list | 备份管理                    | P1     | 第 11 周 |
+| 命令                          | 说明                        | 优先级 | 周次     |
+| ----------------------------- | --------------------------- | ------ | -------- |
+| openTaurus configure          | 配置 AK/SK/Region/ProjectID | P0     | 第 1 周  |
+| openTaurus flavor list        | 查询可用数据库规格          | P0     | 第 2 周  |
+| openTaurus instance create    | 创建 RDS 实例 + 等待就绪    | P0     | 第 3 周  |
+| openTaurus instance list      | 列出所有实例                | P0     | 第 4 周  |
+| openTaurus instance show      | 查看实例详情 + 连接信息     | P0     | 第 4 周  |
+| openTaurus instance delete    | 删除实例（二次确认）        | P0     | 第 5 周  |
+| openTaurus instance restart   | 重启实例                    | P1     | 第 5 周  |
+| openTaurus backup create/list | 备份管理                    | P1     | 第 11 周 |
 
 #### Phase 2：Agent 智能交互层（第 7-12 周）
 
-| 模块                | 说明                                    | 优先级 | 周次     |
-| ------------------- | --------------------------------------- | ------ | -------- |
-| LLM HTTP 客户端     | net/http 调用 LLM API，不依赖第三方 SDK | P0     | 第 7 周  |
-| 响应解析器          | JSON 解析，提取 tool_use / end_turn     | P0     | 第 7 周  |
-| Tool 注册表         | Service 函数映射为 LLM Tool             | P0     | 第 8 周  |
-| Tool-calling 主循环 | 调 LLM → 执行 Tool → 喂回结果 → 循环    | P0     | 第 8 周  |
-| 安全确认机制        | 三级安全模型：直接执行/确认/强确认      | P0     | 第 9 周  |
-| 系统提示词          | 角色定义 + 行为约束 + 参数补全引导      | P0     | 第 9 周  |
-| hwrds chat 命令     | 单次模式 + 交互式多轮对话               | P0     | 第 10 周 |
+| 模块                 | 说明                                    | 优先级 | 周次     |
+| -------------------- | --------------------------------------- | ------ | -------- |
+| LLM HTTP 客户端      | net/http 调用 LLM API，不依赖第三方 SDK | P0     | 第 7 周  |
+| 响应解析器           | JSON 解析，提取 tool_use / end_turn     | P0     | 第 7 周  |
+| Tool 注册表          | Service 函数映射为 LLM Tool             | P0     | 第 8 周  |
+| Tool-calling 主循环  | 调 LLM → 执行 Tool → 喂回结果 → 循环    | P0     | 第 8 周  |
+| 安全确认机制         | 三级安全模型：直接执行/确认/强确认      | P0     | 第 9 周  |
+| 系统提示词           | 角色定义 + 行为约束 + 参数补全引导      | P0     | 第 9 周  |
+| openTaurus chat 命令 | 单次模式 + 交互式多轮对话               | P0     | 第 10 周 |
 
 ### 2.3 非功能需求
 
@@ -143,7 +143,7 @@ Go 的交叉编译能力是选择它的决定性因素之一。一条 `go build`
 | Service 层 | 核心业务逻辑（共用）  | Go struct + interface     |
 | SDK 层     | 华为云 API 封装       | net/http + AK/SK 签名     |
 
-# HWRDS 架构设计全景图
+# OpenTaurus 架构设计全景图
 
 ---
 
@@ -151,13 +151,13 @@ Go 的交叉编译能力是选择它的决定性因素之一。一条 `go build`
 
 ```mermaid
 graph TB
-    CLI["CLI 命令<br/>hwrds instance create/list/delete"]
-    CHAT["Agent 对话<br/>hwrds chat '创建MySQL实例'"]
+    CLI["CLI 命令<br/>openTaurus instance create/list/delete"]
+    CHAT["Agent 对话<br/>openTaurus chat '创建MySQL实例'"]
     CMD["命令层 cmd/"]
     AGENT["Agent 主循环<br/>LLM 交互 + Tool 调用"]
     SERVICE["Service 层<br/>实例/规格/备份管理"]
     SDK["SDK 层<br/>HTTP + AK/SK 签名"]
-    CONFIG["配置管理<br/>~/.hwrds/config.yaml"]
+    CONFIG["配置管理<br/>~/.openTaurus/config.yaml"]
     UI["UI 输出<br/>table/json/yaml"]
     CLOUD["华为云 RDS API"]
     LLM["LLM API<br/>Anthropic/OpenAI"]
@@ -369,153 +369,395 @@ sequenceDiagram
 
 ## 六、模块详细展开（可选查看）
 
-# HWRDS 架构设计全景图
+# OpenTaurus 架构设计全景图
 
 ---
 
-## 一、总体架构
-
 ```mermaid
-graph TB
-    subgraph USER["用户入口"]
-        CLI["⌨️ CLI 命令<br/>hwrds instance create<br/>hwrds instance list<br/>hwrds flavor list"]
-        CHAT["Agent 对话<br/>hwrds chat '创建MySQL实例'"]
-    end
+graph TD
+    %% ====== 用户入口 ======
+    CLI["CLI 模式<br/>openTaurus instance create<br/>openTaurus instance list<br/>openTaurus flavor list"]
+    CHAT["Agent 模式<br/>openTaurus chat '创建MySQL实例'<br/>openTaurus chat 'prod-mysql有慢查询吗'"]
 
-    subgraph CMD["命令层 cmd/"]
-        CMD_CONF["configure.go"]
-        CMD_INST["instance_create.go<br/>instance_list.go<br/>instance_show.go<br/>instance_delete.go<br/>instance_restart.go"]
-        CMD_FLAVOR["flavor_list.go"]
-        CMD_BACKUP["backup_create.go<br/>backup_list.go"]
-        CMD_CHAT["chat.go"]
-    end
+    %% ====== 命令路由 ======
+    CMD_CLI["cmd/ 命令路由<br/>instance / flavor / backup<br/>configure / completion"]
+    CMD_CHAT["cmd/chat.go<br/>Agent 入口"]
 
-    subgraph AGENT["Agent 层 agent/"]
-        AGENT_MAIN["agent.go<br/>主控循环 (tool-calling loop)"]
-        AGENT_LLM["llm.go<br/>net/http POST → LLM API<br/>JSON 构造/解析<br/>错误重试 + 限流"]
-        AGENT_PARSER["parser.go<br/>提取 stop_reason<br/>提取 tool_use block<br/>提取最终文本回复"]
-        AGENT_TOOLS["tools.go<br/>Tool 注册表<br/>Service → Tool 映射<br/>参数类型转换"]
-        AGENT_CONFIRM["confirm.go<br/>三级安全模型<br/>直接执行/确认/强确认"]
-        AGENT_PROMPT["prompts.go<br/>系统提示词<br/>角色 + 行为约束"]
-    end
+    %% ====== Agent 层 ======
+    AGENT_CORE["agent.go · 主控循环<br/>构造 messages → 调 LLM<br/>→ 解析响应 → 执行 Tool → 循环"]
+    A_LLM["llm.go<br/>LLM 客户端<br/>net/http POST"]
+    A_TOOLS["tools.go<br/>Tool 注册表<br/>Service → Tool"]
+    A_SAFE["confirm.go<br/>安全确认<br/>三级模型"]
+    A_PROMPT["prompts.go<br/>系统提示词"]
 
-    subgraph SERVICE["⚙️ Service 层 service/ — CLI 和 Agent 共用"]
-        SVC_INST["instance.go<br/>Create / List / Show<br/>Delete / Restart"]
-        SVC_FLAVOR["flavor.go<br/>ListFlavors"]
-        SVC_BACKUP["backup.go<br/>Create / List"]
-        SVC_AUTH["auth.go<br/>认证管理"]
-        SVC_WAITER["waiter.go<br/>轮询等待资源就绪"]
-    end
+    %% ====== Service 层 ======
+    SVC_INST["instance.go<br/>Create / List / Show<br/>Delete / Restart"]
+    SVC_FLAVOR["flavor.go<br/>ListFlavors"]
+    SVC_BACKUP["backup.go<br/>Create / List"]
+    SVC_WAITER["waiter.go<br/>轮询等待就绪"]
+    SVC_DIAG["diagnose.go<br/>慢查询 / 连接数<br/>锁分析 / 表空间"]
 
-    subgraph SDK["SDK 层 sdk/"]
-        SDK_CLIENT["client.go<br/>HTTP 客户端"]
-        SDK_SIGNER["signer.go<br/>AK/SK HWS-HMAC-SHA256"]
-        SDK_RDS["rds.go<br/>RDS API 请求定义"]
-        SDK_ERR["errors.go<br/>错误码 → 人类可读提示"]
-    end
+    %% ====== SDK 层 ======
+    SDK_CLIENT["client.go<br/>HTTP 客户端<br/>超时 30s · 重试 3 次"]
+    SDK_SIGN["signer.go<br/>AK/SK HMAC-SHA256"]
+    SDK_ERR["errors.go<br/>错误码 → 人类可读"]
+    SDK_DB["db.go<br/>database/sql<br/>直连 MySQL / PG"]
 
-    subgraph CONFIG["配置层 config/"]
-        CFG_STORE["store.go<br/>~/.hwrds/config.yaml"]
-        CFG_PROFILE["profile.go<br/>多 Profile 管理"]
-    end
+    %% ====== MCP 层 ======
+    MCP_MONITOR["MCP: Cloud Eye<br/>CPU / 内存 / IOPS"]
+    MCP_LOG["MCP: LTS 日志<br/>错误日志 / 审计日志"]
+    MCP_DAS["MCP: DAS<br/>慢 SQL 报告"]
+    MCP_VPC["MCP: VPC<br/>安全组 / 网络排查"]
 
-    subgraph UI["输出层 ui/"]
-        UI_TABLE["table.go"]
-        UI_SPINNER["spinner.go"]
-        UI_COLOR["color.go"]
-        UI_FMT["formatter.go<br/>table / json / yaml"]
-    end
+    %% ====== 横向支撑 ======
+    CFG["config/<br/>~/.openTaurus/config.yaml<br/>多 Profile · ENV 覆盖"]
+    UI["ui/<br/>table / json / yaml<br/>color · spinner"]
 
-    CLOUD["Huawei Cloud RDS API"]
+    %% ====== 外部系统 ======
     LLM["LLM API<br/>Anthropic / OpenAI"]
+    CLOUD["Huawei Cloud RDS API"]
+    DB["🗄️ 客户数据库实例<br/>MySQL / PostgreSQL"]
+    CLOUD_OTHER["华为云其他服务<br/>Cloud Eye / LTS / DAS / VPC"]
 
-    %% User → Command
-    CLI --> CMD_CONF
-    CLI --> CMD_INST
-    CLI --> CMD_FLAVOR
-    CLI --> CMD_BACKUP
+    %% ====== 连线：用户 → 命令 ======
+    CLI --> CMD_CLI
     CHAT --> CMD_CHAT
 
-    %% Command → Service (CLI path)
-    CMD_CONF --> CFG_STORE
-    CMD_INST --> SVC_INST
-    CMD_FLAVOR --> SVC_FLAVOR
-    CMD_BACKUP --> SVC_BACKUP
+    %% ====== 连线：命令 → 下层 ======
+    CMD_CLI --> SVC_INST
+    CMD_CLI --> SVC_FLAVOR
+    CMD_CLI --> SVC_BACKUP
+    CMD_CLI --> UI
+    CMD_CLI --> CFG
+    CMD_CHAT --> AGENT_CORE
 
-    %% Command → Agent (Chat path)
-    CMD_CHAT --> AGENT_MAIN
+    %% ====== 连线：Agent 内部 ======
+    AGENT_CORE --> A_LLM
+    AGENT_CORE --> A_TOOLS
+    AGENT_CORE --> A_SAFE
+    AGENT_CORE --> A_PROMPT
+    A_LLM --> LLM
 
-    %% Agent internal
-    AGENT_MAIN --> AGENT_LLM
-    AGENT_MAIN --> AGENT_PARSER
-    AGENT_MAIN --> AGENT_TOOLS
-    AGENT_MAIN --> AGENT_CONFIRM
-    AGENT_MAIN --> AGENT_PROMPT
-    AGENT_LLM --> LLM
+    %% ====== 连线：Agent → Service（内置 Tool）======
+    A_TOOLS --> SVC_INST
+    A_TOOLS --> SVC_FLAVOR
+    A_TOOLS --> SVC_BACKUP
+    A_TOOLS --> SVC_DIAG
 
-    %% Agent → Service (shared)
-    AGENT_TOOLS --> SVC_INST
-    AGENT_TOOLS --> SVC_FLAVOR
-    AGENT_TOOLS --> SVC_BACKUP
+    %% ====== 连线：Agent → MCP（外部数据源）======
+    A_TOOLS --> MCP_MONITOR
+    A_TOOLS --> MCP_LOG
+    A_TOOLS --> MCP_DAS
+    A_TOOLS --> MCP_VPC
 
-    %% Service → SDK
+    %% ====== 连线：Service → SDK ======
     SVC_INST --> SDK_CLIENT
     SVC_FLAVOR --> SDK_CLIENT
     SVC_BACKUP --> SDK_CLIENT
-    SVC_AUTH --> CFG_STORE
     SVC_WAITER --> SDK_CLIENT
+    SVC_WAITER --> UI
+    SVC_DIAG --> SDK_DB
+    SVC_DIAG --> SDK_CLIENT
 
-    %% SDK internal
-    SDK_CLIENT --> SDK_SIGNER
-    SDK_CLIENT --> SDK_RDS
+    %% ====== 连线：SDK → 外部 ======
+    SDK_CLIENT --> SDK_SIGN
     SDK_CLIENT --> SDK_ERR
-
-    %% SDK → Cloud
+    SDK_SIGN --> CFG
     SDK_CLIENT --> CLOUD
+    SDK_DB --> DB
 
-    %% Config
-    SDK_SIGNER --> CFG_STORE
-    CFG_STORE --> CFG_PROFILE
+    %% ====== 连线：MCP → 外部 ======
+    MCP_MONITOR --> CLOUD_OTHER
+    MCP_LOG --> CLOUD_OTHER
+    MCP_DAS --> CLOUD_OTHER
+    MCP_VPC --> CLOUD_OTHER
 
-    %% UI (used by CMD layer)
-    CMD_INST --> UI_FMT
-    CMD_FLAVOR --> UI_TABLE
-    CMD_BACKUP --> UI_TABLE
-    SVC_WAITER --> UI_SPINNER
-
-    %% Styles - 浅紫色风格
+    %% ====== 样式 ======
     classDef nodeStyle fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
-    classDef cloudStyle fill:#F0F0F0,stroke:#666,stroke-width:2px,color:#000
+    classDef diagStyle fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px,color:#000
+    classDef mcpStyle fill:#FFF3E0,stroke:#E65100,stroke-width:2px,color:#000
+    classDef externalStyle fill:#F0F0F0,stroke:#666,stroke-width:2px,color:#000
 
     class CLI,CHAT nodeStyle
-    class CMD_CONF,CMD_INST,CMD_FLAVOR,CMD_BACKUP,CMD_CHAT nodeStyle
-    class AGENT_MAIN,AGENT_LLM,AGENT_PARSER,AGENT_TOOLS,AGENT_CONFIRM,AGENT_PROMPT nodeStyle
-    class SVC_INST,SVC_FLAVOR,SVC_BACKUP,SVC_AUTH,SVC_WAITER nodeStyle
-    class SDK_CLIENT,SDK_SIGNER,SDK_RDS,SDK_ERR nodeStyle
-    class CFG_STORE,CFG_PROFILE nodeStyle
-    class UI_TABLE,UI_SPINNER,UI_COLOR,UI_FMT nodeStyle
-    class CLOUD,LLM cloudStyle
+    class CMD_CLI,CMD_CHAT nodeStyle
+    class AGENT_CORE,A_LLM,A_TOOLS,A_SAFE,A_PROMPT nodeStyle
+    class SVC_INST,SVC_FLAVOR,SVC_BACKUP,SVC_WAITER nodeStyle
+    class SDK_CLIENT,SDK_SIGN,SDK_ERR nodeStyle
+    class CFG,UI nodeStyle
+    class SVC_DIAG,SDK_DB diagStyle
+    class MCP_MONITOR,MCP_LOG,MCP_DAS,MCP_VPC mcpStyle
+    class CLOUD,LLM,DB,CLOUD_OTHER externalStyle
 ```
 
 ---
 
-## 二、CLI 开发依赖流程（第 1-6 周）
+## 二、CLI 数据流（Phase 1）
+
+```mermaid
+graph LR
+    C1["用户输入命令"]
+    C2["cmd/ 解析参数"]
+    C3["service/ 业务逻辑"]
+    C4["sdk/ 签名 + HTTP"]
+    C5["☁️ 华为云 API"]
+
+    C1 --> C2 --> C3 --> C4 --> C5
+
+    classDef nodeStyle fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
+    classDef externalStyle fill:#F0F0F0,stroke:#666,stroke-width:2px,color:#000
+
+    class C1,C2,C3,C4 nodeStyle
+    class C5 externalStyle
+```
+
+---
+
+## 三、Agent 数据流（Phase 2 — 实例管理）
+
+```mermaid
+graph LR
+    A1["用户自然语言"]
+    A2["agent/ 主循环"]
+    A3["LLM 推理"]
+    A4["tools.go 选 Tool"]
+    A5["confirm.go 确认"]
+    A6["service/ 执行"]
+    A7["sdk/ API 调用"]
+    A8["华为云 API"]
+
+    A1 --> A2 --> A3 --> A4 --> A5 --> A6 --> A7 --> A8
+    A6 -->|"结果喂回"| A2
+
+    classDef nodeStyle fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
+    classDef decisionStyle fill:#F0E6FF,stroke:#4B0082,stroke-width:2px,color:#000
+    classDef externalStyle fill:#F0F0F0,stroke:#666,stroke-width:2px,color:#000
+
+    class A1,A2,A4,A6,A7 nodeStyle
+    class A3,A5 decisionStyle
+    class A8 externalStyle
+```
+
+---
+
+## 四、智能诊断数据流（Phase 3 — 内置 Tool 直连）
+
+```mermaid
+graph LR
+    D1["'prod-mysql 有慢查询吗'"]
+    D2["agent/ 主循环"]
+    D3["LLM 推理"]
+    D4["tools.go<br/>选 diagnose_slow_query"]
+    D5["service/diagnose.go"]
+    D6["sdk/ 拿实例 IP"]
+    D7["华为云 API"]
+    D8["database/sql 直连"]
+    D9["客户 MySQL"]
+    D10["LLM 总结分析"]
+    D11["返回诊断报告"]
+
+    D1 --> D2 --> D3 --> D4 --> D5
+    D5 --> D6 --> D7
+    D7 -->|"IP:Port"| D5
+    D5 --> D8 --> D9
+    D9 -->|"慢查询数据"| D5
+    D5 -->|"结果喂回"| D10 --> D11
+
+    classDef nodeStyle fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
+    classDef diagStyle fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px,color:#000
+    classDef decisionStyle fill:#F0E6FF,stroke:#4B0082,stroke-width:2px,color:#000
+    classDef externalStyle fill:#F0F0F0,stroke:#666,stroke-width:2px,color:#000
+
+    class D1,D2,D10,D11 nodeStyle
+    class D3 decisionStyle
+    class D4,D5,D8 diagStyle
+    class D6 nodeStyle
+    class D7,D9 externalStyle
+```
+
+---
+
+## 五、智能诊断数据流（Phase 3 — MCP 外部数据源）
+
+```mermaid
+graph LR
+    M1["'prod-mysql 为什么连不上'"]
+    M2["agent/ 主循环"]
+    M3["LLM 推理"]
+    M4["tools.go 编排多个数据源"]
+    M5_A["MCP: VPC<br/>查安全组规则"]
+    M5_B["MCP: Cloud Eye<br/>查 CPU/连接数"]
+    M5_C["MCP: LTS<br/>查错误日志"]
+    M5_D["内置 Tool<br/>查实例状态"]
+    M6["华为云各服务"]
+    M7["LLM 综合分析"]
+    M8["返回排查报告"]
+
+    M1 --> M2 --> M3 --> M4
+    M4 --> M5_A --> M6
+    M4 --> M5_B --> M6
+    M4 --> M5_C --> M6
+    M4 --> M5_D --> M6
+    M6 -->|"各项数据"| M7 --> M8
+
+    classDef nodeStyle fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
+    classDef mcpStyle fill:#FFF3E0,stroke:#E65100,stroke-width:2px,color:#000
+    classDef diagStyle fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px,color:#000
+    classDef decisionStyle fill:#F0E6FF,stroke:#4B0082,stroke-width:2px,color:#000
+    classDef externalStyle fill:#F0F0F0,stroke:#666,stroke-width:2px,color:#000
+
+    class M1,M2,M7,M8 nodeStyle
+    class M3 decisionStyle
+    class M5_A,M5_B,M5_C mcpStyle
+    class M4,M5_D diagStyle
+    class M6 externalStyle
+```
+
+---
+
+## 六、Agent 主控循环（含诊断分支）
 
 ```mermaid
 graph TD
-    W1_CONF["W1: configure<br/>AK/SK 存储<br/>~/.hwrds/config.yaml"]
-    W1_SDK["W1: SDK Client<br/>AK/SK 签名<br/>HTTP 封装"]
-    W2_FLAVOR["W2: flavor list<br/>规格查询<br/>🎯 链路验证"]
-    W2_FMT["W2: Formatter<br/>table / json 输出"]
-    W3_CREATE["W3: instance create<br/>创建实例"]
-    W3_WAITER["W3: Waiter<br/>轮询等待就绪<br/>Spinner 动画"]
-    W4_LIST["W4: instance list<br/>列出所有实例<br/>彩色状态标识"]
-    W4_SHOW["W4: instance show<br/>实例详情<br/>连接信息"]
-    W5_DELETE["W5: instance delete<br/>二次确认<br/>输入实例名"]
-    W5_RESTART["W5: instance restart<br/>确认 → 重启 → 等待"]
-    W6_ERROR["W6: 错误处理<br/>错误码翻译<br/>友好提示 + 建议"]
-    W6_POLISH["W6: 体验打磨<br/>自动补全<br/>--help 示例"]
-    W6_TEST["W6: 测试覆盖<br/>Service 层 > 70%<br/>CI 自动运行"]
+    START(["开始"])
+    BUILD["构造 messages<br/>system prompt + tools + 用户消息"]
+    CALL["POST → LLM API"]
+    PARSE["解析响应"]
+    CHECK{"stop_reason?"}
+    EXTRACT["提取 tool_use<br/>name + params"]
+    CLASSIFY{"Tool 类型?"}
+    MANAGE["实例管理 Tool<br/>create / list / show<br/>delete / restart / flavor"]
+    DIAG_BUILTIN["内置诊断 Tool<br/>slow_query / processlist<br/>lock_analysis / tablespace"]
+    DIAG_MCP["MCP 诊断 Tool<br/>monitor / log<br/>das_report / vpc_check"]
+    SAFE{"需要确认?"}
+    EXECUTE["执行 Tool"]
+    CONFIRM_OP["展示操作 → 确认"]
+    CANCEL["告知 LLM: 已取消"]
+    FEED["构造 tool_result → 喂回"]
+    MAX{"超过 10 轮?"}
+    OUTPUT["输出最终回复"]
+    TIMEOUT["提示: 请重新描述"]
+    END(["结束"])
+
+    START --> BUILD
+    BUILD --> CALL
+    CALL --> PARSE
+    PARSE --> CHECK
+    CHECK -->|"end_turn"| OUTPUT
+    CHECK -->|"tool_use"| EXTRACT
+    EXTRACT --> CLASSIFY
+    CLASSIFY -->|"管理类"| MANAGE
+    CLASSIFY -->|"内置诊断"| DIAG_BUILTIN
+    CLASSIFY -->|"MCP 诊断"| DIAG_MCP
+    MANAGE --> SAFE
+    DIAG_BUILTIN --> EXECUTE
+    DIAG_MCP --> EXECUTE
+    SAFE -->|"只读操作"| EXECUTE
+    SAFE -->|"写/删操作"| CONFIRM_OP
+    CONFIRM_OP -->|"Yes"| EXECUTE
+    CONFIRM_OP -->|"No"| CANCEL
+    EXECUTE --> FEED
+    CANCEL --> FEED
+    FEED --> MAX
+    MAX -->|"否"| CALL
+    MAX -->|"是"| TIMEOUT
+    TIMEOUT --> END
+    OUTPUT --> END
+
+    classDef nodeStyle fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
+    classDef decisionStyle fill:#F0E6FF,stroke:#4B0082,stroke-width:2px,color:#000
+    classDef diagStyle fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px,color:#000
+    classDef mcpStyle fill:#FFF3E0,stroke:#E65100,stroke-width:2px,color:#000
+
+    class START,BUILD,CALL,PARSE,EXTRACT,MANAGE,EXECUTE,CANCEL,FEED,OUTPUT,TIMEOUT,END nodeStyle
+    class CHECK,CLASSIFY,SAFE,MAX decisionStyle
+    class DIAG_BUILTIN diagStyle
+    class DIAG_MCP mcpStyle
+    class CONFIRM_OP nodeStyle
+```
+
+---
+
+## 七、Tool 注册表全景
+
+```mermaid
+graph TD
+    REGISTRY["tools.go · Tool 注册表"]
+
+    REGISTRY --> G1
+    REGISTRY --> G2
+    REGISTRY --> G3
+
+    G1["实例管理（Phase 1-2）"]
+    G1_1["create_instance → service.Create"]
+    G1_2["list_instances → service.List"]
+    G1_3["show_instance → service.Show"]
+    G1_4["delete_instance → service.Delete"]
+    G1_5["restart_instance → service.Restart"]
+    G1_6["list_flavors → service.Flavor"]
+    G1_7["create_backup → service.Backup"]
+
+    G2["内置诊断（Phase 3a）"]
+    G2_1["diagnose_slow_query<br/>→ 直连 MySQL 查 slow_log"]
+    G2_2["diagnose_processlist<br/>→ SHOW PROCESSLIST"]
+    G2_3["diagnose_locks<br/>→ INNODB STATUS"]
+    G2_4["diagnose_tablespace<br/>→ 表空间使用率"]
+
+    G3["MCP 诊断（Phase 3b）"]
+    G3_1["mcp_monitor<br/>→ Cloud Eye 监控指标"]
+    G3_2["mcp_logs<br/>→ LTS 错误日志"]
+    G3_3["mcp_slow_report<br/>→ DAS 慢 SQL 报告"]
+    G3_4["mcp_network<br/>→ VPC 安全组排查"]
+
+    G1 --> G1_1
+    G1 --> G1_2
+    G1 --> G1_3
+    G1 --> G1_4
+    G1 --> G1_5
+    G1 --> G1_6
+    G1 --> G1_7
+
+    G2 --> G2_1
+    G2 --> G2_2
+    G2 --> G2_3
+    G2 --> G2_4
+
+    G3 --> G3_1
+    G3 --> G3_2
+    G3 --> G3_3
+    G3 --> G3_4
+
+    classDef nodeStyle fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
+    classDef diagStyle fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px,color:#000
+    classDef mcpStyle fill:#FFF3E0,stroke:#E65100,stroke-width:2px,color:#000
+
+    class REGISTRY,G1,G1_1,G1_2,G1_3,G1_4,G1_5,G1_6,G1_7 nodeStyle
+    class G2,G2_1,G2_2,G2_3,G2_4 diagStyle
+    class G3,G3_1,G3_2,G3_3,G3_4 mcpStyle
+```
+
+---
+
+## 八、模块依赖（W1-W6 CLI + W7-W12 Agent）
+
+```mermaid
+graph TD
+    W1_CONF["W1: configure"]
+    W1_SDK["W1: SDK Client"]
+    W2_FLAVOR["W2: flavor list"]
+    W2_FMT["W2: Formatter"]
+    W3_CREATE["W3: instance create"]
+    W3_WAITER["W3: Waiter"]
+    W4_LIST["W4: instance list"]
+    W4_SHOW["W4: instance show"]
+    W5_DELETE["W5: instance delete"]
+    W5_RESTART["W5: instance restart"]
+    W6_ERROR["W6: 错误处理 + 测试"]
+    W7_LLM["W7: LLM 客户端 + 解析器"]
+    W8_LOOP["W8: Tool 注册 + 主循环"]
+    W9_SAFE["W9: 确认机制 + 提示词"]
+    W10_CHAT["W10: openTaurus chat"]
+    W11_EXT["W11: 备份 + 交互式"]
+    W12_SHIP["W12: 测试 + 打包 + 文档"]
 
     W1_CONF --> W1_SDK
     W1_SDK --> W2_FLAVOR
@@ -525,152 +767,94 @@ graph TD
     W3_CREATE --> W3_WAITER
     W1_SDK --> W4_LIST
     W1_SDK --> W4_SHOW
-    W2_FMT --> W4_LIST
-    W2_FMT --> W4_SHOW
-    W3_CREATE --> W5_DELETE
     W4_SHOW --> W5_DELETE
     W3_WAITER --> W5_RESTART
     W5_DELETE --> W6_ERROR
     W5_RESTART --> W6_ERROR
-    W6_ERROR --> W6_POLISH
-    W6_POLISH --> W6_TEST
-
-    classDef w1 fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
-    classDef w2 fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
-    classDef w3 fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
-    classDef w4 fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
-    classDef w5 fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
-    classDef w6 fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
-
-    class W1_CONF,W1_SDK w1
-    class W2_FLAVOR,W2_FMT w2
-    class W3_CREATE,W3_WAITER w3
-    class W4_LIST,W4_SHOW w4
-    class W5_DELETE,W5_RESTART w5
-    class W6_ERROR,W6_POLISH,W6_TEST w6
-```
-
----
-
-## 三、Agent 主控循环流程（第 7-12 周）
-
-```mermaid
-graph TD
-    START(["用户输入"])
-    BUILD["构造 messages<br/>system prompt + tools + 用户消息"]
-    CALL_LLM["POST → LLM API<br/>(net/http)"]
-    PARSE["解析响应<br/>(parser.go)"]
-    CHECK{{"stop_reason?"}}
-    EXTRACT["提取 tool_use<br/>name + params"]
-    CLASSIFY{{"安全分级?"}}
-    EXEC_DIRECT["直接执行<br/>list / show / flavor"]
-    CONFIRM_YN["展示参数摘要<br/>Y/N 确认<br/>create / restart"]
-    CONFIRM_STRONG["展示警告<br/>输入实例名确认<br/>delete"]
-    APPROVED{{"用户确认?"}}
-    EXECUTE["调用 Service 层执行<br/>(tools.go → service/)"]
-    CANCEL["返回: 用户已取消"]
-    FEED["构造 tool_result<br/>喂回 messages"]
-    OUTPUT["输出最终回复"]
-    MULTI{{"交互模式?"}}
-    NEXT_INPUT(["等待下一条输入"])
-    DONE(["结束"])
-    MAX{{"超过 10 轮?"}}
-    MAX_MSG["提示: 请重新描述需求"]
-
-    START --> BUILD
-    BUILD --> CALL_LLM
-    CALL_LLM --> PARSE
-    PARSE --> CHECK
-
-    CHECK -->|"end_turn"| OUTPUT
-    CHECK -->|"tool_use"| EXTRACT
-
-    EXTRACT --> CLASSIFY
-
-    CLASSIFY -->|"只读操作"| EXEC_DIRECT
-    CLASSIFY -->|"写操作"| CONFIRM_YN
-    CLASSIFY -->|"删除操作"| CONFIRM_STRONG
-
-    EXEC_DIRECT --> EXECUTE
-    CONFIRM_YN --> APPROVED
-    CONFIRM_STRONG --> APPROVED
-
-    APPROVED -->|"Yes"| EXECUTE
-    APPROVED -->|"No"| CANCEL
-
-    EXECUTE --> FEED
-    CANCEL --> FEED
-
-    FEED --> MAX
-    MAX -->|"否"| CALL_LLM
-    MAX -->|"是"| MAX_MSG
-    MAX_MSG --> DONE
-
-    OUTPUT --> MULTI
-    MULTI -->|"交互模式"| NEXT_INPUT
-    MULTI -->|"单次模式"| DONE
-    NEXT_INPUT --> BUILD
+    W6_ERROR --> W7_LLM
+    W7_LLM --> W8_LOOP
+    W8_LOOP --> W9_SAFE
+    W9_SAFE --> W10_CHAT
+    W10_CHAT --> W11_EXT
+    W11_EXT --> W12_SHIP
 
     classDef nodeStyle fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
-    classDef decisionStyle fill:#F0E6FF,stroke:#4B0082,stroke-width:2px,color:#000
-
-    class START,DONE,NEXT_INPUT nodeStyle
-    class BUILD,CALL_LLM,PARSE,EXTRACT,EXECUTE,FEED,OUTPUT nodeStyle
-    class CHECK,CLASSIFY,APPROVED,MULTI,MAX decisionStyle
-    class EXEC_DIRECT,CONFIRM_YN,CONFIRM_STRONG,CANCEL,MAX_MSG nodeStyle
+    class W1_CONF,W1_SDK,W2_FLAVOR,W2_FMT,W3_CREATE,W3_WAITER,W4_LIST,W4_SHOW,W5_DELETE,W5_RESTART,W6_ERROR,W7_LLM,W8_LOOP,W9_SAFE,W10_CHAT,W11_EXT,W12_SHIP nodeStyle
 ```
 
 ---
 
-## 四、Agent 开发依赖流程（第 7-12 周）
+## 九、演进路线
 
 ```mermaid
-graph TD
-    W7_LLM["W7: LLM 客户端<br/>net/http POST<br/>JSON 构造/解析<br/>错误重试"]
-    W7_PARSER["W7: 响应解析器<br/>提取 stop_reason<br/>提取 tool_use<br/>提取 text"]
-    W7_TYPES["W7: 类型定义<br/>Message / ToolCall<br/>ToolResult"]
-    W8_TOOLS["W8: Tool 注册表<br/>Service → Tool 映射<br/>参数类型转换"]
-    W8_LOOP["W8: 主控循环<br/>tool-calling loop<br/>最大 10 轮限制"]
-    W9_CONFIRM["W9: 确认机制<br/>三级安全模型<br/>直接/确认/强确认"]
-    W9_PROMPT["W9: 系统提示词<br/>角色 + 约束 + 引导"]
-    W10_CHAT["W10: hwrds chat<br/>单次 + 交互模式"]
-    W10_DIALOG["W10: 对话式补全<br/>多轮参数收集"]
-    W11_BACKUP["W11: 备份管理<br/>CLI + Agent Tool"]
-    W11_INTERACTIVE["W11: 交互式创建<br/>--interactive"]
-    W12_TEST["W12: Agent 测试<br/>Mock LLM 响应"]
-    W12_BUILD["W12: 打包发布<br/>goreleaser<br/>5 平台二进制"]
-    W12_DOCS["W12: 文档<br/>README + 使用指南"]
+graph LR
+    P1["Phase 1<br/>CLI 基础<br/>W1-W6"]
+    P2["Phase 2<br/>Agent 层<br/>W7-W12"]
+    P3A["Phase 3a<br/>内置诊断<br/>database/sql 直连"]
+    P3B["Phase 3b<br/>MCP 扩展<br/>Cloud Eye / LTS / DAS / VPC"]
 
-    W7_TYPES --> W7_LLM
-    W7_TYPES --> W7_PARSER
-    W7_LLM --> W8_LOOP
-    W7_PARSER --> W8_LOOP
-    W8_TOOLS --> W8_LOOP
-    W8_LOOP --> W9_CONFIRM
-    W8_LOOP --> W9_PROMPT
-    W9_CONFIRM --> W10_CHAT
-    W9_PROMPT --> W10_CHAT
-    W10_CHAT --> W10_DIALOG
-    W10_CHAT --> W11_BACKUP
-    W10_CHAT --> W11_INTERACTIVE
-    W11_BACKUP --> W12_TEST
-    W11_INTERACTIVE --> W12_TEST
-    W12_TEST --> W12_BUILD
-    W12_BUILD --> W12_DOCS
+    P1 -->|"Service 层完成"| P2
+    P2 -->|"加诊断 Tool"| P3A
+    P3A -->|"需要多数据源"| P3B
 
-    classDef w7 fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
-    classDef w8 fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
-    classDef w9 fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
-    classDef w10 fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
-    classDef w11 fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
-    classDef w12 fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
+    classDef nodeStyle fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
+    classDef diagStyle fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px,color:#000
+    classDef mcpStyle fill:#FFF3E0,stroke:#E65100,stroke-width:2px,color:#000
 
-    class W7_LLM,W7_PARSER,W7_TYPES w7
-    class W8_TOOLS,W8_LOOP w8
-    class W9_CONFIRM,W9_PROMPT w9
-    class W10_CHAT,W10_DIALOG w10
-    class W11_BACKUP,W11_INTERACTIVE w11
-    class W12_TEST,W12_BUILD,W12_DOCS w12
+    class P1,P2 nodeStyle
+    class P3A diagStyle
+    class P3B mcpStyle
+```
+
+| 阶段     | 交付物                                  | 架构模式               |
+| -------- | --------------------------------------- | ---------------------- |
+| Phase 1  | 8 个 CLI 命令 + Service + SDK           | 纯 CLI                 |
+| Phase 2  | 自定义 Agent + Tool Calling + 安全确认  | 单体 Agent + 技能库    |
+| Phase 3a | 内置诊断 Tool（直连 MySQL）             | Agent + 内置诊断       |
+| Phase 3b | MCP 扩展（Cloud Eye / LTS / DAS / VPC） | Agent + 内置诊断 + MCP |
+
+---
+
+## 十、诊断场景示例
+
+### 场景 A：慢查询分析（内置 Tool，直连数据库）
+
+```
+用户: prod-mysql 最近有慢查询吗
+
+Agent 执行:
+  1. tool_use: show_instance → 拿到 IP 192.168.0.12:3306
+  2. tool_use: diagnose_slow_query → 直连 MySQL 查 slow_log
+  3. LLM 拿到 15 条慢查询记录，总结分析
+
+Agent 回复:
+  过去 24 小时有 15 条慢查询，主要集中在 orders 表：
+  - SELECT * FROM orders WHERE status='pending' (avg 3.2s, 9次)
+    → 建议: 给 status 字段加索引
+  - SELECT * FROM orders JOIN users ON ... (avg 5.1s, 6次)
+    → 建议: 优化 JOIN 条件，考虑分页
+```
+
+### 场景 B：连不上排查（MCP 多数据源）
+
+```
+用户: prod-mysql 连不上了怎么回事
+
+Agent 执行:
+  1. tool_use: show_instance → 实例状态 Running，没挂
+  2. mcp_monitor → CPU 95%，连接数 500/500 已满
+  3. mcp_logs → 错误日志: Too many connections
+  4. mcp_network → 安全组 3306 端口已放通
+
+Agent 回复:
+  排查结果：实例正常运行，但连接数已满（500/500）。
+  错误日志确认: "Too many connections"
+  安全组没有问题，3306 端口已放通。
+
+  建议:
+  1. 立即: 检查应用是否有连接泄漏
+  2. 短期: 调大 max_connections 参数
+  3. 长期: 考虑升级实例规格或引入连接池
 ```
 
 ---
@@ -689,7 +873,7 @@ sequenceDiagram
     participant SDK as sdk/client.go
     participant Cloud as 华为云 API
 
-    User->>Chat: hwrds chat "创建MySQL实例 4核16G"
+    User->>Chat: openTaurus chat "创建MySQL实例 4核16G"
     Chat->>Agent: Run("创建MySQL实例 4核16G")
 
     Note over Agent: 循环第 1 轮
@@ -788,7 +972,7 @@ sequenceDiagram
 
 ## 九、总结
 
-HWRDS 项目的核心价值在于：在对标 AWS 和阿里云全部基础 CLI 能力的同时，通过 AI Agent 智能交互层实现差异化竞争。
+OpenTaurus 项目的核心价值在于：在对标 AWS 和阿里云全部基础 CLI 能力的同时，通过 AI Agent 智能交互层实现差异化竞争。
 
 **技术选型**：选择 Go 语言，获得单二进制分发、极快启动、交叉编译等 CLI 场景的天然优势，同时通过自定义 Agent 实现避免对第三方框架的依赖。
 
