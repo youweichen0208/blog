@@ -4,5 +4,5 @@
 
 ## 项目列表
 
-### [CLI + Agent 项目](./cli-agent/)
+### [OpenTaurus 项目](./cli-agent/)
 构建一个结合命令行工具和智能代理的项目，探索 AI 驱动的开发工具实践。
