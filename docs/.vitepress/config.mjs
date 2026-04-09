@@ -51,7 +51,6 @@ export default withMermaid(defineConfig({
         ],
       },
       { text: '项目实战', link: '/projects/' },
-      { text: 'Open Taurus', link: '/open-taurus/' },
       { text: 'GitHub', link: 'https://github.com' },
     ],
 
