@@ -50,6 +50,7 @@ export default defineConfig({
         ],
       },
       { text: '项目实战', link: '/projects/' },
+      { text: 'Open Taurus', link: '/open-taurus/' },
       { text: 'GitHub', link: 'https://github.com' },
     ],
 
@@ -117,6 +118,28 @@ export default defineConfig({
           items: [
             { text: '概述', link: '/projects/' },
             { text: 'CLI + Agent 项目', link: '/projects/cli-agent/' },
+          ],
+        },
+      ],
+      '/open-taurus/': [
+        {
+          text: 'Open Taurus — HWRDS CLI',
+          items: [
+            { text: '专栏概述', link: '/open-taurus/' },
+            { text: 'M01 · configure 配置命令', link: '/open-taurus/m01-configure' },
+            { text: 'M02 · config-store 配置存储', link: '/open-taurus/m02-config-store' },
+            { text: 'M03 · sdk-client HTTP 客户端', link: '/open-taurus/m03-sdk-client' },
+            { text: 'M04 · ak-sk-signer 签名模块', link: '/open-taurus/m04-ak-sk-signer' },
+            { text: 'M05 · flavor-list 规格查询', link: '/open-taurus/m05-flavor-list' },
+            { text: 'M06 · formatter 格式化输出', link: '/open-taurus/m06-formatter' },
+            { text: 'M07 · color 彩色输出', link: '/open-taurus/m07-color' },
+            { text: 'M08 · instance-create 创建实例', link: '/open-taurus/m08-instance-create' },
+            { text: 'M09 · waiter 等待机制', link: '/open-taurus/m09-waiter' },
+            { text: 'M10 · instance-list 列出实例', link: '/open-taurus/m10-instance-list' },
+            { text: 'M11 · instance-show 查看详情', link: '/open-taurus/m11-instance-show' },
+            { text: 'M12 · instance-delete 删除实例', link: '/open-taurus/m12-instance-delete' },
+            { text: 'M13 · instance-restart 重启实例', link: '/open-taurus/m13-instance-restart' },
+            { text: 'M14 · error-polish-test 收尾', link: '/open-taurus/m14-error-polish-test' },
           ],
         },
       ],
