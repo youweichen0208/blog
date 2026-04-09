@@ -6,7 +6,7 @@
 
 ### 项目结构规范
 
-![main.go 只调用 cmd 包](/images/go/cobra-main.png)
+![main.go 只调用 cmd 包](../.vitepress/public/images/go/cobra-main.png)
 
 Cobra 的最佳实践把代码拆成两层：
 
@@ -30,7 +30,7 @@ Cobra 的最佳实践把代码拆成两层：
 
 ### 命令挂载机制
 
-![configure.go 中的 init 函数](/images/go/cobra-configure.png)
+![configure.go 中的 init 函数](../.vitepress/public/images/go/cobra-configure.png)
 
 每个子命令文件里都有一个 `init()` 函数：
 
