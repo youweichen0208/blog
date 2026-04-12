@@ -1,1014 +1,547 @@
-# 需求设计（OpenTaurus）
+# OpenTaurus 架构设计优化版
+
+> 华为云 RDS 命令行工具 + AI Agent 智能交互层
+> 架构设计 · 流程图 · 功能清单 · 测试观测点
 
 ---
 
-## 1. 项目背景
+## 01 · 方案概要设计
 
-### 1.1 行业现状
+OpenTaurus 采用三层分离架构，CLI 与 Agent 共享同一 Service 层，实现业务逻辑零重复。
 
-当前主流云厂商均提供了成熟的数据库管理 CLI 工具：AWS 的 `aws rds` 命令集支持完整的 RDS 实例生命周期管理，阿里云的 `aliyun rds` 同样覆盖了从创建到删除的全流程操作。这些工具已成为企业客户日常运维的标配。
-
-华为云在 RDS 产品能力上已经具备竞争力，但在命令行工具层面与 AWS 和阿里云存在差距。客户在自动化运维、脚本化管理场景下缺乏高效工具，往往需要通过控制台手动操作，效率低下。
-
-### 1.2 项目目标
-
-开发一套对标 AWS CLI 和阿里云 CLI 的华为云 RDS 命令行工具，并创新性地叠加 AI Agent 智能交互层，实现：
-
-- 客户通过命令行完成 RDS 实例全生命周期管理（创建、查询、删除、重启、备份）
-- 客户通过自然语言对话完成复杂操作，降低使用门槛
-- 单二进制分发，客户下载即用，零依赖
-
-### 1.3 目标用户
-
-- **企业 DevOps / SRE 团队：** 需要脚本化、自动化管理数据库
-- **开发者：** 在开发/测试环境快速创建和销毁数据库实例
-- **DBA：** 日常实例管理、备份、监控
-- **新手用户：** 通过 Agent 自然语言交互降低学习曲线
-
----
-
-## 2. 需求分析
-
-### 2.1 竞品对标分析
-
-| 功能维度          | AWS CLI             | 阿里云 CLI | OpenTaurus（本项目） |
-| ----------------- | ------------------- | ---------- | -------------------- |
-| 实例 CRUD         | ✓                   | ✓          | ✓                    |
-| 备份管理          | ✓                   | ✓          | ✓                    |
-| 规格查询          | ✓                   | ✓          | ✓                    |
-| 等待机制 (Waiter) | ✓                   | ✗          | ✓                    |
-| 交互式创建        | ✗                   | ✓          | ✓                    |
-| 多格式输出        | ✓ (table/json/yaml) | ✓ (json)   | ✓ (table/json/yaml)  |
-| AI Agent 智能交互 | ✗                   | ✗          | **✓ 创新**           |
-| 自然语言参数补全  | ✗                   | ✗          | **✓ 创新**           |
-
-> **竞争优势：** OpenTaurus 在对标 AWS 和阿里云全部基础功能的同时，创新性地加入 AI Agent 智能交互层，这是竞品均未提供的差异化能力。
-
-### 2.2 核心功能需求
-
-#### Phase 1：CLI 基础能力（第 1-6 周）
-
-| 命令                          | 说明                        | 优先级 | 周次     |
-| ----------------------------- | --------------------------- | ------ | -------- |
-| openTaurus configure          | 配置 AK/SK/Region/ProjectID | P0     | 第 1 周  |
-| openTaurus flavor list        | 查询可用数据库规格          | P0     | 第 2 周  |
-| openTaurus instance create    | 创建 RDS 实例 + 等待就绪    | P0     | 第 3 周  |
-| openTaurus instance list      | 列出所有实例                | P0     | 第 4 周  |
-| openTaurus instance show      | 查看实例详情 + 连接信息     | P0     | 第 4 周  |
-| openTaurus instance delete    | 删除实例（二次确认）        | P0     | 第 5 周  |
-| openTaurus instance restart   | 重启实例                    | P1     | 第 5 周  |
-| openTaurus backup create/list | 备份管理                    | P1     | 第 11 周 |
-
-#### Phase 2：Agent 智能交互层（第 7-12 周）
-
-| 模块                 | 说明                                    | 优先级 | 周次     |
-| -------------------- | --------------------------------------- | ------ | -------- |
-| LLM HTTP 客户端      | net/http 调用 LLM API，不依赖第三方 SDK | P0     | 第 7 周  |
-| 响应解析器           | JSON 解析，提取 tool_use / end_turn     | P0     | 第 7 周  |
-| Tool 注册表          | Service 函数映射为 LLM Tool             | P0     | 第 8 周  |
-| Tool-calling 主循环  | 调 LLM → 执行 Tool → 喂回结果 → 循环    | P0     | 第 8 周  |
-| 安全确认机制         | 三级安全模型：直接执行/确认/强确认      | P0     | 第 9 周  |
-| 系统提示词           | 角色定义 + 行为约束 + 参数补全引导      | P0     | 第 9 周  |
-| openTaurus chat 命令 | 单次模式 + 交互式多轮对话               | P0     | 第 10 周 |
-
-### 2.3 非功能需求
-
-- **分发：** 单二进制分发，支持 Linux / macOS / Windows 三平台，客户下载即用
-- **性能：** CLI 启动时间 < 100ms，API 调用超时 30s，Agent 单轮超时 60s
-- **安全：** AK/SK 本地存储权限 0600，支持环境变量覆盖，删除操作必须二次确认
-- **可用性：** API 调用自动重试（最多 3 次，指数退避），错误码翻译为人类可读提示
-- **测试：** Service 层覆盖率 > 70%，CI 自动运行全量测试
-
----
-
-## 3. 技术选型：为什么选择 Go
-
-### 3.1 CLI 场景的天然优势
-
-Go 是 CLI 工具开发的行业标准选择。以下知名 CLI 工具均基于 Go 构建：
-
-| 工具      | 开发者        | 用途                |
-| --------- | ------------- | ------------------- |
-| kubectl   | Google / CNCF | Kubernetes 集群管理 |
-| docker    | Docker Inc.   | 容器管理            |
-| gh        | GitHub        | GitHub CLI          |
-| terraform | HashiCorp     | 基础设施即代码      |
-| hugo      | Hugo Authors  | 静态网站生成        |
-
-### 3.2 与其他语言的对比
-
-| 维度       | Go                      | TypeScript         | Python               |
-| ---------- | ----------------------- | ------------------ | -------------------- |
-| 二进制体积 | **10-15 MB**            | 50-70 MB (pkg)     | 80+ MB (PyInstaller) |
-| 启动速度   | **~10ms**               | ~200ms             | ~500ms               |
-| 打包复杂度 | **go build 一条命令**   | 需要 esbuild + pkg | 需要 PyInstaller     |
-| 交叉编译   | **极简（GOOS/GOARCH）** | 需分平台打包       | 需分平台打包         |
-| 运行时依赖 | **无**                  | 内嵌 Node.js       | 内嵌 Python          |
-| CLI 生态   | **Cobra（业界标准）**   | oclif（成熟）      | Click（成熟）        |
-| 并发能力   | **goroutine 原生支持**  | 单线程 async       | GIL 限制             |
-
-### 3.3 Go 做自定义 Agent 的可行性
-
-本项目采用自定义 Agent 方案，不依赖任何第三方 Agent 框架。Agent 的核心本质是一个 HTTP 调用 + JSON 解析的循环，Go 的标准库完全能胜任：
-
-- **net/http：** 调用 LLM API，构造请求 / 解析响应
-- **encoding/json：** 解析 tool_use 参数、构造 tool_result
-- **fmt + os：** 确认机制的用户交互
-
-> **为什么不用 LLM SDK？** 本项目选择自定义实现 Agent，不使用 Anthropic SDK 或 OpenAI SDK。原因是：Agent 的核心就是 HTTP POST + JSON 解析 + 循环，Go 标准库完全覆盖；自定义实现可以同时支持 Anthropic、OpenAI 等多个 LLM 提供商，通过配置切换；减少第三方依赖，保持二进制体积最小。
-
-### 3.4 Go 的分发优势
-
-Go 的交叉编译能力是选择它的决定性因素之一。一条 `go build` 命令即可生成目标平台的二进制文件，客户下载后直接运行，无需安装任何运行时环境：
-
-| 平台                  | 编译命令                           | 产物体积 |
-| --------------------- | ---------------------------------- | -------- |
-| Linux (amd64)         | GOOS=linux GOARCH=amd64 go build   | ~12 MB   |
-| Linux (arm64)         | GOOS=linux GOARCH=arm64 go build   | ~12 MB   |
-| macOS (Intel)         | GOOS=darwin GOARCH=amd64 go build  | ~13 MB   |
-| macOS (Apple Silicon) | GOOS=darwin GOARCH=arm64 go build  | ~13 MB   |
-| Windows               | GOOS=windows GOARCH=amd64 go build | ~13 MB   |
-
----
-
-## 4. 架构设计
-
-### 4.1 分层架构
-
-项目采用三层架构，CLI 和 Agent 共用 Service 层，避免业务逻辑重复：
-
-| 层次       | 职责                  | 技术实现                  |
-| ---------- | --------------------- | ------------------------- |
-| 用户交互层 | CLI 命令 + Agent Chat | Cobra 命令 / Agent 主循环 |
-| Service 层 | 核心业务逻辑（共用）  | Go struct + interface     |
-| SDK 层     | 华为云 API 封装       | net/http + AK/SK 签名     |
-
-# OpenTaurus 架构设计全景图
-
----
-
-## 一、总体架构（简化版）
+### 整体架构
 
 ```mermaid
 graph TB
-    CLI["CLI 命令<br/>openTaurus instance create/list/delete"]
-    CHAT["Agent 对话<br/>openTaurus chat '创建MySQL实例'"]
-    CMD["命令层 cmd/"]
-    AGENT["Agent 主循环<br/>LLM 交互 + Tool 调用"]
-    SERVICE["Service 层<br/>实例/规格/备份管理"]
-    SDK["SDK 层<br/>HTTP + AK/SK 签名"]
-    CONFIG["配置管理<br/>~/.openTaurus/config.yaml"]
-    UI["UI 输出<br/>table/json/yaml"]
-    CLOUD["华为云 RDS API"]
-    LLM["LLM API<br/>Anthropic/OpenAI"]
+    subgraph ENTRY["🎯 用户入口层"]
+        CLI["CLI 命令<br/>openTaurus instance / flavor / backup"]
+        CHAT["Agent 对话<br/>openTaurus chat"]
+    end
+
+    subgraph CMD_LAYER["🔀 命令路由层 · cmd/"]
+        CMD["Cobra 命令路由<br/>参数校验 · 子命令分发"]
+    end
+
+    subgraph AGENT_LAYER["🤖 Agent 层"]
+        AGENT["主控循环 agent.go<br/>消息构造 → LLM → 解析 → 执行 → 循环"]
+        LLM_CLIENT["LLM 客户端 llm.go<br/>net/http · 多模型适配"]
+        TOOLS["Tool 注册表 tools.go<br/>Service ↔ Tool Schema 映射"]
+        CONFIRM["安全确认 confirm.go<br/>三级安全模型"]
+        PROMPT["系统提示词 prompts.go"]
+    end
+
+    subgraph SERVICE_LAYER["⚙️ Service 层 · 核心业务（CLI + Agent 共用）"]
+        SVC_INST["实例管理 instance.go<br/>Create · List · Show · Delete · Restart"]
+        SVC_FLAVOR["规格查询 flavor.go"]
+        SVC_BACKUP["备份管理 backup.go"]
+        SVC_WAITER["等待机制 waiter.go<br/>轮询 + 超时 + 指数退避"]
+    end
+
+    subgraph SDK_LAYER["🔐 SDK 层"]
+        CLIENT["HTTP 客户端 client.go<br/>超时 30s · 重试 3 次 · 指数退避"]
+        SIGNER["AK/SK 签名 signer.go<br/>HMAC-SHA256"]
+        ERRORS["错误翻译 errors.go<br/>错误码 → 人类可读"]
+    end
+
+    subgraph INFRA["🛠 基础设施"]
+        CONFIG["配置管理 config/<br/>~/.openTaurus/config.yaml<br/>多 Profile · ENV 覆盖"]
+        UI_MOD["UI 输出 ui/<br/>table · json · yaml · spinner · color"]
+    end
+
+    LLM_API["☁️ LLM API<br/>Anthropic / OpenAI"]
+    HW_CLOUD["☁️ 华为云 RDS API"]
 
     CLI --> CMD
     CHAT --> CMD
-    CMD --> SERVICE
+    CMD --> SERVICE_LAYER
     CMD --> AGENT
-    AGENT <--> LLM
-    AGENT --> SERVICE
-    SERVICE --> SDK
-    SERVICE --> UI
-    SDK --> CONFIG
-    SDK --> CLOUD
 
-    classDef nodeStyle fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
-    classDef cloudStyle fill:#F0F0F0,stroke:#666,stroke-width:2px,color:#000
+    AGENT --> LLM_CLIENT
+    AGENT --> TOOLS
+    AGENT --> CONFIRM
+    AGENT --> PROMPT
+    LLM_CLIENT --> LLM_API
 
-    class CLI,CHAT,CMD,AGENT,SERVICE,SDK,CONFIG,UI nodeStyle
-    class CLOUD,LLM cloudStyle
+    TOOLS --> SERVICE_LAYER
+
+    SVC_INST --> CLIENT
+    SVC_FLAVOR --> CLIENT
+    SVC_BACKUP --> CLIENT
+    SVC_WAITER --> CLIENT
+    SVC_WAITER --> UI_MOD
+
+    CLIENT --> SIGNER
+    CLIENT --> ERRORS
+    SIGNER --> CONFIG
+    CLIENT --> HW_CLOUD
+
+    CMD --> UI_MOD
+    CMD --> CONFIG
 ```
 
-### 架构说明
+### 核心设计原则
 
-**核心设计原则：两条路径，一个核心**
-
-1. **CLI 路径**：`CLI 命令 → cmd/ → Service 层 → SDK → 华为云`
-2. **Agent 路径**：`Agent 对话 → cmd/chat → Agent 主循环 ↔ LLM → Service 层 → SDK → 华为云`
-3. **共享核心**：CLI 和 Agent 都调用同一个 Service 层，避免业务逻辑重复
-
-**分层职责**
-
-| 层次       | 职责                                  | 关键模块                         |
-| ---------- | ------------------------------------- | -------------------------------- |
-| 命令层     | 解析用户输入，路由到 Service 或 Agent | cmd/                             |
-| Agent 层   | LLM 交互、Tool 调用、安全确认         | agent/agent.go, llm.go, tools.go |
-| Service 层 | 核心业务逻辑（CLI 和 Agent 共用）     | service/instance.go, flavor.go   |
-| SDK 层     | 华为云 API 封装、签名、错误处理       | sdk/client.go, signer.go         |
-| 基础设施   | 配置、UI 输出                         | config/, ui/                     |
+| 原则                   | 说明                                                                                                                   |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| **两条路径，一个核心** | CLI 路径与 Agent 路径共享 Service 层，所有业务逻辑只写一遍。新增功能只需在 Service 层实现一次，CLI 和 Agent 同时获益。 |
+| **零依赖分发**         | Go 交叉编译生成单二进制文件（~12MB），覆盖 Linux/macOS/Windows 三平台五架构，客户下载即用，无需安装任何运行时。        |
+| **自定义 Agent**       | 不依赖第三方 Agent 框架，用 Go 标准库（net/http + encoding/json）实现 LLM 调用 + Tool Calling 循环，支持多模型切换。   |
 
 ---
 
-## 二、CLI 开发流程（第 1-6 周）
+## 02 · CLI 执行流程（优化版）
+
+优化后的 CLI 流程增加了参数校验、错误分类处理、重试策略和格式化输出的细粒度控制。
+
+### CLI 命令执行全流程
 
 ```mermaid
-graph LR
-    W1["W1: 配置+SDK基座<br/>AK/SK + HTTP签名"]
-    W2["W2: 规格查询+输出<br/>flavor list + formatter"]
-    W3["W3: 创建实例+等待<br/>create + waiter"]
-    W4["W4: 列表+详情<br/>list + show"]
-    W5["W5: 删除+重启<br/>delete + restart"]
-    W6["W6: 错误处理+测试<br/>error + CI"]
+flowchart TD
+    START(["$ openTaurus instance create ..."])
+    LOAD["加载配置<br/>config.yaml → ENV 覆盖 → flag 覆盖"]
+    VALIDATE{"参数校验"}
+    MISSING["提示缺失参数<br/>--name / --flavor / --vpc"]
+    INTERACTIVE{"交互模式?<br/>--interactive"}
+    SURVEY["交互式选择<br/>survey UI 引导"]
+    SVC["调用 Service 层<br/>InstanceService.Create()"]
+    BUILD["构造 API 请求体"]
+    SIGN["AK/SK HMAC-SHA256 签名"]
+    HTTP["HTTP POST → 华为云 API"]
+    RESP{"响应状态?"}
+    RETRY{"可重试?<br/>429 / 5xx<br/>≤ 3 次"}
+    BACKOFF["指数退避等待<br/>1s → 2s → 4s"]
+    ERR_TRANSLATE["错误码翻译<br/>DBS.200019 → '实例名已存在'"]
+    ERR_OUTPUT["输出错误信息 + 建议"]
+    WAIT{"需要等待?<br/>create / restart"}
+    WAITER["Waiter 轮询<br/>每 10s · 超时 10min<br/>spinner 动画"]
+    POLL["GET /instances/id"]
+    READY{"status == Running?"}
+    TIMEOUT["超时提示<br/>输出实例 ID 供手动查询"]
+    FORMAT{"输出格式?<br/>--output"}
+    OUT_TABLE["Table 格式<br/>终端表格 + 彩色状态"]
+    OUT_JSON["JSON 格式<br/>结构化输出"]
+    OUT_YAML["YAML 格式<br/>人类友好"]
+    DONE(["完成 ✓"])
+
+    START --> LOAD --> VALIDATE
+    VALIDATE -->|"缺少必填项"| MISSING
+    MISSING --> DONE
+    VALIDATE -->|"校验通过"| INTERACTIVE
+    INTERACTIVE -->|"是"| SURVEY --> SVC
+    INTERACTIVE -->|"否"| SVC
+    SVC --> BUILD --> SIGN --> HTTP --> RESP
+    RESP -->|"2xx 成功"| WAIT
+    RESP -->|"4xx/5xx"| RETRY
+    RETRY -->|"是"| BACKOFF --> HTTP
+    RETRY -->|"否"| ERR_TRANSLATE --> ERR_OUTPUT --> DONE
+    WAIT -->|"是"| WAITER --> POLL --> READY
+    READY -->|"否"| POLL
+    READY -->|"是"| FORMAT
+    WAIT -->|"否"| FORMAT
+    WAITER -->|"超时"| TIMEOUT --> DONE
+    FORMAT -->|"table"| OUT_TABLE --> DONE
+    FORMAT -->|"json"| OUT_JSON --> DONE
+    FORMAT -->|"yaml"| OUT_YAML --> DONE
+```
+
+---
+
+## 03 · Agent 主控循环（优化版）
+
+优化后的 Agent 流程增加了轮次控制、错误恢复、多 Tool 并发编排和上下文窗口管理。
+
+### Agent Tool-Calling 主循环
+
+```mermaid
+flowchart TD
+    INPUT(["用户输入"])
+    INIT["初始化上下文<br/>system prompt + tool schemas<br/>+ 历史消息"]
+    BUILD_MSG["构造 messages 数组<br/>追加用户消息"]
+    CALL_LLM["POST → LLM API<br/>messages + tools"]
+    PARSE["解析 LLM 响应<br/>JSON → content blocks"]
+    STOP{"stop_reason?"}
+
+    TEXT_OUT["提取 text block<br/>流式输出给用户"]
+
+    EXTRACT["提取 tool_use block<br/>name · id · input"]
+    LOOKUP["Tool 注册表查找<br/>tools.go"]
+    NOT_FOUND["返回 error tool_result<br/>'未知工具'"]
+
+    CLASSIFY{"安全级别?"}
+    LV1["🟢 Lv1 直接执行<br/>list / show / flavor"]
+    LV2["🟡 Lv2 Y/N 确认<br/>create / restart"]
+    LV3["🔴 Lv3 强确认<br/>delete → 输入实例名"]
+
+    SHOW_PARAMS["展示操作参数摘要"]
+    USER_CONFIRM{"用户确认?"}
+    CANCEL["构造 tool_result<br/>'用户已取消操作'"]
+
+    EXEC["执行 Service 函数<br/>service.XXX()"]
+    EXEC_ERR{"执行成功?"}
+    ERR_RESULT["构造 error tool_result<br/>错误信息 + 建议"]
+    OK_RESULT["构造 success tool_result<br/>格式化结果"]
+
+    FEED["追加 tool_result 到 messages"]
+    ROUND{"轮次 < 10?"}
+    OVERFLOW["提示超出轮次限制<br/>建议拆分请求"]
+
+    FINAL_OUT(["输出最终回复"])
+
+    INPUT --> INIT --> BUILD_MSG --> CALL_LLM --> PARSE --> STOP
+
+    STOP -->|"end_turn"| TEXT_OUT --> FINAL_OUT
+    STOP -->|"tool_use"| EXTRACT --> LOOKUP
+
+    LOOKUP -->|"未找到"| NOT_FOUND --> FEED
+    LOOKUP -->|"找到"| CLASSIFY
+
+    CLASSIFY -->|"只读"| LV1 --> EXEC
+    CLASSIFY -->|"写操作"| LV2 --> SHOW_PARAMS --> USER_CONFIRM
+    CLASSIFY -->|"删除"| LV3 --> SHOW_PARAMS
+
+    USER_CONFIRM -->|"Yes"| EXEC
+    USER_CONFIRM -->|"No"| CANCEL --> FEED
+
+    EXEC --> EXEC_ERR
+    EXEC_ERR -->|"失败"| ERR_RESULT --> FEED
+    EXEC_ERR -->|"成功"| OK_RESULT --> FEED
+
+    FEED --> ROUND
+    ROUND -->|"是"| CALL_LLM
+    ROUND -->|"否"| OVERFLOW --> FINAL_OUT
+```
+
+### Agent 多轮对话时序（创建实例完整示例）
+
+```mermaid
+sequenceDiagram
+    actor U as 用户
+    participant C as cmd/chat.go
+    participant A as Agent 主循环
+    participant L as LLM API
+    participant T as Tool 注册表
+    participant CF as 安全确认
+    participant S as Service 层
+    participant K as SDK 层
+    participant H as 华为云 API
+
+    U->>C: "创建 MySQL 8.0 实例 4核16G"
+    C->>A: Run(userInput)
+
+    rect rgb(230, 240, 255)
+    Note over A,L: 🔄 第 1 轮 — LLM 决定先查规格
+    A->>L: POST { messages, tools }
+    L-->>A: stop_reason: tool_use → list_flavors {engine: "MySQL"}
+    A->>T: Lookup("list_flavors") → Lv1 只读
+    T->>S: FlavorService.List("MySQL")
+    S->>K: GET /v3/{project}/flavors
+    K->>H: HTTPS (AK/SK)
+    H-->>K: 200 { flavors: [...] }
+    K-->>S: []Flavor
+    S-->>T: 匹配规格: rds.mysql.m6.large.8
+    T-->>A: tool_result: "4C16G → rds.mysql.m6.large.8"
+    end
+
+    rect rgb(230, 240, 255)
+    Note over A,L: 🔄 第 2 轮 — LLM 发现缺参数
+    A->>L: POST { messages + tool_result }
+    L-->>A: stop_reason: end_turn "需要 VPC、名称和密码"
+    A-->>C: 输出提问
+    C-->>U: "还需要 VPC、名称和密码"
+    end
+
+    U->>C: "用 prod-vpc，名字 prod-mysql，密码 Aa@123456"
+    C->>A: Run(userReply)
+
+    rect rgb(230, 240, 255)
+    Note over A,L: 🔄 第 3 轮 — LLM 发起创建
+    A->>L: POST { messages + 用户补充 }
+    L-->>A: stop_reason: tool_use → create_instance { 完整参数 }
+    A->>T: Lookup("create_instance") → Lv2 写操作
+    T->>CF: Check(create_instance, params)
+    CF-->>U: 📋 参数摘要，确认? (Y/n)
+    U-->>CF: Y
+    CF-->>A: approved = true
+    A->>T: Execute("create_instance")
+    T->>S: InstanceService.Create(input)
+    S->>K: POST /v3/{project}/instances
+    K->>H: HTTPS
+    H-->>K: 200 { id: "i-abc123" }
+    Note over S: ⏳ Waiter 轮询 (每10s)
+    loop 等待就绪
+        S->>K: GET /instances/i-abc123
+        K->>H: HTTPS
+        H-->>K: status → Running
+    end
+    S-->>T: Instance{ Running, IP: 192.168.0.55 }
+    T-->>A: tool_result: 创建成功
+    end
+
+    rect rgb(230, 240, 255)
+    Note over A,L: 🔄 第 4 轮 — LLM 总结
+    A->>L: POST { messages + tool_result }
+    L-->>A: stop_reason: end_turn 最终回复
+    A-->>C: 格式化输出
+    C-->>U: ✅ 实例已创建！mysql -h 192.168.0.55 -P 3306
+    end
+```
+
+---
+
+## 04 · 功能清单
+
+按阶段和优先级组织的完整功能清单，涵盖 CLI 命令、Agent 能力和基础设施。
+
+### Phase 1 — CLI 基础能力（W1–W6）
+
+| 编号   | 功能模块   | 命令 / 接口                   | 详细说明                                                                                                                         | 优先级 | 周次 |
+| ------ | ---------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------ | ---- |
+| F-1.1  | 凭证配置   | `openTaurus configure`        | 交互式设置 AK/SK/Region/ProjectID；支持多 Profile；文件权限 0600；ENV 覆盖                                                       | P0     | W1   |
+| F-1.2  | SDK 基座   | `sdk/client.go + signer.go`   | HTTP 客户端封装；AK/SK HMAC-SHA256 签名；超时 30s；自动重试 3 次（指数退避）；错误码翻译                                         | P0     | W1   |
+| F-1.3  | 规格查询   | `openTaurus flavor list`      | 列出可用数据库规格；支持 --engine 过滤（MySQL/PostgreSQL）；多格式输出                                                           | P0     | W2   |
+| F-1.4  | 格式化输出 | `ui/formatter.go`             | 支持 --output table\|json\|yaml；table 模式含彩色状态标识；JSON 模式适合管道和脚本                                               | P0     | W2   |
+| F-1.5  | 创建实例   | `openTaurus instance create`  | 必填：--name, --flavor, --vpc, --subnet, --password；可选：--engine, --version, --volume-size, --ha；支持 --interactive 交互模式 | P0     | W3   |
+| F-1.6  | 等待机制   | `service/waiter.go`           | 创建/重启后轮询实例状态；10s 间隔；10min 超时；spinner 动画；--no-wait 跳过等待                                                  | P0     | W3   |
+| F-1.7  | 列出实例   | `openTaurus instance list`    | 列出所有 RDS 实例；显示 ID/名称/引擎/状态/规格；支持分页                                                                         | P0     | W4   |
+| F-1.8  | 实例详情   | `openTaurus instance show`    | 查看单个实例详情；含连接信息（IP:Port）、规格、存储、创建时间                                                                    | P0     | W4   |
+| F-1.9  | 删除实例   | `openTaurus instance delete`  | 二次确认（需输入实例名）；--force 跳过确认（脚本场景）；删除前显示实例信息                                                       | P0     | W5   |
+| F-1.10 | 重启实例   | `openTaurus instance restart` | Y/N 确认；等待恢复 Running；显示预估停机时间                                                                                     | P1     | W5   |
+| F-1.11 | 错误处理   | `sdk/errors.go`               | 华为云错误码 → 人类可读中文/英文；附带修复建议；区分网络/认证/业务错误                                                           | P0     | W6   |
+
+### Phase 2 — Agent 智能交互层（W7–W12）
+
+| 编号   | 功能模块            | 接口 / 文件                     | 详细说明                                                                              | 优先级 | 周次 |
+| ------ | ------------------- | ------------------------------- | ------------------------------------------------------------------------------------- | ------ | ---- |
+| F-2.1  | LLM HTTP 客户端     | `agent/llm.go`                  | net/http 调用 LLM API（Anthropic / OpenAI）；不依赖第三方 SDK；流式响应可选；超时 60s | P0     | W7   |
+| F-2.2  | 响应解析器          | `agent/parser.go`               | JSON 解析 LLM 响应；提取 text / tool_use / end_turn；处理 content blocks 数组         | P0     | W7   |
+| F-2.3  | Tool 注册表         | `agent/tools.go`                | 将 Service 函数映射为 LLM Tool Schema；自动生成 JSON Schema；运行时注册 + 查找        | P0     | W8   |
+| F-2.4  | Tool-Calling 主循环 | `agent/agent.go`                | 构造 messages → 调 LLM → 解析 → 执行 Tool → 喂回 → 循环；最多 10 轮；超时 5min        | P0     | W8   |
+| F-2.5  | 安全确认机制        | `agent/confirm.go`              | 三级安全模型：Lv1 只读直接执行，Lv2 写操作 Y/N 确认，Lv3 删除需输入实例名             | P0     | W9   |
+| F-2.6  | 系统提示词          | `agent/prompts.go`              | 角色定义；能力边界声明；行为约束（不编造 Tool）；参数补全引导策略                     | P0     | W9   |
+| F-2.7  | chat 命令（单次）   | `openTaurus chat "..."`         | 单次自然语言输入 → Agent 执行 → 输出结果；适合脚本和管道                              | P0     | W10  |
+| F-2.8  | chat 命令（交互式） | `openTaurus chat`               | 多轮交互式对话；保持上下文；支持 /exit, /clear, /help 内置命令                        | P0     | W10  |
+| F-2.9  | 备份管理            | `openTaurus backup create/list` | 创建手动备份；列出备份记录；Agent 同样可通过自然语言操作                              | P1     | W11  |
+| F-2.10 | 交叉编译打包        | `goreleaser`                    | 5 平台自动打包；GitHub Release 自动发布；SHA256 校验和                                | P0     | W12  |
+
+---
+
+## 05 · 开发迭代路线图
+
+按周次展示 CLI（W1–W6）和 Agent（W7–W12）的开发迭代路径及依赖关系。
+
+### 12 周开发路线与依赖关系
+
+```mermaid
+flowchart LR
+    subgraph P1["Phase 1 · CLI 基础"]
+        W1["W1<br/>━━━━━<br/>configure<br/>SDK 基座<br/>AK/SK 签名"]
+        W2["W2<br/>━━━━━<br/>flavor list<br/>Formatter<br/>table/json/yaml"]
+        W3["W3<br/>━━━━━<br/>instance create<br/>Waiter 轮询<br/>交互式创建"]
+        W4["W4<br/>━━━━━<br/>instance list<br/>instance show<br/>分页 + 详情"]
+        W5["W5<br/>━━━━━<br/>instance delete<br/>instance restart<br/>二次确认"]
+        W6["W6<br/>━━━━━<br/>错误处理<br/>单元测试<br/>CI 流水线"]
+    end
+
+    subgraph P2["Phase 2 · Agent 层"]
+        W7["W7<br/>━━━━━<br/>LLM 客户端<br/>响应解析器<br/>多模型适配"]
+        W8["W8<br/>━━━━━<br/>Tool 注册表<br/>主控循环<br/>轮次控制"]
+        W9["W9<br/>━━━━━<br/>安全确认<br/>系统提示词<br/>三级模型"]
+        W10["W10<br/>━━━━━<br/>chat 单次<br/>chat 交互式<br/>内置命令"]
+        W11["W11<br/>━━━━━<br/>备份管理<br/>交互式创建<br/>Agent 集成"]
+        W12["W12<br/>━━━━━<br/>E2E 测试<br/>交叉编译<br/>文档 + 发布"]
+    end
 
     W1 --> W2 --> W3 --> W4 --> W5 --> W6
-
-    classDef weekStyle fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
-    class W1,W2,W3,W4,W5,W6 weekStyle
-```
-
-**关键里程碑**
-
-- W1-2: 链路打通（configure + SDK 签名 + flavor list）
-- W3-4: 核心功能（create / list / show）
-- W5-6: 完善体验（delete / restart + 错误处理 + 测试）
-
----
-
-## 三、Agent 主控循环
-
-```mermaid
-graph TD
-    START["用户输入"]
-    CALL["调用 LLM API"]
-    CHECK{"stop_reason?"}
-    TOOL["提取 tool_use"]
-    SAFE{"安全级别?"}
-    CONFIRM["用户确认?"]
-    EXEC["执行 Service"]
-    FEED["结果喂回 LLM"]
-    OUTPUT["输出回复"]
-    DONE["结束"]
-
-    START --> CALL
-    CALL --> CHECK
-    CHECK -->|tool_use| TOOL
-    CHECK -->|end_turn| OUTPUT
-    TOOL --> SAFE
-    SAFE -->|只读| EXEC
-    SAFE -->|写入/删除| CONFIRM
-    CONFIRM -->|Yes| EXEC
-    CONFIRM -->|No| FEED
-    EXEC --> FEED
-    FEED --> CALL
-    OUTPUT --> DONE
-
-    classDef nodeStyle fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
-    classDef decisionStyle fill:#F0E6FF,stroke:#4B0082,stroke-width:2px,color:#000
-
-    class START,CALL,TOOL,EXEC,FEED,OUTPUT,DONE nodeStyle
-    class CHECK,SAFE,CONFIRM decisionStyle
-```
-
-**三级安全模型**
-
-- **直接执行**：list / show / flavor（只读操作）
-- **Y/N 确认**：create / restart（写操作，展示参数摘要）
-- **强确认**：delete（删除操作，需输入实例名）
-
----
-
-## 四、Agent 开发流程（第 7-12 周）
-
-```mermaid
-graph LR
-    W7["W7: LLM客户端+解析<br/>HTTP + JSON parser"]
-    W8["W8: Tool注册+主循环<br/>Service映射 + loop"]
-    W9["W9: 确认机制+提示词<br/>三级安全 + prompts"]
-    W10["W10: chat命令+对话<br/>单次 + 交互模式"]
-    W11["W11: 备份+交互式<br/>backup + interactive"]
-    W12["W12: 测试+打包+文档<br/>CI + release"]
-
+    W6 -->|"Service 层完成"| W7
     W7 --> W8 --> W9 --> W10 --> W11 --> W12
-
-    classDef weekStyle fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
-    class W7,W8,W9,W10,W11,W12 weekStyle
 ```
-
-**关键里程碑**
-
-- W7-8: Agent 跑通（LLM 客户端 + Tool-calling 循环）
-- W9-10: Agent 可用（安全确认 + chat 命令）
-- W11-12: 产品发布（完整功能 + 测试 + 打包）
 
 ---
 
-## 五、完整数据流示例
+## 06 · 测试策略与观测点
 
-用户通过 Agent 创建 MySQL 实例的完整交互流程：
+覆盖单元测试、集成测试、E2E 测试三层，以及关键性能与安全观测指标。
 
-```
-用户: "帮我创建一个 MySQL 8.0 实例，4核16G"
-  │
-  ▼
-Agent 循环:
-  1. 调用 LLM → 返回 tool_use: list_flavors
-  2. 执行查询 → 找到匹配规格 rds.mysql.m6.large.8
-  3. 结果喂回 LLM → 发现缺少 VPC/密码，询问用户
-  4. 用户补充: "用 prod-vpc，名字 prod-mysql，密码 MyPass123!"
-  5. LLM 返回 tool_use: create_instance
-  6. 展示参数摘要 → 用户确认 (Y)
-  7. 执行创建 → 等待就绪
-  8. 返回实例 ID + 连接信息
-```
-
-<details>
-<summary>点击展开查看详细时序图</summary>
+### 6.1 测试分层策略
 
 ```mermaid
-sequenceDiagram
-    actor User as 用户
-    participant Agent as Agent
-    participant LLM as LLM API
-    participant Service as Service 层
-    participant Cloud as 华为云 API
+graph TB
+    E2E["🔺 E2E 端到端测试<br/>完整用户场景 · 真实 API<br/>覆盖: 5-10 个核心场景"]
+    INT["🔶 集成测试<br/>Service + SDK 联调 · Mock 华为云 API<br/>覆盖: 每个 API 路径"]
+    UNIT["🟦 单元测试<br/>Service / SDK / Agent 各模块<br/>覆盖: > 70%"]
 
-    User->>Agent: "创建MySQL实例 4核16G"
-
-    Note over Agent,LLM: 第1轮
-    Agent->>LLM: POST (messages + tools)
-    LLM-->>Agent: tool_use: list_flavors
-    Agent->>Service: FlavorService.List()
-    Service->>Cloud: GET /flavors
-    Cloud-->>Service: 规格列表
-    Service-->>Agent: 找到匹配规格
-
-    Note over Agent,LLM: 第2轮
-    Agent->>LLM: POST (tool_result)
-    LLM-->>Agent: end_turn: "还需要VPC和密码"
-    Agent-->>User: 询问缺失参数
-
-    User->>Agent: "用prod-vpc，密码MyPass123!"
-
-    Note over Agent,LLM: 第3轮
-    Agent->>LLM: POST (用户回复)
-    LLM-->>Agent: tool_use: create_instance
-    Agent-->>User: 展示参数，确认？(Y/n)
-    User-->>Agent: Y
-    Agent->>Service: InstanceService.Create()
-    Service->>Cloud: POST /instances
-    Cloud-->>Service: 实例创建中
-
-    Note over Service: 轮询等待
-    loop 每10s
-        Service->>Cloud: GET /instances/{id}
-        Cloud-->>Service: status: Running
-    end
-
-    Service-->>Agent: 实例已就绪
-
-    Note over Agent,LLM: 第4轮
-    Agent->>LLM: POST (tool_result)
-    LLM-->>Agent: end_turn: 最终回复
-    Agent-->>User: "实例已创建！连接: mysql -h 192.168.0.55"
+    E2E --- INT --- UNIT
 ```
 
-</details>
+### 6.2 单元测试观测点（Service 层）
+
+**实例管理 `service/instance_test.go`**
+
+| #   | 测试项           | 验证内容                       |
+| --- | ---------------- | ------------------------------ |
+| 1   | Create 参数缺失  | 必填参数缺失时返回明确错误信息 |
+| 2   | Create 密码校验  | 密码不满足复杂度要求时校验拦截 |
+| 3   | Create 成功      | 成功返回实例 ID 和初始状态     |
+| 4   | List 空列表      | 空列表返回空数组（非 nil）     |
+| 5   | List 分页        | 分页参数正确传递到 SDK 层      |
+| 6   | Show 不存在      | 实例不存在时返回 404 错误      |
+| 7   | Delete 成功      | 返回成功状态码                 |
+| 8   | Restart 状态限制 | 实例非 Running 状态时拒绝重启  |
+
+**SDK 层 `sdk/client_test.go`**
+
+| #   | 测试项            | 验证内容                           |
+| --- | ----------------- | ---------------------------------- |
+| 1   | Signer 签名一致性 | 签名结果与华为云官方示例一致       |
+| 2   | Client 超时       | 超时 30s 后返回超时错误            |
+| 3   | Client 429 重试   | 429 触发重试（最多 3 次）          |
+| 4   | Client 5xx vs 4xx | 5xx 触发重试，4xx 不重试（除 429） |
+| 5   | 退避间隔          | 指数退避间隔正确（1s / 2s / 4s）   |
+| 6   | 已知错误码翻译    | 已知错误码正确翻译为中文           |
+| 7   | 未知错误码        | 未知错误码返回原始信息             |
+| 8   | Config 权限       | 文件权限验证为 0600                |
+
+### 6.3 Agent 测试观测点
+
+**LLM 客户端 `agent/llm_test.go`**
+
+| #   | 测试项           | 验证内容                               |
+| --- | ---------------- | -------------------------------------- |
+| 1   | 请求体格式       | messages + tools 结构正确              |
+| 2   | 解析 text block  | 正确提取 text 类型内容                 |
+| 3   | 解析 tool_use    | 正确提取 tool_use（name / id / input） |
+| 4   | 识别 stop_reason | 正确区分 end_turn 和 tool_use          |
+| 5   | 超时处理         | 60s 超时返回友好提示                   |
+| 6   | API 错误         | LLM API 返回非 200 时的处理            |
+| 7   | 多模型适配       | Anthropic 和 OpenAI 格式兼容           |
+
+**Tool-Calling 主循环 `agent/agent_test.go`**
+
+| #   | 测试项        | 验证内容                          |
+| --- | ------------- | --------------------------------- |
+| 1   | 单轮 end_turn | end_turn 直接输出文本             |
+| 2   | 多轮循环      | tool_use → 执行 → 喂回 → 再调 LLM |
+| 3   | 轮次上限      | 超过 10 轮时终止并提示            |
+| 4   | 未知 Tool     | 返回 error tool_result            |
+| 5   | Tool 执行失败 | 错误信息正确喂回 LLM              |
+| 6   | 用户取消      | 取消信息正确喂回 LLM              |
+| 7   | 上下文累积    | messages 数组正确追加             |
+
+**安全确认机制 `agent/confirm_test.go`**
+
+| #   | 测试项             | 验证内容                |
+| --- | ------------------ | ----------------------- |
+| 1   | Lv1 list_instances | 无确认直接执行          |
+| 2   | Lv1 show_instance  | 无确认直接执行          |
+| 3   | Lv1 list_flavors   | 无确认直接执行          |
+| 4   | Lv2 create → Y     | 展示参数摘要 → Y → 执行 |
+| 5   | Lv2 create → N     | 展示参数摘要 → N → 取消 |
+| 6   | Lv2 restart        | 确认后执行              |
+| 7   | Lv3 delete 匹配    | 需输入实例名匹配才执行  |
+| 8   | Lv3 delete 不匹配  | 实例名不匹配时拒绝      |
+| 9   | 未注册 Tool        | 默认拒绝执行            |
+
+### 6.4 集成测试观测点
+
+| 场景编号 | 测试场景                 | 测试方法                                | 核心验证点                                    | 通过标准            |
+| -------- | ------------------------ | --------------------------------------- | --------------------------------------------- | ------------------- |
+| IT-01    | SDK 签名 → Mock API      | httptest.Server 模拟华为云              | Authorization Header 格式、时间戳、签名值     | 签名与预期一致      |
+| IT-02    | Service → SDK → Mock API | Mock 返回预定义 JSON                    | Service 层正确解析 API 响应并映射为 Go struct | 字段无丢失          |
+| IT-03    | Waiter 轮询              | Mock 返回 Creating → Creating → Running | 轮询次数、间隔、最终状态                      | 3 次轮询后 Running  |
+| IT-04    | Waiter 超时              | Mock 持续返回 Creating                  | 超时后返回错误而非死循环                      | 超时退出 + 友好提示 |
+| IT-05    | 重试策略                 | Mock 前 2 次 429，第 3 次 200           | 重试次数、退避间隔、最终成功                  | 第 3 次成功         |
+| IT-06    | Agent 单轮 Tool-Calling  | Mock LLM 返回 tool_use → end_turn       | Tool 正确执行，result 正确喂回                | 完整循环            |
+| IT-07    | Agent 多轮对话           | Mock LLM 返回多次 tool_use              | messages 累积正确，上下文连贯                 | 上下文保持          |
+| IT-08    | Agent 安全拦截           | Mock LLM 返回 delete tool_use           | 确认机制触发，取消时 LLM 收到取消消息         | 未执行删除          |
+
+### 6.5 E2E 端到端测试场景
+
+| 场景编号 | 测试场景         | 操作步骤                                                                                       | 预期结果                                                    |
+| -------- | ---------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| E2E-01   | CLI 完整生命周期 | configure → flavor list → instance create → instance show → instance restart → instance delete | 全流程无报错，各阶段输出正确                                |
+| E2E-02   | Agent 创建实例   | chat "创建一个 MySQL 实例 2核4G" → 补充参数 → 确认                                             | Agent 正确调用 list_flavors + create_instance，实例创建成功 |
+| E2E-03   | Agent 查询实例   | chat "列出所有 MySQL 实例"                                                                     | Agent 调用 list_instances 并格式化输出                      |
+| E2E-04   | Agent 删除保护   | chat "删除 prod-mysql" → 输入错误实例名 → 输入正确实例名                                       | 首次拒绝，再次确认后删除                                    |
+| E2E-05   | Agent 越界请求   | chat "帮我优化这条 SQL"                                                                        | Agent 拒绝并告知能力边界                                    |
+| E2E-06   | 错误恢复         | AK/SK 错误 → configure 修复 → 重新操作                                                         | 错误信息友好，修复后操作成功                                |
+| E2E-07   | 多格式输出       | instance list --output table/json/yaml                                                         | 三种格式均正确，JSON 可被 jq 解析                           |
+
+### 6.6 性能与安全观测指标
+
+**性能指标**
+
+| 指标           | 目标              | 测量方法                                |
+| -------------- | ----------------- | --------------------------------------- |
+| CLI 启动时间   | < 100ms           | go test -bench 测量 main 启动到命令路由 |
+| API 单次调用   | < 3s（P95）       | 超时 30s                                |
+| Agent 单轮响应 | < 10s（P95）      | 超时 60s                                |
+| Agent 完整对话 | < 60s（4 轮以内） | 超时 5min                               |
+| 二进制体积     | < 15MB            | 单平台编译产物                          |
+| 内存占用       | < 50MB            | Agent 多轮对话峰值                      |
+
+**安全指标**
+
+| 指标                 | 要求                                       | 验证方式              |
+| -------------------- | ------------------------------------------ | --------------------- |
+| 配置文件权限         | config.yaml 必须为 0600                    | 非安全权限时告警      |
+| AK/SK 不泄露         | 日志、错误输出、Agent 对话中不出现凭证     | grep 扫描 + 代码审查  |
+| 删除二次确认         | 无论 CLI 还是 Agent，delete 必须经过强确认 | E2E 测试覆盖          |
+| ENV 覆盖优先级       | 环境变量 > 配置文件 > 默认值               | 单元测试验证优先级链  |
+| HTTPS 强制           | 所有 API 调用必须走 HTTPS，拒绝 HTTP       | SDK 层硬编码 https:// |
+| Agent 不执行任意命令 | Tool 注册表之外的操作一律拒绝              | Agent 集成测试验证    |
+
+### 6.7 CI/CD 流水线观测点
+
+| #   | 检查项         | 说明                                                        |
+| --- | -------------- | ----------------------------------------------------------- |
+| 1   | **Lint**       | golangci-lint 零 warning（含 errcheck, staticcheck, gosec） |
+| 2   | **单元测试**   | go test ./... 全部通过，覆盖率 ≥ 70%                        |
+| 3   | **竞态检测**   | go test -race 无 data race                                  |
+| 4   | **交叉编译**   | 5 平台编译成功（linux/darwin amd64/arm64 + windows amd64）  |
+| 5   | **二进制体积** | 编译产物 ≤ 15MB                                             |
+| 6   | **集成测试**   | Mock API 集成测试通过                                       |
+| 7   | **安全扫描**   | govulncheck 无已知漏洞                                      |
 
 ---
 
-## 六、模块详细展开（可选查看）
+## 07 · Agent 边界与异常处理
 
-# OpenTaurus 架构设计全景图
+Agent 运行过程中可能遇到的边界情况及对应处理策略。
 
----
+### Agent 异常处理决策树
 
 ```mermaid
-graph TD
-    %% ====== 用户入口 ======
-    CLI["CLI 模式<br/>openTaurus instance create<br/>openTaurus instance list<br/>openTaurus flavor list"]
-    CHAT["Agent 模式<br/>openTaurus chat '创建MySQL实例'<br/>openTaurus chat 'prod-mysql有慢查询吗'"]
+flowchart TD
+    ERR(["异常发生"])
+    TYPE{"异常类型?"}
 
-    %% ====== 命令路由 ======
-    CMD_CLI["cmd/ 命令路由<br/>instance / flavor / backup<br/>configure / completion"]
-    CMD_CHAT["cmd/chat.go<br/>Agent 入口"]
+    NET["网络错误<br/>超时 / DNS / 连接拒绝"]
+    NET_ACT["重试 3 次 + 指数退避<br/>仍失败 → 提示检查网络"]
 
-    %% ====== Agent 层 ======
-    AGENT_CORE["agent.go · 主控循环<br/>构造 messages → 调 LLM<br/>→ 解析响应 → 执行 Tool → 循环"]
-    A_LLM["llm.go<br/>LLM 客户端<br/>net/http POST"]
-    A_TOOLS["tools.go<br/>Tool 注册表<br/>Service → Tool"]
-    A_SAFE["confirm.go<br/>安全确认<br/>三级模型"]
-    A_PROMPT["prompts.go<br/>系统提示词"]
+    AUTH["认证错误<br/>AK/SK 无效 / 过期"]
+    AUTH_ACT["提示重新 configure<br/>不重试"]
 
-    %% ====== Service 层 ======
-    SVC_INST["instance.go<br/>Create / List / Show<br/>Delete / Restart"]
-    SVC_FLAVOR["flavor.go<br/>ListFlavors"]
-    SVC_BACKUP["backup.go<br/>Create / List"]
-    SVC_WAITER["waiter.go<br/>轮询等待就绪"]
-    SVC_DIAG["diagnose.go<br/>慢查询 / 连接数<br/>锁分析 / 表空间"]
+    LLM_ERR["LLM API 错误<br/>429 / 500 / 模型不可用"]
+    LLM_ACT["重试 2 次<br/>仍失败 → 提示稍后再试"]
 
-    %% ====== SDK 层 ======
-    SDK_CLIENT["client.go<br/>HTTP 客户端<br/>超时 30s · 重试 3 次"]
-    SDK_SIGN["signer.go<br/>AK/SK HMAC-SHA256"]
-    SDK_ERR["errors.go<br/>错误码 → 人类可读"]
-    SDK_DB["db.go<br/>database/sql<br/>直连 MySQL / PG"]
+    TOOL_ERR["Tool 执行失败<br/>华为云 API 返回错误"]
+    TOOL_ACT["错误信息喂回 LLM<br/>让 LLM 决定下一步"]
 
-    %% ====== MCP 层 ======
-    MCP_MONITOR["MCP: Cloud Eye<br/>CPU / 内存 / IOPS"]
-    MCP_LOG["MCP: LTS 日志<br/>错误日志 / 审计日志"]
-    MCP_DAS["MCP: DAS<br/>慢 SQL 报告"]
-    MCP_VPC["MCP: VPC<br/>安全组 / 网络排查"]
+    PARSE_ERR["响应解析错误<br/>LLM 返回非法 JSON"]
+    PARSE_ACT["记录日志<br/>提示 LLM 重新生成"]
 
-    %% ====== 横向支撑 ======
-    CFG["config/<br/>~/.openTaurus/config.yaml<br/>多 Profile · ENV 覆盖"]
-    UI["ui/<br/>table / json / yaml<br/>color · spinner"]
+    BOUNDARY["越界请求<br/>用户要求能力范围外操作"]
+    BOUNDARY_ACT["LLM 自行判断无可用 Tool<br/>以 end_turn 返回婉拒文本"]
 
-    %% ====== 外部系统 ======
-    LLM["LLM API<br/>Anthropic / OpenAI"]
-    CLOUD["Huawei Cloud RDS API"]
-    DB["🗄️ 客户数据库实例<br/>MySQL / PostgreSQL"]
-    CLOUD_OTHER["华为云其他服务<br/>Cloud Eye / LTS / DAS / VPC"]
-
-    %% ====== 连线：用户 → 命令 ======
-    CLI --> CMD_CLI
-    CHAT --> CMD_CHAT
-
-    %% ====== 连线：命令 → 下层 ======
-    CMD_CLI --> SVC_INST
-    CMD_CLI --> SVC_FLAVOR
-    CMD_CLI --> SVC_BACKUP
-    CMD_CLI --> UI
-    CMD_CLI --> CFG
-    CMD_CHAT --> AGENT_CORE
-
-    %% ====== 连线：Agent 内部 ======
-    AGENT_CORE --> A_LLM
-    AGENT_CORE --> A_TOOLS
-    AGENT_CORE --> A_SAFE
-    AGENT_CORE --> A_PROMPT
-    A_LLM --> LLM
-
-    %% ====== 连线：Agent → Service（内置 Tool）======
-    A_TOOLS --> SVC_INST
-    A_TOOLS --> SVC_FLAVOR
-    A_TOOLS --> SVC_BACKUP
-    A_TOOLS --> SVC_DIAG
-
-    %% ====== 连线：Agent → MCP（外部数据源）======
-    A_TOOLS --> MCP_MONITOR
-    A_TOOLS --> MCP_LOG
-    A_TOOLS --> MCP_DAS
-    A_TOOLS --> MCP_VPC
-
-    %% ====== 连线：Service → SDK ======
-    SVC_INST --> SDK_CLIENT
-    SVC_FLAVOR --> SDK_CLIENT
-    SVC_BACKUP --> SDK_CLIENT
-    SVC_WAITER --> SDK_CLIENT
-    SVC_WAITER --> UI
-    SVC_DIAG --> SDK_DB
-    SVC_DIAG --> SDK_CLIENT
-
-    %% ====== 连线：SDK → 外部 ======
-    SDK_CLIENT --> SDK_SIGN
-    SDK_CLIENT --> SDK_ERR
-    SDK_SIGN --> CFG
-    SDK_CLIENT --> CLOUD
-    SDK_DB --> DB
-
-    %% ====== 连线：MCP → 外部 ======
-    MCP_MONITOR --> CLOUD_OTHER
-    MCP_LOG --> CLOUD_OTHER
-    MCP_DAS --> CLOUD_OTHER
-    MCP_VPC --> CLOUD_OTHER
-
-    %% ====== 样式 ======
-    classDef nodeStyle fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
-    classDef diagStyle fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px,color:#000
-    classDef mcpStyle fill:#FFF3E0,stroke:#E65100,stroke-width:2px,color:#000
-    classDef externalStyle fill:#F0F0F0,stroke:#666,stroke-width:2px,color:#000
-
-    class CLI,CHAT nodeStyle
-    class CMD_CLI,CMD_CHAT nodeStyle
-    class AGENT_CORE,A_LLM,A_TOOLS,A_SAFE,A_PROMPT nodeStyle
-    class SVC_INST,SVC_FLAVOR,SVC_BACKUP,SVC_WAITER nodeStyle
-    class SDK_CLIENT,SDK_SIGN,SDK_ERR nodeStyle
-    class CFG,UI nodeStyle
-    class SVC_DIAG,SDK_DB diagStyle
-    class MCP_MONITOR,MCP_LOG,MCP_DAS,MCP_VPC mcpStyle
-    class CLOUD,LLM,DB,CLOUD_OTHER externalStyle
+    ERR --> TYPE
+    TYPE -->|"网络"| NET --> NET_ACT
+    TYPE -->|"认证"| AUTH --> AUTH_ACT
+    TYPE -->|"LLM"| LLM_ERR --> LLM_ACT
+    TYPE -->|"Tool"| TOOL_ERR --> TOOL_ACT
+    TYPE -->|"解析"| PARSE_ERR --> PARSE_ACT
+    TYPE -->|"越界"| BOUNDARY --> BOUNDARY_ACT
 ```
 
 ---
 
-## 二、CLI 数据流（Phase 1）
-
-```mermaid
-graph LR
-    C1["用户输入命令"]
-    C2["cmd/ 解析参数"]
-    C3["service/ 业务逻辑"]
-    C4["sdk/ 签名 + HTTP"]
-    C5["☁️ 华为云 API"]
-
-    C1 --> C2 --> C3 --> C4 --> C5
-
-    classDef nodeStyle fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
-    classDef externalStyle fill:#F0F0F0,stroke:#666,stroke-width:2px,color:#000
-
-    class C1,C2,C3,C4 nodeStyle
-    class C5 externalStyle
-```
-
----
-
-## 三、Agent 数据流（Phase 2 — 实例管理）
-
-```mermaid
-graph LR
-    A1["用户自然语言"]
-    A2["agent/ 主循环"]
-    A3["LLM 推理"]
-    A4["tools.go 选 Tool"]
-    A5["confirm.go 确认"]
-    A6["service/ 执行"]
-    A7["sdk/ API 调用"]
-    A8["华为云 API"]
-
-    A1 --> A2 --> A3 --> A4 --> A5 --> A6 --> A7 --> A8
-    A6 -->|"结果喂回"| A2
-
-    classDef nodeStyle fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
-    classDef decisionStyle fill:#F0E6FF,stroke:#4B0082,stroke-width:2px,color:#000
-    classDef externalStyle fill:#F0F0F0,stroke:#666,stroke-width:2px,color:#000
-
-    class A1,A2,A4,A6,A7 nodeStyle
-    class A3,A5 decisionStyle
-    class A8 externalStyle
-```
-
----
-
-## 四、智能诊断数据流（Phase 3 — 内置 Tool 直连）
-
-```mermaid
-graph LR
-    D1["'prod-mysql 有慢查询吗'"]
-    D2["agent/ 主循环"]
-    D3["LLM 推理"]
-    D4["tools.go<br/>选 diagnose_slow_query"]
-    D5["service/diagnose.go"]
-    D6["sdk/ 拿实例 IP"]
-    D7["华为云 API"]
-    D8["database/sql 直连"]
-    D9["客户 MySQL"]
-    D10["LLM 总结分析"]
-    D11["返回诊断报告"]
-
-    D1 --> D2 --> D3 --> D4 --> D5
-    D5 --> D6 --> D7
-    D7 -->|"IP:Port"| D5
-    D5 --> D8 --> D9
-    D9 -->|"慢查询数据"| D5
-    D5 -->|"结果喂回"| D10 --> D11
-
-    classDef nodeStyle fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
-    classDef diagStyle fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px,color:#000
-    classDef decisionStyle fill:#F0E6FF,stroke:#4B0082,stroke-width:2px,color:#000
-    classDef externalStyle fill:#F0F0F0,stroke:#666,stroke-width:2px,color:#000
-
-    class D1,D2,D10,D11 nodeStyle
-    class D3 decisionStyle
-    class D4,D5,D8 diagStyle
-    class D6 nodeStyle
-    class D7,D9 externalStyle
-```
-
----
-
-## 五、智能诊断数据流（Phase 3 — MCP 外部数据源）
-
-```mermaid
-graph LR
-    M1["'prod-mysql 为什么连不上'"]
-    M2["agent/ 主循环"]
-    M3["LLM 推理"]
-    M4["tools.go 编排多个数据源"]
-    M5_A["MCP: VPC<br/>查安全组规则"]
-    M5_B["MCP: Cloud Eye<br/>查 CPU/连接数"]
-    M5_C["MCP: LTS<br/>查错误日志"]
-    M5_D["内置 Tool<br/>查实例状态"]
-    M6["华为云各服务"]
-    M7["LLM 综合分析"]
-    M8["返回排查报告"]
-
-    M1 --> M2 --> M3 --> M4
-    M4 --> M5_A --> M6
-    M4 --> M5_B --> M6
-    M4 --> M5_C --> M6
-    M4 --> M5_D --> M6
-    M6 -->|"各项数据"| M7 --> M8
-
-    classDef nodeStyle fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
-    classDef mcpStyle fill:#FFF3E0,stroke:#E65100,stroke-width:2px,color:#000
-    classDef diagStyle fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px,color:#000
-    classDef decisionStyle fill:#F0E6FF,stroke:#4B0082,stroke-width:2px,color:#000
-    classDef externalStyle fill:#F0F0F0,stroke:#666,stroke-width:2px,color:#000
-
-    class M1,M2,M7,M8 nodeStyle
-    class M3 decisionStyle
-    class M5_A,M5_B,M5_C mcpStyle
-    class M4,M5_D diagStyle
-    class M6 externalStyle
-```
-
----
-
-## 六、Agent 主控循环（含诊断分支）
-
-```mermaid
-graph TD
-    START(["开始"])
-    BUILD["构造 messages<br/>system prompt + tools + 用户消息"]
-    CALL["POST → LLM API"]
-    PARSE["解析响应"]
-    CHECK{"stop_reason?"}
-    EXTRACT["提取 tool_use<br/>name + params"]
-    CLASSIFY{"Tool 类型?"}
-    MANAGE["实例管理 Tool<br/>create / list / show<br/>delete / restart / flavor"]
-    DIAG_BUILTIN["内置诊断 Tool<br/>slow_query / processlist<br/>lock_analysis / tablespace"]
-    DIAG_MCP["MCP 诊断 Tool<br/>monitor / log<br/>das_report / vpc_check"]
-    SAFE{"需要确认?"}
-    EXECUTE["执行 Tool"]
-    CONFIRM_OP["展示操作 → 确认"]
-    CANCEL["告知 LLM: 已取消"]
-    FEED["构造 tool_result → 喂回"]
-    MAX{"超过 10 轮?"}
-    OUTPUT["输出最终回复"]
-    TIMEOUT["提示: 请重新描述"]
-    END(["结束"])
-
-    START --> BUILD
-    BUILD --> CALL
-    CALL --> PARSE
-    PARSE --> CHECK
-    CHECK -->|"end_turn"| OUTPUT
-    CHECK -->|"tool_use"| EXTRACT
-    EXTRACT --> CLASSIFY
-    CLASSIFY -->|"管理类"| MANAGE
-    CLASSIFY -->|"内置诊断"| DIAG_BUILTIN
-    CLASSIFY -->|"MCP 诊断"| DIAG_MCP
-    MANAGE --> SAFE
-    DIAG_BUILTIN --> EXECUTE
-    DIAG_MCP --> EXECUTE
-    SAFE -->|"只读操作"| EXECUTE
-    SAFE -->|"写/删操作"| CONFIRM_OP
-    CONFIRM_OP -->|"Yes"| EXECUTE
-    CONFIRM_OP -->|"No"| CANCEL
-    EXECUTE --> FEED
-    CANCEL --> FEED
-    FEED --> MAX
-    MAX -->|"否"| CALL
-    MAX -->|"是"| TIMEOUT
-    TIMEOUT --> END
-    OUTPUT --> END
-
-    classDef nodeStyle fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
-    classDef decisionStyle fill:#F0E6FF,stroke:#4B0082,stroke-width:2px,color:#000
-    classDef diagStyle fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px,color:#000
-    classDef mcpStyle fill:#FFF3E0,stroke:#E65100,stroke-width:2px,color:#000
-
-    class START,BUILD,CALL,PARSE,EXTRACT,MANAGE,EXECUTE,CANCEL,FEED,OUTPUT,TIMEOUT,END nodeStyle
-    class CHECK,CLASSIFY,SAFE,MAX decisionStyle
-    class DIAG_BUILTIN diagStyle
-    class DIAG_MCP mcpStyle
-    class CONFIRM_OP nodeStyle
-```
-
----
-
-## 七、Tool 注册表全景
-
-```mermaid
-graph TD
-    REGISTRY["tools.go · Tool 注册表"]
-
-    REGISTRY --> G1
-    REGISTRY --> G2
-    REGISTRY --> G3
-
-    G1["实例管理（Phase 1-2）"]
-    G1_1["create_instance → service.Create"]
-    G1_2["list_instances → service.List"]
-    G1_3["show_instance → service.Show"]
-    G1_4["delete_instance → service.Delete"]
-    G1_5["restart_instance → service.Restart"]
-    G1_6["list_flavors → service.Flavor"]
-    G1_7["create_backup → service.Backup"]
-
-    G2["内置诊断（Phase 3a）"]
-    G2_1["diagnose_slow_query<br/>→ 直连 MySQL 查 slow_log"]
-    G2_2["diagnose_processlist<br/>→ SHOW PROCESSLIST"]
-    G2_3["diagnose_locks<br/>→ INNODB STATUS"]
-    G2_4["diagnose_tablespace<br/>→ 表空间使用率"]
-
-    G3["MCP 诊断（Phase 3b）"]
-    G3_1["mcp_monitor<br/>→ Cloud Eye 监控指标"]
-    G3_2["mcp_logs<br/>→ LTS 错误日志"]
-    G3_3["mcp_slow_report<br/>→ DAS 慢 SQL 报告"]
-    G3_4["mcp_network<br/>→ VPC 安全组排查"]
-
-    G1 --> G1_1
-    G1 --> G1_2
-    G1 --> G1_3
-    G1 --> G1_4
-    G1 --> G1_5
-    G1 --> G1_6
-    G1 --> G1_7
-
-    G2 --> G2_1
-    G2 --> G2_2
-    G2 --> G2_3
-    G2 --> G2_4
-
-    G3 --> G3_1
-    G3 --> G3_2
-    G3 --> G3_3
-    G3 --> G3_4
-
-    classDef nodeStyle fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
-    classDef diagStyle fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px,color:#000
-    classDef mcpStyle fill:#FFF3E0,stroke:#E65100,stroke-width:2px,color:#000
-
-    class REGISTRY,G1,G1_1,G1_2,G1_3,G1_4,G1_5,G1_6,G1_7 nodeStyle
-    class G2,G2_1,G2_2,G2_3,G2_4 diagStyle
-    class G3,G3_1,G3_2,G3_3,G3_4 mcpStyle
-```
-
----
-
-## 八、模块依赖（W1-W6 CLI + W7-W12 Agent）
-
-```mermaid
-graph TD
-    W1_CONF["W1: configure"]
-    W1_SDK["W1: SDK Client"]
-    W2_FLAVOR["W2: flavor list"]
-    W2_FMT["W2: Formatter"]
-    W3_CREATE["W3: instance create"]
-    W3_WAITER["W3: Waiter"]
-    W4_LIST["W4: instance list"]
-    W4_SHOW["W4: instance show"]
-    W5_DELETE["W5: instance delete"]
-    W5_RESTART["W5: instance restart"]
-    W6_ERROR["W6: 错误处理 + 测试"]
-    W7_LLM["W7: LLM 客户端 + 解析器"]
-    W8_LOOP["W8: Tool 注册 + 主循环"]
-    W9_SAFE["W9: 确认机制 + 提示词"]
-    W10_CHAT["W10: openTaurus chat"]
-    W11_EXT["W11: 备份 + 交互式"]
-    W12_SHIP["W12: 测试 + 打包 + 文档"]
-
-    W1_CONF --> W1_SDK
-    W1_SDK --> W2_FLAVOR
-    W1_SDK --> W2_FMT
-    W2_FLAVOR --> W3_CREATE
-    W2_FMT --> W3_CREATE
-    W3_CREATE --> W3_WAITER
-    W1_SDK --> W4_LIST
-    W1_SDK --> W4_SHOW
-    W4_SHOW --> W5_DELETE
-    W3_WAITER --> W5_RESTART
-    W5_DELETE --> W6_ERROR
-    W5_RESTART --> W6_ERROR
-    W6_ERROR --> W7_LLM
-    W7_LLM --> W8_LOOP
-    W8_LOOP --> W9_SAFE
-    W9_SAFE --> W10_CHAT
-    W10_CHAT --> W11_EXT
-    W11_EXT --> W12_SHIP
-
-    classDef nodeStyle fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
-    class W1_CONF,W1_SDK,W2_FLAVOR,W2_FMT,W3_CREATE,W3_WAITER,W4_LIST,W4_SHOW,W5_DELETE,W5_RESTART,W6_ERROR,W7_LLM,W8_LOOP,W9_SAFE,W10_CHAT,W11_EXT,W12_SHIP nodeStyle
-```
-
----
-
-## 九、演进路线
-
-```mermaid
-graph LR
-    P1["Phase 1<br/>CLI 基础<br/>W1-W6"]
-    P2["Phase 2<br/>Agent 层<br/>W7-W12"]
-    P3A["Phase 3a<br/>内置诊断<br/>database/sql 直连"]
-    P3B["Phase 3b<br/>MCP 扩展<br/>Cloud Eye / LTS / DAS / VPC"]
-
-    P1 -->|"Service 层完成"| P2
-    P2 -->|"加诊断 Tool"| P3A
-    P3A -->|"需要多数据源"| P3B
-
-    classDef nodeStyle fill:#E6E6FA,stroke:#4B0082,stroke-width:2px,color:#000
-    classDef diagStyle fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px,color:#000
-    classDef mcpStyle fill:#FFF3E0,stroke:#E65100,stroke-width:2px,color:#000
-
-    class P1,P2 nodeStyle
-    class P3A diagStyle
-    class P3B mcpStyle
-```
-
-| 阶段     | 交付物                                  | 架构模式               |
-| -------- | --------------------------------------- | ---------------------- |
-| Phase 1  | 8 个 CLI 命令 + Service + SDK           | 纯 CLI                 |
-| Phase 2  | 自定义 Agent + Tool Calling + 安全确认  | 单体 Agent + 技能库    |
-| Phase 3a | 内置诊断 Tool（直连 MySQL）             | Agent + 内置诊断       |
-| Phase 3b | MCP 扩展（Cloud Eye / LTS / DAS / VPC） | Agent + 内置诊断 + MCP |
-
----
-
-## 十、诊断场景示例
-
-### 场景 A：慢查询分析（内置 Tool，直连数据库）
-
-```
-用户: prod-mysql 最近有慢查询吗
-
-Agent 执行:
-  1. tool_use: show_instance → 拿到 IP 192.168.0.12:3306
-  2. tool_use: diagnose_slow_query → 直连 MySQL 查 slow_log
-  3. LLM 拿到 15 条慢查询记录，总结分析
-
-Agent 回复:
-  过去 24 小时有 15 条慢查询，主要集中在 orders 表：
-  - SELECT * FROM orders WHERE status='pending' (avg 3.2s, 9次)
-    → 建议: 给 status 字段加索引
-  - SELECT * FROM orders JOIN users ON ... (avg 5.1s, 6次)
-    → 建议: 优化 JOIN 条件，考虑分页
-```
-
-### 场景 B：连不上排查（MCP 多数据源）
-
-```
-用户: prod-mysql 连不上了怎么回事
-
-Agent 执行:
-  1. tool_use: show_instance → 实例状态 Running，没挂
-  2. mcp_monitor → CPU 95%，连接数 500/500 已满
-  3. mcp_logs → 错误日志: Too many connections
-  4. mcp_network → 安全组 3306 端口已放通
-
-Agent 回复:
-  排查结果：实例正常运行，但连接数已满（500/500）。
-  错误日志确认: "Too many connections"
-  安全组没有问题，3306 端口已放通。
-
-  建议:
-  1. 立即: 检查应用是否有连接泄漏
-  2. 短期: 调大 max_connections 参数
-  3. 长期: 考虑升级实例规格或引入连接池
-```
-
-### 场景C: 如果遇到非法或者还没纳管的场景
-
-比如用户问"帮我优化一下慢 SQL"，你的 Tool 注册表里没有这个功能，LLM 看了一圈发现没有合适的工具可以调，`stop_reason` 就会返回 end_turn 而不是 `tool_use`，然后直接用文字回答。
-
-```text
-你是华为云 RDS 管理助手。
-
-你能做的事：
-- 创建/查询/删除/重启 RDS 实例
-- 查询数据库规格
-- 管理备份
-
-你不能做的事：
-- 操作 RDS 以外的华为云服务
-- 执行 SQL
-- 修改网络/安全组
-
-当用户问你能力范围以外的事时，
-诚实告知你不支持，并建议用户通过华为云控制台操作。
-```
-
-有了这个约束，用户问超范围的问题时， LLM的回复大概是:
-
-```text
-用户: 帮我优化一下慢 SQL
-Agent: 抱歉，我目前不支持 SQL 优化功能。我可以帮你管理 RDS 实例（创建、查询、删除、重启）和备份。
-      SQL 优化建议通过华为云控制台的 DAS（数据管理服务）进行。
-```
-
-不会报错，不会崩溃，不会瞎编一个不存在的 Tool 去调。LLM 知道自己有哪些工具——因为你在请求里把 Tool 列表传给它了，它不会凭空造一个出来。
-
----
-
-## 五、完整数据流（一次 Agent 创建实例的全链路）
-
-```mermaid
-sequenceDiagram
-    actor User as  用户
-    participant Chat as cmd/chat.go
-    participant Agent as agent/agent.go
-    participant LLM as LLM API
-    participant Tools as agent/tools.go
-    participant Confirm as agent/confirm.go
-    participant Service as service/
-    participant SDK as sdk/client.go
-    participant Cloud as 华为云 API
-
-    User->>Chat: openTaurus chat "创建MySQL实例 4核16G"
-    Chat->>Agent: Run("创建MySQL实例 4核16G")
-
-    Note over Agent: 循环第 1 轮
-    Agent->>LLM: POST messages + tools
-    LLM-->>Agent: tool_use: list_flavors {engine: "MySQL"}
-    Agent->>Tools: Execute("list_flavors", params)
-    Tools->>Service: FlavorService.List("MySQL")
-    Service->>SDK: GET /v3/{project}/flavors
-    SDK->>Cloud: HTTPS (AK/SK 签名)
-    Cloud-->>SDK: 200 OK {flavors: [...]}
-    SDK-->>Service: []Flavor
-    Service-->>Tools: 格式化结果
-    Tools-->>Agent: "找到规格: rds.mysql.m6.large.8 (4C16G)"
-
-    Note over Agent: 循环第 2 轮
-    Agent->>LLM: POST messages + tool_result
-    LLM-->>Agent: end_turn: "找到匹配规格，还需要VPC和密码"
-    Agent-->>Chat: 输出提问
-    Chat-->>User: "还需要 VPC、名称和密码"
-
-    User->>Chat: "用prod-vpc，名字prod-mysql，密码MyPass123!"
-    Chat->>Agent: Run(用户回复)
-
-    Note over Agent: 循环第 3 轮
-    Agent->>LLM: POST messages
-    LLM-->>Agent: tool_use: create_instance {完整参数}
-    Agent->>Confirm: Check(create_instance, params)
-    Confirm-->>User: 展示参数摘要，确认？(Y/n)
-    User-->>Confirm: Y
-    Confirm-->>Agent: approved = true
-    Agent->>Tools: Execute("create_instance", params)
-    Tools->>Service: InstanceService.Create(input)
-    Service->>SDK: POST /v3/{project}/instances
-    SDK->>Cloud: HTTPS
-    Cloud-->>SDK: 200 OK {id: "i-abc123"}
-    SDK-->>Service: Instance{ID, Status: "Creating"}
-
-    Note over Service: Waiter 轮询
-    loop 每 10s 轮询
-        Service->>SDK: GET /v3/{project}/instances/i-abc123
-        SDK->>Cloud: HTTPS
-        Cloud-->>SDK: {status: "Creating"} → {status: "Running"}
-    end
-
-    Service-->>Tools: Instance{ID: "i-abc123", Status: "Running"}
-    Tools-->>Agent: "创建成功，ID: i-abc123"
-
-    Note over Agent: 循环第 4 轮
-    Agent->>LLM: POST messages + tool_result
-    LLM-->>Agent: end_turn: 最终回复
-    Agent-->>Chat: 格式化输出
-    Chat-->>User: 实例已创建！连接: mysql -h 192.168.0.55 -P 3306
-```
-
----
-
-## 七、技术栈清单
-
-| 用途      | 库 / 工具               | 说明                      |
-| --------- | ----------------------- | ------------------------- |
-| CLI 框架  | spf13/cobra             | kubectl, docker, gh 都用  |
-| 配置管理  | spf13/viper             | 支持 YAML/ENV/flag        |
-| 交互式 UI | AlecAivazis/survey/v2   | 终端交互选择              |
-| 表格输出  | olekukonez/tablewriter  | 终端表格                  |
-| 彩色输出  | fatih/color             | 状态彩色标识              |
-| Spinner   | briandowns/spinner      | 加载动画                  |
-| HTTP      | net/http（标准库）      | 调华为云 API + LLM API    |
-| JSON      | encoding/json（标准库） | 零依赖                    |
-| 测试      | stretchr/testify        | 断言 + mock               |
-| 发布      | goreleaser              | 交叉编译 + GitHub Release |
-
----
-
-## 八、开发计划
-
-### 总体时间线
-
-| 周次   | 阶段       | 核心交付物                         | 里程碑         |
-| ------ | ---------- | ---------------------------------- | -------------- |
-| W1-2   | CLI 基座   | configure + SDK 签名 + flavor list | 链路打通       |
-| W3-4   | CLI 核心   | instance create / list / show      | 创建和查询可用 |
-| W5-6   | CLI 完善   | delete / restart + 错误处理 + 测试 | CLI 生产级     |
-| W7-8   | Agent 基础 | LLM 客户端 + Tool 注册 + 主循环    | Agent 跑通     |
-| W9-10  | Agent 完善 | 确认机制 + 提示词 + chat 命令      | Agent 可用     |
-| W11-12 | 交付       | 备份 + 测试 + 打包 + 文档          | 产品发布       |
-
-### 开发方法论
-
-项目采用 **SDD + TDD + CI/CD** 的开发模式：
-
-- **SDD（Spec Driven Development）**：每个功能开发前先写规格说明
-- **TDD（Test Driven Development）**：先写测试再写实现，Service 层严格驱动
-- **CI/CD**：GitHub Actions 自动化 Lint + 测试 + 构建
-
----
-
-## 九、总结
-
-OpenTaurus 项目的核心价值在于：在对标 AWS 和阿里云全部基础 CLI 能力的同时，通过 AI Agent 智能交互层实现差异化竞争。
-
-**技术选型**：选择 Go 语言，获得单二进制分发、极快启动、交叉编译等 CLI 场景的天然优势，同时通过自定义 Agent 实现避免对第三方框架的依赖。
-
-**架构设计**：遵循"最简架构"原则，采用分层设计，CLI 和 Agent 共享 Service 层，避免业务逻辑重复。
-
-**开发方法**：采用 SDD + TDD + CI/CD 的成熟方法论，确保 12 周内交付高质量产品。
-
-> **核心理念：** 先构建能工作的最简单系统，然后让它随需求自然生长。—— Anthropic, Building Effective AI Agents
+> **OpenTaurus Architecture Design v2.0** · 优化版 · 2026-04

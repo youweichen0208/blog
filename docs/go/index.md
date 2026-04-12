@@ -4,6 +4,32 @@
 
 说明：原先放在这里的「Go 项目随记」已移动到 `项目实战 → OpenTaurus 专栏 → 项目随记`。
 
+## 基本编译
+
+```bash
+go build #编译当前目录的包
+go build main.go #编译制定文件
+go build -o myapp #指定输出文件名
+```
+
+## 交叉编译（跨平台）
+
+通过设置`GOOS`和`GOARCH`环境变量来编译不同平台的可执行文件：
+
+```bash
+# Linux
+GOOS=linux GOARCH=amd64 go build -o myapp-linux
+
+# Windows
+GOOS=windows GOARCH=amd64 go build -o myapp.exe
+
+# macOS (Intel)
+GOOS=darwin GOARCH=amd64 go build -o myapp-mac
+
+# macOS (Apple Silicon)
+GOOS=darwin GOARCH=arm64 go build -o myapp-mac-arm
+```
+
 ## 开始阅读
 
 - 指针：`/go/pointer`
