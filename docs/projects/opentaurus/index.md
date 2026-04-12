@@ -4,7 +4,7 @@
 
 ## 文章导航
 
+- [架构设计](./architecture)
 - [需求设计](./requirements)
 - [项目随记](./notes)
 - [如何获取 AK/SK](./aksk)
-

@@ -1,547 +1,458 @@
-# OpenTaurus 架构设计优化版
-
-> 华为云 RDS 命令行工具 + AI Agent 智能交互层
-> 架构设计 · 流程图 · 功能清单 · 测试观测点
-
----
-
 ## 01 · 方案概要设计
 
 OpenTaurus 采用三层分离架构，CLI 与 Agent 共享同一 Service 层，实现业务逻辑零重复。
 
+### 设计目标
+
+| 目标         | 说明                                                      |
+| ------------ | --------------------------------------------------------- |
+| 统一入口     | direct / chat / diagnose 三类请求统一进入主链路           |
+| 业务复用     | CLI 与 Agent 共享 Service/Capability 能力，避免重复实现   |
+| 证据驱动     | 所有诊断结论必须绑定 Evidence，不输出无依据判断           |
+| 安全默认开启 | 高风险动作必须经过 `policy + confirm + audit + redaction` |
+| 易扩展       | 新增能力优先通过 Playbook 或 Capability 扩展              |
+| 易治理       | 全链路具备可观测、可审计、可回放能力                      |
+
 ### 整体架构
 
 ```mermaid
-graph TB
-    subgraph ENTRY["🎯 用户入口层"]
-        CLI["CLI 命令<br/>openTaurus instance / flavor / backup"]
-        CHAT["Agent 对话<br/>openTaurus chat"]
+%%{init: {'themeVariables': {'fontSize': '18px'}, 'flowchart': {'nodeSpacing': 60, 'rankSpacing': 70}}}%%
+flowchart TB
+    %% 样式
+    classDef entryLayer fill:#fdfdf0,stroke:#d4c4a4,stroke-width:1px;
+    classDef cmdLayer fill:#fffcf0,stroke:#e4d4a4,stroke-width:1px;
+    classDef agentLayer fill:#f0f7f0,stroke:#c4d4c4,stroke-width:1px;
+    classDef coreLayer fill:#eef6ee,stroke:#bfcfbf,stroke-width:1px;
+    classDef secLayer fill:#f4f4f0,stroke:#d4d4c4,stroke-width:1px;
+
+    subgraph Entry["CLI 入口层"]
+        direction LR
+        A1["CLI 命令<br/>openTaurus instance / flavor / backup / diagnose"]
+        A2["Cobra 命令适配<br/>root.go / instance.go / flavor.go / backup.go / diagnose.go / chat.go"]
     end
+    class Entry entryLayer
 
-    subgraph CMD_LAYER["🔀 命令路由层 · cmd/"]
-        CMD["Cobra 命令路由<br/>参数校验 · 子命令分发"]
+    subgraph CMD["命令模块 cmd/"]
+        direction TB
+        B1["root.go"]
+        B2["instance.go"]
+        B3["flavor.go"]
+        B4["backup.go"]
+        B5["diagnose.go"]
+        B6["chat.go"]
     end
+    class CMD cmdLayer
 
-    subgraph AGENT_LAYER["🤖 Agent 层"]
-        AGENT["主控循环 agent.go<br/>消息构造 → LLM → 解析 → 执行 → 循环"]
-        LLM_CLIENT["LLM 客户端 llm.go<br/>net/http · 多模型适配"]
-        TOOLS["Tool 注册表 tools.go<br/>Service ↔ Tool Schema 映射"]
-        CONFIRM["安全确认 confirm.go<br/>三级安全模型"]
-        PROMPT["系统提示词 prompts.go"]
+    subgraph Router["Task Router 任务路由"]
+        direction TB
+        C1["router.go<br/>解析命令并识别任务类型"]
     end
+    class Router secLayer
 
-    subgraph SERVICE_LAYER["⚙️ Service 层 · 核心业务（CLI + Agent 共用）"]
-        SVC_INST["实例管理 instance.go<br/>Create · List · Show · Delete · Restart"]
-        SVC_FLAVOR["规格查询 flavor.go"]
-        SVC_BACKUP["备份管理 backup.go"]
-        SVC_WAITER["等待机制 waiter.go<br/>轮询 + 超时 + 指数退避"]
+    subgraph Agent["Diagnostic Agent 诊断代理"]
+        direction TB
+        D1["Orchestrator<br/>orchestrator.go"]
+        D2["Planner<br/>planner.go"]
+        D3["Executor<br/>executor.go"]
+        D4["Recorder<br/>recorder.go"]
+        D5["Responder<br/>responder.go"]
+        D6["Confirmer<br/>confirm.go"]
     end
+    class Agent agentLayer
 
-    subgraph SDK_LAYER["🔐 SDK 层"]
-        CLIENT["HTTP 客户端 client.go<br/>超时 30s · 重试 3 次 · 指数退避"]
-        SIGNER["AK/SK 签名 signer.go<br/>HMAC-SHA256"]
-        ERRORS["错误翻译 errors.go<br/>错误码 → 人类可读"]
+    subgraph Core["Diagnostic Core 诊断中枢"]
+        direction LR
+        E1["Playbook Engine<br/>playbook_engine.go"]
+        E2["Evidence Store<br/>evidence_store.go"]
+        E3["Diagnostic Session<br/>session.go"]
+        E4["Evidence Model<br/>evidence.go"]
     end
+    class Core coreLayer
 
-    subgraph INFRA["🛠 基础设施"]
-        CONFIG["配置管理 config/<br/>~/.openTaurus/config.yaml<br/>多 Profile · ENV 覆盖"]
-        UI_MOD["UI 输出 ui/<br/>table · json · yaml · spinner · color"]
+    subgraph Playbooks["Playbooks 剧本集合"]
+        direction TB
+        F1["cpu_high.yaml"]
+        F2["replication_delay.yaml"]
+        F3["instance_unavailable.yaml"]
+        F4["backup_failed.yaml"]
+        F5["more..."]
     end
+    class Playbooks cmdLayer
 
-    LLM_API["☁️ LLM API<br/>Anthropic / OpenAI"]
-    HW_CLOUD["☁️ 华为云 RDS API"]
+    subgraph Caps["Capabilities & Gateway 外部能力"]
+        direction TB
+        G1["instance/capability.go"]
+        G2["metrics/capability.go"]
+        G3["ces/capability.go"]
+        G4["logs/capability.go"]
+        G5["node/capability.go"]
+        G6["gateway.go"]
+    end
+    class Caps cmdLayer
 
-    CLI --> CMD
-    CHAT --> CMD
-    CMD --> SERVICE_LAYER
-    CMD --> AGENT
+    subgraph Internal["MCP & Internal Gateway 内部接口"]
+        direction TB
+        H1["内部能力映射<br/>instance / metrics / ces / logs / node"]
+        H2["MCP API / 内部组件网关"]
+    end
+    class Internal secLayer
 
-    AGENT --> LLM_CLIENT
-    AGENT --> TOOLS
-    AGENT --> CONFIRM
-    AGENT --> PROMPT
-    LLM_CLIENT --> LLM_API
+    subgraph Security["Audit & Security 审计与安全"]
+        direction TB
+        I1["Policy Guard<br/>policy.go"]
+        I2["Privilege Confirm<br/>confirm.go"]
+        I3["Audit Log<br/>audit.go"]
+        I4["Redaction Filter<br/>redaction.go"]
+    end
+    class Security cmdLayer
 
-    TOOLS --> SERVICE_LAYER
-
-    SVC_INST --> CLIENT
-    SVC_FLAVOR --> CLIENT
-    SVC_BACKUP --> CLIENT
-    SVC_WAITER --> CLIENT
-    SVC_WAITER --> UI_MOD
-
-    CLIENT --> SIGNER
-    CLIENT --> ERRORS
-    SIGNER --> CONFIG
-    CLIENT --> HW_CLOUD
-
-    CMD --> UI_MOD
-    CMD --> CONFIG
+    Entry --> CMD
+    CMD --> Router
+    Router --> Agent
+    Agent --> Core
+    Core --> Playbooks
+    Core --> Caps
+    Core --> Internal
+    Agent --> Security
+    Core --> Security
 ```
 
 ### 核心设计原则
 
-| 原则                   | 说明                                                                                                                   |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| **两条路径，一个核心** | CLI 路径与 Agent 路径共享 Service 层，所有业务逻辑只写一遍。新增功能只需在 Service 层实现一次，CLI 和 Agent 同时获益。 |
-| **零依赖分发**         | Go 交叉编译生成单二进制文件（~12MB），覆盖 Linux/macOS/Windows 三平台五架构，客户下载即用，无需安装任何运行时。        |
-| **自定义 Agent**       | 不依赖第三方 Agent 框架，用 Go 标准库（net/http + encoding/json）实现 LLM 调用 + Tool Calling 循环，支持多模型切换。   |
+| 原则           | 说明                                                         |
+| -------------- | ------------------------------------------------------------ |
+| 统一主链路     | 命令层只做参数解析和输入校验，业务全部进入 Router/Agent/Core |
+| 编排执行分层   | Planner 决策、Executor 执行、Responder 输出、Recorder 记录   |
+| 证据先于结论   | 所有结论都必须引用 Evidence                                  |
+| 高风险默认受控 | 删除、重启、切换类动作必须先经过策略评估和确认               |
+| 能力统一出口   | 所有外部依赖统一通过 Gateway 调用，统一超时、重试、错误归一  |
+| 剧本驱动诊断   | 诊断知识优先沉淀为 Playbook，避免硬编码在流程中              |
 
 ---
 
-## 02 · CLI 执行流程（优化版）
+## 02 · 功能清单
 
-优化后的 CLI 流程增加了参数校验、错误分类处理、重试策略和格式化输出的细粒度控制。
+### 2.1 用户可见功能
 
-### CLI 命令执行全流程
+| 编号 | 功能         | 描述                                               | 优先级 |
+| ---- | ------------ | -------------------------------------------------- | ------ |
+| F-01 | 配置初始化   | `configure` 配置 AK/SK、Region、Project 等基础信息 | P0     |
+| F-02 | 实例查询     | `instance list/show` 查询实例列表和详情            | P0     |
+| F-03 | 规格查询     | `flavor list` 查询规格信息                         | P0     |
+| F-04 | 备份查询     | `backup list/show` 查看备份信息                    | P1     |
+| F-05 | 实例创建     | `instance create` 创建实例                         | P0     |
+| F-06 | 实例重启     | `instance restart` 受控重启实例                    | P0     |
+| F-07 | 实例删除     | `instance delete` 高风险删除实例                   | P0     |
+| F-08 | 自然语言诊断 | `diagnose` / `chat` 输入故障描述，触发诊断流程     | P0     |
+| F-09 | 诊断证据输出 | 输出结论、证据摘要、建议、置信度                   | P0     |
+| F-10 | 证据不足追问 | 目标不明或证据不足时触发澄清问题                   | P0     |
+| F-11 | 多格式输出   | 支持 `table/json/yaml`                             | P0     |
+| F-12 | 审计与回放   | 所有重要动作具备审计记录和关联 ID                  | P1     |
+
+### 2.2 系统能力功能
+
+| 编号 | 模块            | 描述                                            | 优先级 |
+| ---- | --------------- | ----------------------------------------------- | ------ |
+| S-01 | Router          | 识别 direct/chat/diagnose，请求分类与预算初始化 | P0     |
+| S-02 | Session         | 维护诊断会话状态、轮次、截止时间                | P0     |
+| S-03 | Evidence Store  | 证据写入、检索、去重、关联会话                  | P0     |
+| S-04 | Playbook Engine | 解析 YAML 剧本，推进步骤、条件与回退            | P0     |
+| S-05 | Gateway         | 统一能力注册、超时、重试、错误归一              | P0     |
+| S-06 | Capability      | 对接 instance/metrics/ces/logs/node 等能力      | P0     |
+| S-07 | Policy Guard    | 风险分级、动作准入、拦截                        | P0     |
+| S-08 | Confirm         | 高风险动作二次确认、确认令牌管理                | P0     |
+| S-09 | Audit           | 关键路径事件记录                                | P0     |
+| S-10 | Redaction       | 输出和审计前统一脱敏                            | P0     |
+
+### 2.3 MVP 范围
+
+| 范围         | 内容                                                                          |
+| ------------ | ----------------------------------------------------------------------------- |
+| CLI 基础命令 | `configure`、`flavor list`、`instance create/list/show/delete/restart`        |
+| 诊断能力     | 支持 `cpu_high`、`replication_delay`、`instance_unavailable`、`backup_failed` |
+| 证据闭环     | 诊断结果必须附 Evidence 引用                                                  |
+| 安全治理     | 高风险动作默认需要确认并记录审计                                              |
+| 输出能力     | 支持 `table/json/yaml` 三种结果格式                                           |
+
+---
+
+## 03 · 测试观测点
+
+### 3.1 链路级观测点
+
+| 链路节点     | 必须观测字段                                            | 观测目的             |
+| ------------ | ------------------------------------------------------- | -------------------- |
+| cmd          | `command`, `args_digest`, `output_format`               | 还原入口请求         |
+| router       | `task_id`, `task_type`, `intent`, `target_resource`     | 验证路由分类是否正确 |
+| orchestrator | `session_id`, `status`, `round`, `deadline`             | 观察会话推进与终止   |
+| planner      | `playbook_id`, `decision_reason`, `fallback`            | 验证剧本选择与重规划 |
+| executor     | `step_id`, `capability`, `retry_count`, `result_status` | 定位步骤级错误       |
+| gateway      | `latency_ms`, `timeout_ms`, `error_code`, `retryable`   | 评估依赖质量         |
+| evidence     | `evidence_id`, `source`, `confidence`, `dedup_hit`      | 评估证据质量         |
+| policy       | `risk_level`, `decision`, `matched_rule`                | 观察风险评估命中情况 |
+| confirm      | `confirm_required`, `token_id`, `confirm_result`        | 观察确认链路         |
+| responder    | `result_type`, `confidence`, `evidence_ref_count`       | 验证输出质量         |
+| audit        | `actor`, `action`, `decision`, `redaction_hits`         | 确保审计与脱敏生效   |
+
+### 3.2 关键指标
+
+| 指标                     | 目标                     |
+| ------------------------ | ------------------------ |
+| CLI 启动时间             | < 100ms                  |
+| direct 查询耗时 P95      | < 3s                     |
+| diagnose 首次响应 P95    | < 3s                     |
+| 单次 capability 调用超时 | 30s                      |
+| diagnose 完成耗时 P95    | < 60s                    |
+| 高风险确认漏拦截率       | 0                        |
+| 敏感信息脱敏命中率       | 100%                     |
+| 审计写入失败次数         | 0                        |
+| 证据不足返回率           | 持续监控，异常上升需排查 |
+
+### 3.3 故障注入观测点
+
+| 场景          | 注入方式                       | 通过标准                               |
+| ------------- | ------------------------------ | -------------------------------------- |
+| Gateway 超时  | 模拟 metrics/logs 长时间无响应 | 在预算内重试，超限后降级返回           |
+| 429 限流      | 模拟 CES 返回 429              | 不打爆下游，用户得到限流说明           |
+| 未注册能力    | 构造未知 capability 调用       | 返回 `UnknownCapability`，主进程不中断 |
+| 非法 Playbook | 缺字段 YAML 或非法配置         | 被拦截或回退，不 crash                 |
+| 确认令牌过期  | 构造过期 token                 | 执行被阻断，提示重新确认               |
+| 审计写入失败  | 模拟 audit 存储失败            | 主链路可完成，内部有告警               |
+| 脱敏失败      | 注入密码/连接串样本            | 对外输出阻断或字段被掩码               |
+
+---
+
+## 04 · 测试用例设计
+
+### 4.1 核心测试用例
+
+| 用例 ID | 场景                  | 前置条件                        | 步骤                                    | 预期结果                       |
+| ------- | --------------------- | ------------------------------- | --------------------------------------- | ------------------------------ |
+| TC-01   | 配置成功              | 提供合法 AK/SK/Region           | 执行 `configure`                        | 配置保存成功，可被后续命令复用 |
+| TC-02   | Direct 查询成功       | 已完成配置，实例存在            | 执行 `instance show --id {instance_id}` | 返回实例详情，带 `task_id`     |
+| TC-03   | Direct 写操作被拦截   | 已完成配置，实例存在            | 执行 `instance restart` 并拒绝确认      | 动作未执行，返回阻断说明       |
+| TC-04   | Direct 写操作确认通过 | 已完成配置，实例存在            | 执行 `instance restart` 并确认          | 动作执行一次，审计完整         |
+| TC-05   | 复制延迟诊断成功      | 存在延迟指标与日志样本          | 执行 `diagnose "复制延迟高"`            | 输出根因、证据、建议、置信度   |
+| TC-06   | 证据不足追问          | 未提供实例 ID                   | 执行 `diagnose "CPU 高"`                | 不输出确定性结论，转为追问     |
+| TC-07   | Playbook 回退成功     | 主剧本证据不足，备选剧本可命中  | 执行对应诊断                            | 成功回退并正常输出结果         |
+| TC-08   | Gateway 超时降级      | 模拟 metrics 超时               | 执行 `diagnose "CPU 高"`                | 重试后降级输出“证据不足”       |
+| TC-09   | 未注册能力拒绝        | 注入未知 capability             | 执行诊断步骤                            | 返回可解释错误，不 panic       |
+| TC-10   | 脱敏正确性            | 日志或结果中含密码/连接串       | 执行任意 direct/diagnose                | 敏感字段被完全脱敏             |
+| TC-11   | 审计完整性            | 执行一次 direct 和一次 diagnose | 检查审计记录                            | 能按 `task_id/session_id` 串联 |
+| TC-12   | 错误可解释性          | 注入权限错误/参数错误/429       | 执行 direct 或 diagnose                 | 返回原因类别、建议和关联 ID    |
+
+### 4.2 回归测试包
+
+| 回归包   | 包含用例                           | 目的                       |
+| -------- | ---------------------------------- | -------------------------- |
+| 冒烟回归 | `TC-01`, `TC-02`, `TC-05`          | 验证基础主链路可用         |
+| 安全回归 | `TC-03`, `TC-04`, `TC-10`, `TC-11` | 验证确认、脱敏、审计不回退 |
+| 韧性回归 | `TC-07`, `TC-08`, `TC-09`, `TC-12` | 验证回退、降级、错误归一   |
+
+---
+
+## 05 · 流程图
+
+### 5.1 命令统一执行流程
 
 ```mermaid
 flowchart TD
-    START(["$ openTaurus instance create ..."])
-    LOAD["加载配置<br/>config.yaml → ENV 覆盖 → flag 覆盖"]
-    VALIDATE{"参数校验"}
-    MISSING["提示缺失参数<br/>--name / --flavor / --vpc"]
-    INTERACTIVE{"交互模式?<br/>--interactive"}
-    SURVEY["交互式选择<br/>survey UI 引导"]
-    SVC["调用 Service 层<br/>InstanceService.Create()"]
-    BUILD["构造 API 请求体"]
-    SIGN["AK/SK HMAC-SHA256 签名"]
-    HTTP["HTTP POST → 华为云 API"]
-    RESP{"响应状态?"}
-    RETRY{"可重试?<br/>429 / 5xx<br/>≤ 3 次"}
-    BACKOFF["指数退避等待<br/>1s → 2s → 4s"]
-    ERR_TRANSLATE["错误码翻译<br/>DBS.200019 → '实例名已存在'"]
-    ERR_OUTPUT["输出错误信息 + 建议"]
-    WAIT{"需要等待?<br/>create / restart"}
-    WAITER["Waiter 轮询<br/>每 10s · 超时 10min<br/>spinner 动画"]
-    POLL["GET /instances/id"]
-    READY{"status == Running?"}
-    TIMEOUT["超时提示<br/>输出实例 ID 供手动查询"]
-    FORMAT{"输出格式?<br/>--output"}
-    OUT_TABLE["Table 格式<br/>终端表格 + 彩色状态"]
-    OUT_JSON["JSON 格式<br/>结构化输出"]
-    OUT_YAML["YAML 格式<br/>人类友好"]
-    DONE(["完成 ✓"])
+    START["$ taurusdb <command>"]
+    PARSE["cmd/* 参数解析与输入校验"]
+    ROUTE["router.go 识别任务类型"]
+    TASK["创建 Task"]
+    ORCH["Orchestrator 创建 Session"]
+    PLAN["Planner 生成 Plan"]
+    PATH{"direct / diagnose ?"}
+    EXEC["Executor 执行步骤"]
+    GW["Gateway 调用 Capability"]
+    EV["Evidence 标准化并写入 Store"]
+    ENOUGH{"证据充分?"}
+    POLICY["Policy Guard 风险评估"]
+    CONFIRM{"需要确认?"}
+    RESP["Responder 生成输出"]
+    AUDIT["Audit + Redaction"]
+    DONE["完成"]
 
-    START --> LOAD --> VALIDATE
-    VALIDATE -->|"缺少必填项"| MISSING
-    MISSING --> DONE
-    VALIDATE -->|"校验通过"| INTERACTIVE
-    INTERACTIVE -->|"是"| SURVEY --> SVC
-    INTERACTIVE -->|"否"| SVC
-    SVC --> BUILD --> SIGN --> HTTP --> RESP
-    RESP -->|"2xx 成功"| WAIT
-    RESP -->|"4xx/5xx"| RETRY
-    RETRY -->|"是"| BACKOFF --> HTTP
-    RETRY -->|"否"| ERR_TRANSLATE --> ERR_OUTPUT --> DONE
-    WAIT -->|"是"| WAITER --> POLL --> READY
-    READY -->|"否"| POLL
-    READY -->|"是"| FORMAT
-    WAIT -->|"否"| FORMAT
-    WAITER -->|"超时"| TIMEOUT --> DONE
-    FORMAT -->|"table"| OUT_TABLE --> DONE
-    FORMAT -->|"json"| OUT_JSON --> DONE
-    FORMAT -->|"yaml"| OUT_YAML --> DONE
+    START --> PARSE --> ROUTE --> TASK --> ORCH --> PLAN --> PATH
+    PATH --> EXEC
+    EXEC --> GW --> EV --> ENOUGH
+    ENOUGH -->|"否"| RESP
+    ENOUGH -->|"是"| POLICY --> CONFIRM
+    CONFIRM -->|"是"| RESP
+    CONFIRM -->|"否"| RESP
+    RESP --> AUDIT --> DONE
+```
+
+### 5.2 证据不足与回退流程
+
+```mermaid
+flowchart TD
+    INPUT["收到 diagnose/chat 请求"]
+    MAIN["选择主 Playbook"]
+    STEP["执行当前步骤"]
+    STORE["写入 Evidence"]
+    CHECK{"证据充分?"}
+    FALLBACK{"存在备选 Playbook?"}
+    REPLAN["切换备选 Playbook"]
+    ASK{"是否缺少用户上下文?"}
+    CLARIFY["触发追问"]
+    CANDIDATE["输出候选结论 + 置信度"]
+    RESULT["输出正式结论"]
+
+    INPUT --> MAIN --> STEP --> STORE --> CHECK
+    CHECK -->|"是"| RESULT
+    CHECK -->|"否"| FALLBACK
+    FALLBACK -->|"是"| REPLAN --> STEP
+    FALLBACK -->|"否"| ASK
+    ASK -->|"是"| CLARIFY
+    ASK -->|"否"| CANDIDATE
+```
+
+### 5.3 Gateway 重试与降级流程
+
+```mermaid
+flowchart TD
+    INVOKE["Gateway 接收 CapabilityRequest"]
+    REG{"Capability 已注册?"}
+    TIMEOUT["设置 timeout / retry budget"]
+    CALL["调用底层 Capability"]
+    RESP{"返回结果"}
+    OK["标准化成功响应"]
+    RETRYABLE{"是否可重试?"}
+    BUDGET{"预算是否剩余?"}
+    BACKOFF["退避后重试"]
+    PARTIAL["返回部分数据 / 证据不足"]
+    FAIL["返回归一化错误"]
+
+    INVOKE --> REG
+    REG -->|"否"| FAIL
+    REG -->|"是"| TIMEOUT --> CALL --> RESP
+    RESP -->|"成功"| OK
+    RESP -->|"超时/429/5xx"| RETRYABLE
+    RESP -->|"权限/参数/未知能力"| FAIL
+    RETRYABLE -->|"否"| FAIL
+    RETRYABLE -->|"是"| BUDGET
+    BUDGET -->|"是"| BACKOFF --> CALL
+    BUDGET -->|"否"| PARTIAL
 ```
 
 ---
 
-## 03 · Agent 主控循环（优化版）
+## 06 · 时序图
 
-优化后的 Agent 流程增加了轮次控制、错误恢复、多 Tool 并发编排和上下文窗口管理。
-
-### Agent Tool-Calling 主循环
-
-```mermaid
-flowchart TD
-    INPUT(["用户输入"])
-    INIT["初始化上下文<br/>system prompt + tool schemas<br/>+ 历史消息"]
-    BUILD_MSG["构造 messages 数组<br/>追加用户消息"]
-    CALL_LLM["POST → LLM API<br/>messages + tools"]
-    PARSE["解析 LLM 响应<br/>JSON → content blocks"]
-    STOP{"stop_reason?"}
-
-    TEXT_OUT["提取 text block<br/>流式输出给用户"]
-
-    EXTRACT["提取 tool_use block<br/>name · id · input"]
-    LOOKUP["Tool 注册表查找<br/>tools.go"]
-    NOT_FOUND["返回 error tool_result<br/>'未知工具'"]
-
-    CLASSIFY{"安全级别?"}
-    LV1["🟢 Lv1 直接执行<br/>list / show / flavor"]
-    LV2["🟡 Lv2 Y/N 确认<br/>create / restart"]
-    LV3["🔴 Lv3 强确认<br/>delete → 输入实例名"]
-
-    SHOW_PARAMS["展示操作参数摘要"]
-    USER_CONFIRM{"用户确认?"}
-    CANCEL["构造 tool_result<br/>'用户已取消操作'"]
-
-    EXEC["执行 Service 函数<br/>service.XXX()"]
-    EXEC_ERR{"执行成功?"}
-    ERR_RESULT["构造 error tool_result<br/>错误信息 + 建议"]
-    OK_RESULT["构造 success tool_result<br/>格式化结果"]
-
-    FEED["追加 tool_result 到 messages"]
-    ROUND{"轮次 < 10?"}
-    OVERFLOW["提示超出轮次限制<br/>建议拆分请求"]
-
-    FINAL_OUT(["输出最终回复"])
-
-    INPUT --> INIT --> BUILD_MSG --> CALL_LLM --> PARSE --> STOP
-
-    STOP -->|"end_turn"| TEXT_OUT --> FINAL_OUT
-    STOP -->|"tool_use"| EXTRACT --> LOOKUP
-
-    LOOKUP -->|"未找到"| NOT_FOUND --> FEED
-    LOOKUP -->|"找到"| CLASSIFY
-
-    CLASSIFY -->|"只读"| LV1 --> EXEC
-    CLASSIFY -->|"写操作"| LV2 --> SHOW_PARAMS --> USER_CONFIRM
-    CLASSIFY -->|"删除"| LV3 --> SHOW_PARAMS
-
-    USER_CONFIRM -->|"Yes"| EXEC
-    USER_CONFIRM -->|"No"| CANCEL --> FEED
-
-    EXEC --> EXEC_ERR
-    EXEC_ERR -->|"失败"| ERR_RESULT --> FEED
-    EXEC_ERR -->|"成功"| OK_RESULT --> FEED
-
-    FEED --> ROUND
-    ROUND -->|"是"| CALL_LLM
-    ROUND -->|"否"| OVERFLOW --> FINAL_OUT
-```
-
-### Agent 多轮对话时序（创建实例完整示例）
+### 6.1 Direct 只读查询时序
 
 ```mermaid
 sequenceDiagram
     actor U as 用户
-    participant C as cmd/chat.go
-    participant A as Agent 主循环
-    participant L as LLM API
-    participant T as Tool 注册表
-    participant CF as 安全确认
-    participant S as Service 层
-    participant K as SDK 层
-    participant H as 华为云 API
+    participant C as cmd/instance.go
+    participant R as router.go
+    participant O as Orchestrator
+    participant E as Executor
+    participant G as Gateway
+    participant I as instance capability
+    participant RS as Responder
+    participant A as Audit
 
-    U->>C: "创建 MySQL 8.0 实例 4核16G"
-    C->>A: Run(userInput)
-
-    rect rgb(230, 240, 255)
-    Note over A,L: 🔄 第 1 轮 — LLM 决定先查规格
-    A->>L: POST { messages, tools }
-    L-->>A: stop_reason: tool_use → list_flavors {engine: "MySQL"}
-    A->>T: Lookup("list_flavors") → Lv1 只读
-    T->>S: FlavorService.List("MySQL")
-    S->>K: GET /v3/{project}/flavors
-    K->>H: HTTPS (AK/SK)
-    H-->>K: 200 { flavors: [...] }
-    K-->>S: []Flavor
-    S-->>T: 匹配规格: rds.mysql.m6.large.8
-    T-->>A: tool_result: "4C16G → rds.mysql.m6.large.8"
-    end
-
-    rect rgb(230, 240, 255)
-    Note over A,L: 🔄 第 2 轮 — LLM 发现缺参数
-    A->>L: POST { messages + tool_result }
-    L-->>A: stop_reason: end_turn "需要 VPC、名称和密码"
-    A-->>C: 输出提问
-    C-->>U: "还需要 VPC、名称和密码"
-    end
-
-    U->>C: "用 prod-vpc，名字 prod-mysql，密码 Aa@123456"
-    C->>A: Run(userReply)
-
-    rect rgb(230, 240, 255)
-    Note over A,L: 🔄 第 3 轮 — LLM 发起创建
-    A->>L: POST { messages + 用户补充 }
-    L-->>A: stop_reason: tool_use → create_instance { 完整参数 }
-    A->>T: Lookup("create_instance") → Lv2 写操作
-    T->>CF: Check(create_instance, params)
-    CF-->>U: 📋 参数摘要，确认? (Y/n)
-    U-->>CF: Y
-    CF-->>A: approved = true
-    A->>T: Execute("create_instance")
-    T->>S: InstanceService.Create(input)
-    S->>K: POST /v3/{project}/instances
-    K->>H: HTTPS
-    H-->>K: 200 { id: "i-abc123" }
-    Note over S: ⏳ Waiter 轮询 (每10s)
-    loop 等待就绪
-        S->>K: GET /instances/i-abc123
-        K->>H: HTTPS
-        H-->>K: status → Running
-    end
-    S-->>T: Instance{ Running, IP: 192.168.0.55 }
-    T-->>A: tool_result: 创建成功
-    end
-
-    rect rgb(230, 240, 255)
-    Note over A,L: 🔄 第 4 轮 — LLM 总结
-    A->>L: POST { messages + tool_result }
-    L-->>A: stop_reason: end_turn 最终回复
-    A-->>C: 格式化输出
-    C-->>U: ✅ 实例已创建！mysql -h 192.168.0.55 -P 3306
-    end
+    U->>C: openTaurus instance show --id {instance_id}
+    C->>R: Route(command, args)
+    R->>O: Start(task: direct.read)
+    O->>E: Execute(light plan)
+    E->>G: Invoke(instance.get)
+    G->>I: Query instance detail
+    I-->>G: raw payload
+    G-->>E: normalized response
+    E->>RS: BuildResult(data)
+    RS->>A: Write audit(redacted)
+    RS-->>U: 实例详情 + task_id
 ```
 
----
-
-## 04 · 功能清单
-
-按阶段和优先级组织的完整功能清单，涵盖 CLI 命令、Agent 能力和基础设施。
-
-### Phase 1 — CLI 基础能力（W1–W6）
-
-| 编号   | 功能模块   | 命令 / 接口                   | 详细说明                                                                                                                         | 优先级 | 周次 |
-| ------ | ---------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------ | ---- |
-| F-1.1  | 凭证配置   | `openTaurus configure`        | 交互式设置 AK/SK/Region/ProjectID；支持多 Profile；文件权限 0600；ENV 覆盖                                                       | P0     | W1   |
-| F-1.2  | SDK 基座   | `sdk/client.go + signer.go`   | HTTP 客户端封装；AK/SK HMAC-SHA256 签名；超时 30s；自动重试 3 次（指数退避）；错误码翻译                                         | P0     | W1   |
-| F-1.3  | 规格查询   | `openTaurus flavor list`      | 列出可用数据库规格；支持 --engine 过滤（MySQL/PostgreSQL）；多格式输出                                                           | P0     | W2   |
-| F-1.4  | 格式化输出 | `ui/formatter.go`             | 支持 --output table\|json\|yaml；table 模式含彩色状态标识；JSON 模式适合管道和脚本                                               | P0     | W2   |
-| F-1.5  | 创建实例   | `openTaurus instance create`  | 必填：--name, --flavor, --vpc, --subnet, --password；可选：--engine, --version, --volume-size, --ha；支持 --interactive 交互模式 | P0     | W3   |
-| F-1.6  | 等待机制   | `service/waiter.go`           | 创建/重启后轮询实例状态；10s 间隔；10min 超时；spinner 动画；--no-wait 跳过等待                                                  | P0     | W3   |
-| F-1.7  | 列出实例   | `openTaurus instance list`    | 列出所有 RDS 实例；显示 ID/名称/引擎/状态/规格；支持分页                                                                         | P0     | W4   |
-| F-1.8  | 实例详情   | `openTaurus instance show`    | 查看单个实例详情；含连接信息（IP:Port）、规格、存储、创建时间                                                                    | P0     | W4   |
-| F-1.9  | 删除实例   | `openTaurus instance delete`  | 二次确认（需输入实例名）；--force 跳过确认（脚本场景）；删除前显示实例信息                                                       | P0     | W5   |
-| F-1.10 | 重启实例   | `openTaurus instance restart` | Y/N 确认；等待恢复 Running；显示预估停机时间                                                                                     | P1     | W5   |
-| F-1.11 | 错误处理   | `sdk/errors.go`               | 华为云错误码 → 人类可读中文/英文；附带修复建议；区分网络/认证/业务错误                                                           | P0     | W6   |
-
-### Phase 2 — Agent 智能交互层（W7–W12）
-
-| 编号   | 功能模块            | 接口 / 文件                     | 详细说明                                                                              | 优先级 | 周次 |
-| ------ | ------------------- | ------------------------------- | ------------------------------------------------------------------------------------- | ------ | ---- |
-| F-2.1  | LLM HTTP 客户端     | `agent/llm.go`                  | net/http 调用 LLM API（Anthropic / OpenAI）；不依赖第三方 SDK；流式响应可选；超时 60s | P0     | W7   |
-| F-2.2  | 响应解析器          | `agent/parser.go`               | JSON 解析 LLM 响应；提取 text / tool_use / end_turn；处理 content blocks 数组         | P0     | W7   |
-| F-2.3  | Tool 注册表         | `agent/tools.go`                | 将 Service 函数映射为 LLM Tool Schema；自动生成 JSON Schema；运行时注册 + 查找        | P0     | W8   |
-| F-2.4  | Tool-Calling 主循环 | `agent/agent.go`                | 构造 messages → 调 LLM → 解析 → 执行 Tool → 喂回 → 循环；最多 10 轮；超时 5min        | P0     | W8   |
-| F-2.5  | 安全确认机制        | `agent/confirm.go`              | 三级安全模型：Lv1 只读直接执行，Lv2 写操作 Y/N 确认，Lv3 删除需输入实例名             | P0     | W9   |
-| F-2.6  | 系统提示词          | `agent/prompts.go`              | 角色定义；能力边界声明；行为约束（不编造 Tool）；参数补全引导策略                     | P0     | W9   |
-| F-2.7  | chat 命令（单次）   | `openTaurus chat "..."`         | 单次自然语言输入 → Agent 执行 → 输出结果；适合脚本和管道                              | P0     | W10  |
-| F-2.8  | chat 命令（交互式） | `openTaurus chat`               | 多轮交互式对话；保持上下文；支持 /exit, /clear, /help 内置命令                        | P0     | W10  |
-| F-2.9  | 备份管理            | `openTaurus backup create/list` | 创建手动备份；列出备份记录；Agent 同样可通过自然语言操作                              | P1     | W11  |
-| F-2.10 | 交叉编译打包        | `goreleaser`                    | 5 平台自动打包；GitHub Release 自动发布；SHA256 校验和                                | P0     | W12  |
-
----
-
-## 05 · 开发迭代路线图
-
-按周次展示 CLI（W1–W6）和 Agent（W7–W12）的开发迭代路径及依赖关系。
-
-### 12 周开发路线与依赖关系
+### 6.2 复制延迟诊断时序
 
 ```mermaid
-flowchart LR
-    subgraph P1["Phase 1 · CLI 基础"]
-        W1["W1<br/>━━━━━<br/>configure<br/>SDK 基座<br/>AK/SK 签名"]
-        W2["W2<br/>━━━━━<br/>flavor list<br/>Formatter<br/>table/json/yaml"]
-        W3["W3<br/>━━━━━<br/>instance create<br/>Waiter 轮询<br/>交互式创建"]
-        W4["W4<br/>━━━━━<br/>instance list<br/>instance show<br/>分页 + 详情"]
-        W5["W5<br/>━━━━━<br/>instance delete<br/>instance restart<br/>二次确认"]
-        W6["W6<br/>━━━━━<br/>错误处理<br/>单元测试<br/>CI 流水线"]
-    end
+sequenceDiagram
+    actor U as 用户
+    participant C as cmd/diagnose.go
+    participant R as router.go
+    participant O as Orchestrator
+    participant P as Planner + PlaybookEngine
+    participant E as Executor
+    participant G as Gateway
+    participant X as metrics/ces/logs capability
+    participant S as Session + Evidence Store
+    participant Sec as Policy + Confirm
+    participant Rec as Recorder + Audit
+    participant RS as Responder
 
-    subgraph P2["Phase 2 · Agent 层"]
-        W7["W7<br/>━━━━━<br/>LLM 客户端<br/>响应解析器<br/>多模型适配"]
-        W8["W8<br/>━━━━━<br/>Tool 注册表<br/>主控循环<br/>轮次控制"]
-        W9["W9<br/>━━━━━<br/>安全确认<br/>系统提示词<br/>三级模型"]
-        W10["W10<br/>━━━━━<br/>chat 单次<br/>chat 交互式<br/>内置命令"]
-        W11["W11<br/>━━━━━<br/>备份管理<br/>交互式创建<br/>Agent 集成"]
-        W12["W12<br/>━━━━━<br/>E2E 测试<br/>交叉编译<br/>文档 + 发布"]
-    end
-
-    W1 --> W2 --> W3 --> W4 --> W5 --> W6
-    W6 -->|"Service 层完成"| W7
-    W7 --> W8 --> W9 --> W10 --> W11 --> W12
+    U->>C: diagnose "主从复制延迟升高"
+    C->>R: Route(command, args)
+    R->>O: StartDiagnostic(task)
+    O->>P: SelectPlaybook(task)
+    P-->>O: replication_delay.yaml
+    O->>E: Execute(playbook steps)
+    E->>G: Invoke(metrics, alarms, logs)
+    G->>X: Collect evidence
+    X-->>G: raw payloads
+    G-->>E: normalized evidence
+    E->>S: AppendEvidence(...)
+    O->>P: ReEvaluate(evidence)
+    P-->>O: root cause + action plan
+    O->>Sec: EvaluateRisk(actions)
+    Sec-->>O: approved / need_confirm
+    O->>RS: BuildResponse(result, confidence)
+    RS->>Rec: WriteTrace + Redaction
+    RS-->>U: 结论、证据、操作建议
 ```
 
----
-
-## 06 · 测试策略与观测点
-
-覆盖单元测试、集成测试、E2E 测试三层，以及关键性能与安全观测指标。
-
-### 6.1 测试分层策略
+### 6.3 高风险动作确认时序
 
 ```mermaid
-graph TB
-    E2E["🔺 E2E 端到端测试<br/>完整用户场景 · 真实 API<br/>覆盖: 5-10 个核心场景"]
-    INT["🔶 集成测试<br/>Service + SDK 联调 · Mock 华为云 API<br/>覆盖: 每个 API 路径"]
-    UNIT["🟦 单元测试<br/>Service / SDK / Agent 各模块<br/>覆盖: > 70%"]
+sequenceDiagram
+    actor U as 用户
+    participant C as cmd/diagnose.go
+    participant R as router.go
+    participant O as Orchestrator
+    participant P as Planner
+    participant E as Executor
+    participant S as Policy + Confirm
+    participant G as Gateway
+    participant I as instance capability
+    participant RS as Responder
+    participant A as Audit
 
-    E2E --- INT --- UNIT
-```
-
-### 6.2 单元测试观测点（Service 层）
-
-**实例管理 `service/instance_test.go`**
-
-| #   | 测试项           | 验证内容                       |
-| --- | ---------------- | ------------------------------ |
-| 1   | Create 参数缺失  | 必填参数缺失时返回明确错误信息 |
-| 2   | Create 密码校验  | 密码不满足复杂度要求时校验拦截 |
-| 3   | Create 成功      | 成功返回实例 ID 和初始状态     |
-| 4   | List 空列表      | 空列表返回空数组（非 nil）     |
-| 5   | List 分页        | 分页参数正确传递到 SDK 层      |
-| 6   | Show 不存在      | 实例不存在时返回 404 错误      |
-| 7   | Delete 成功      | 返回成功状态码                 |
-| 8   | Restart 状态限制 | 实例非 Running 状态时拒绝重启  |
-
-**SDK 层 `sdk/client_test.go`**
-
-| #   | 测试项            | 验证内容                           |
-| --- | ----------------- | ---------------------------------- |
-| 1   | Signer 签名一致性 | 签名结果与华为云官方示例一致       |
-| 2   | Client 超时       | 超时 30s 后返回超时错误            |
-| 3   | Client 429 重试   | 429 触发重试（最多 3 次）          |
-| 4   | Client 5xx vs 4xx | 5xx 触发重试，4xx 不重试（除 429） |
-| 5   | 退避间隔          | 指数退避间隔正确（1s / 2s / 4s）   |
-| 6   | 已知错误码翻译    | 已知错误码正确翻译为中文           |
-| 7   | 未知错误码        | 未知错误码返回原始信息             |
-| 8   | Config 权限       | 文件权限验证为 0600                |
-
-### 6.3 Agent 测试观测点
-
-**LLM 客户端 `agent/llm_test.go`**
-
-| #   | 测试项           | 验证内容                               |
-| --- | ---------------- | -------------------------------------- |
-| 1   | 请求体格式       | messages + tools 结构正确              |
-| 2   | 解析 text block  | 正确提取 text 类型内容                 |
-| 3   | 解析 tool_use    | 正确提取 tool_use（name / id / input） |
-| 4   | 识别 stop_reason | 正确区分 end_turn 和 tool_use          |
-| 5   | 超时处理         | 60s 超时返回友好提示                   |
-| 6   | API 错误         | LLM API 返回非 200 时的处理            |
-| 7   | 多模型适配       | Anthropic 和 OpenAI 格式兼容           |
-
-**Tool-Calling 主循环 `agent/agent_test.go`**
-
-| #   | 测试项        | 验证内容                          |
-| --- | ------------- | --------------------------------- |
-| 1   | 单轮 end_turn | end_turn 直接输出文本             |
-| 2   | 多轮循环      | tool_use → 执行 → 喂回 → 再调 LLM |
-| 3   | 轮次上限      | 超过 10 轮时终止并提示            |
-| 4   | 未知 Tool     | 返回 error tool_result            |
-| 5   | Tool 执行失败 | 错误信息正确喂回 LLM              |
-| 6   | 用户取消      | 取消信息正确喂回 LLM              |
-| 7   | 上下文累积    | messages 数组正确追加             |
-
-**安全确认机制 `agent/confirm_test.go`**
-
-| #   | 测试项             | 验证内容                |
-| --- | ------------------ | ----------------------- |
-| 1   | Lv1 list_instances | 无确认直接执行          |
-| 2   | Lv1 show_instance  | 无确认直接执行          |
-| 3   | Lv1 list_flavors   | 无确认直接执行          |
-| 4   | Lv2 create → Y     | 展示参数摘要 → Y → 执行 |
-| 5   | Lv2 create → N     | 展示参数摘要 → N → 取消 |
-| 6   | Lv2 restart        | 确认后执行              |
-| 7   | Lv3 delete 匹配    | 需输入实例名匹配才执行  |
-| 8   | Lv3 delete 不匹配  | 实例名不匹配时拒绝      |
-| 9   | 未注册 Tool        | 默认拒绝执行            |
-
-### 6.4 集成测试观测点
-
-| 场景编号 | 测试场景                 | 测试方法                                | 核心验证点                                    | 通过标准            |
-| -------- | ------------------------ | --------------------------------------- | --------------------------------------------- | ------------------- |
-| IT-01    | SDK 签名 → Mock API      | httptest.Server 模拟华为云              | Authorization Header 格式、时间戳、签名值     | 签名与预期一致      |
-| IT-02    | Service → SDK → Mock API | Mock 返回预定义 JSON                    | Service 层正确解析 API 响应并映射为 Go struct | 字段无丢失          |
-| IT-03    | Waiter 轮询              | Mock 返回 Creating → Creating → Running | 轮询次数、间隔、最终状态                      | 3 次轮询后 Running  |
-| IT-04    | Waiter 超时              | Mock 持续返回 Creating                  | 超时后返回错误而非死循环                      | 超时退出 + 友好提示 |
-| IT-05    | 重试策略                 | Mock 前 2 次 429，第 3 次 200           | 重试次数、退避间隔、最终成功                  | 第 3 次成功         |
-| IT-06    | Agent 单轮 Tool-Calling  | Mock LLM 返回 tool_use → end_turn       | Tool 正确执行，result 正确喂回                | 完整循环            |
-| IT-07    | Agent 多轮对话           | Mock LLM 返回多次 tool_use              | messages 累积正确，上下文连贯                 | 上下文保持          |
-| IT-08    | Agent 安全拦截           | Mock LLM 返回 delete tool_use           | 确认机制触发，取消时 LLM 收到取消消息         | 未执行删除          |
-
-### 6.5 E2E 端到端测试场景
-
-| 场景编号 | 测试场景         | 操作步骤                                                                                       | 预期结果                                                    |
-| -------- | ---------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| E2E-01   | CLI 完整生命周期 | configure → flavor list → instance create → instance show → instance restart → instance delete | 全流程无报错，各阶段输出正确                                |
-| E2E-02   | Agent 创建实例   | chat "创建一个 MySQL 实例 2核4G" → 补充参数 → 确认                                             | Agent 正确调用 list_flavors + create_instance，实例创建成功 |
-| E2E-03   | Agent 查询实例   | chat "列出所有 MySQL 实例"                                                                     | Agent 调用 list_instances 并格式化输出                      |
-| E2E-04   | Agent 删除保护   | chat "删除 prod-mysql" → 输入错误实例名 → 输入正确实例名                                       | 首次拒绝，再次确认后删除                                    |
-| E2E-05   | Agent 越界请求   | chat "帮我优化这条 SQL"                                                                        | Agent 拒绝并告知能力边界                                    |
-| E2E-06   | 错误恢复         | AK/SK 错误 → configure 修复 → 重新操作                                                         | 错误信息友好，修复后操作成功                                |
-| E2E-07   | 多格式输出       | instance list --output table/json/yaml                                                         | 三种格式均正确，JSON 可被 jq 解析                           |
-
-### 6.6 性能与安全观测指标
-
-**性能指标**
-
-| 指标           | 目标              | 测量方法                                |
-| -------------- | ----------------- | --------------------------------------- |
-| CLI 启动时间   | < 100ms           | go test -bench 测量 main 启动到命令路由 |
-| API 单次调用   | < 3s（P95）       | 超时 30s                                |
-| Agent 单轮响应 | < 10s（P95）      | 超时 60s                                |
-| Agent 完整对话 | < 60s（4 轮以内） | 超时 5min                               |
-| 二进制体积     | < 15MB            | 单平台编译产物                          |
-| 内存占用       | < 50MB            | Agent 多轮对话峰值                      |
-
-**安全指标**
-
-| 指标                 | 要求                                       | 验证方式              |
-| -------------------- | ------------------------------------------ | --------------------- |
-| 配置文件权限         | config.yaml 必须为 0600                    | 非安全权限时告警      |
-| AK/SK 不泄露         | 日志、错误输出、Agent 对话中不出现凭证     | grep 扫描 + 代码审查  |
-| 删除二次确认         | 无论 CLI 还是 Agent，delete 必须经过强确认 | E2E 测试覆盖          |
-| ENV 覆盖优先级       | 环境变量 > 配置文件 > 默认值               | 单元测试验证优先级链  |
-| HTTPS 强制           | 所有 API 调用必须走 HTTPS，拒绝 HTTP       | SDK 层硬编码 https:// |
-| Agent 不执行任意命令 | Tool 注册表之外的操作一律拒绝              | Agent 集成测试验证    |
-
-### 6.7 CI/CD 流水线观测点
-
-| #   | 检查项         | 说明                                                        |
-| --- | -------------- | ----------------------------------------------------------- |
-| 1   | **Lint**       | golangci-lint 零 warning（含 errcheck, staticcheck, gosec） |
-| 2   | **单元测试**   | go test ./... 全部通过，覆盖率 ≥ 70%                        |
-| 3   | **竞态检测**   | go test -race 无 data race                                  |
-| 4   | **交叉编译**   | 5 平台编译成功（linux/darwin amd64/arm64 + windows amd64）  |
-| 5   | **二进制体积** | 编译产物 ≤ 15MB                                             |
-| 6   | **集成测试**   | Mock API 集成测试通过                                       |
-| 7   | **安全扫描**   | govulncheck 无已知漏洞                                      |
-
----
-
-## 07 · Agent 边界与异常处理
-
-Agent 运行过程中可能遇到的边界情况及对应处理策略。
-
-### Agent 异常处理决策树
-
-```mermaid
-flowchart TD
-    ERR(["异常发生"])
-    TYPE{"异常类型?"}
-
-    NET["网络错误<br/>超时 / DNS / 连接拒绝"]
-    NET_ACT["重试 3 次 + 指数退避<br/>仍失败 → 提示检查网络"]
-
-    AUTH["认证错误<br/>AK/SK 无效 / 过期"]
-    AUTH_ACT["提示重新 configure<br/>不重试"]
-
-    LLM_ERR["LLM API 错误<br/>429 / 500 / 模型不可用"]
-    LLM_ACT["重试 2 次<br/>仍失败 → 提示稍后再试"]
-
-    TOOL_ERR["Tool 执行失败<br/>华为云 API 返回错误"]
-    TOOL_ACT["错误信息喂回 LLM<br/>让 LLM 决定下一步"]
-
-    PARSE_ERR["响应解析错误<br/>LLM 返回非法 JSON"]
-    PARSE_ACT["记录日志<br/>提示 LLM 重新生成"]
-
-    BOUNDARY["越界请求<br/>用户要求能力范围外操作"]
-    BOUNDARY_ACT["LLM 自行判断无可用 Tool<br/>以 end_turn 返回婉拒文本"]
-
-    ERR --> TYPE
-    TYPE -->|"网络"| NET --> NET_ACT
-    TYPE -->|"认证"| AUTH --> AUTH_ACT
-    TYPE -->|"LLM"| LLM_ERR --> LLM_ACT
-    TYPE -->|"Tool"| TOOL_ERR --> TOOL_ACT
-    TYPE -->|"解析"| PARSE_ERR --> PARSE_ACT
-    TYPE -->|"越界"| BOUNDARY --> BOUNDARY_ACT
+    U->>C: diagnose "实例不可用，是否需要重启"
+    C->>R: Route(command, args)
+    R->>O: Start(task: diagnose)
+    O->>P: BuildPlan(task, session)
+    P-->>O: diagnosis result + restart candidate(L2)
+    O->>S: Evaluate(action candidate)
+    S-->>O: need_confirm = true
+    O->>RS: Build confirm prompt
+    RS-->>U: 输出建议并请求确认
+    U->>C: confirm restart
+    C->>S: Acquire/Verify token
+    S-->>C: token valid
+    C->>O: Resume action
+    O->>E: Execute(restart)
+    E->>G: Invoke(instance.restart, idempotency_key)
+    G->>I: Restart instance
+    I-->>G: accepted
+    G-->>E: normalized response
+    E->>A: Write execution audit
+    E-->>RS: action result
+    RS-->>U: 重启结果 + 审计摘要
 ```
 
 ---
 
-> **OpenTaurus Architecture Design v2.0** · 优化版 · 2026-04
+## 07 · 验收标准
+
+| 验收项   | 要求                                             |
+| -------- | ------------------------------------------------ |
+| 路由基线 | direct/chat/diagnose 全部进入统一主链路          |
+| 诊断基线 | 首批 4 个 Playbook 可加载，至少 2 个场景完成 E2E |
+| 证据基线 | 所有诊断结论带 Evidence 引用                     |
+| 安全基线 | 删除、重启等高风险动作必须经过确认与审计         |
+| 输出基线 | `table/json/yaml` 输出稳定可用                   |
+| 质量基线 | 单元、集成、关键 E2E 测试全部通过                |
