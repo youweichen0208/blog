@@ -117,11 +117,19 @@ export default withMermaid(defineConfig({
           text: '项目实战',
           items: [
             { text: '概述', link: '/projects/' },
-            { text: 'OpenTaurus 项目', link: '/projects/cli-agent/' },
+            {
+              text: 'OpenTaurus 专栏',
+              items: [
+                { text: '专栏概述', link: '/projects/opentaurus/' },
+                { text: '需求设计', link: '/projects/opentaurus/requirements' },
+                { text: '项目随记', link: '/projects/opentaurus/notes' },
+                { text: '如何获取 AK/SK', link: '/projects/opentaurus/aksk' },
+              ],
+            },
           ],
         },
       ],
-      '/open-taurus/': [
+    '/open-taurus/': [
         {
           text: 'Open Taurus — HWRDS CLI',
           items: [

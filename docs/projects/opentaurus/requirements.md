@@ -1,4 +1,4 @@
-# OpenTaurus — 华为云 RDS 命令行工具 + 智能 Agent
+# 需求设计（OpenTaurus）
 
 ---
 
