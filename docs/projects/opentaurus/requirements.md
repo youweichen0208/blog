@@ -180,19 +180,31 @@ flowchart TB
 
 ### 3.1 链路级观测点
 
-| 链路节点     | 必须观测字段                                            | 观测目的             |
-| ------------ | ------------------------------------------------------- | -------------------- |
-| cmd          | `command`, `args_digest`, `output_format`               | 还原入口请求         |
-| router       | `task_id`, `task_type`, `intent`, `target_resource`     | 验证路由分类是否正确 |
-| orchestrator | `session_id`, `status`, `round`, `deadline`             | 观察会话推进与终止   |
-| planner      | `playbook_id`, `decision_reason`, `fallback`            | 验证剧本选择与重规划 |
-| executor     | `step_id`, `capability`, `retry_count`, `result_status` | 定位步骤级错误       |
-| gateway      | `latency_ms`, `timeout_ms`, `error_code`, `retryable`   | 评估依赖质量         |
-| evidence     | `evidence_id`, `source`, `confidence`, `dedup_hit`      | 评估证据质量         |
-| policy       | `risk_level`, `decision`, `matched_rule`                | 观察风险评估命中情况 |
-| confirm      | `confirm_required`, `token_id`, `confirm_result`        | 观察确认链路         |
-| responder    | `result_type`, `confidence`, `evidence_ref_count`       | 验证输出质量         |
-| audit        | `actor`, `action`, `decision`, `redaction_hits`         | 确保审计与脱敏生效   |
+链路级观测点的测试目标不是“字段有没有打印出来”，而是验证请求在关键节点是否按设计流转、观测数据是否完整、字段值是否可信。测试实现上建议为日志、事件、指标、审计分别提供测试收集器，在单元测试和集成测试里直接断言结构化记录，而不是依赖终端输出。
+
+| 链路节点       | 测试场景                 | 测试方法                                                                           | 关键断言                                                                                                          |
+| -------------- | ------------------------ | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `cmd`          | direct 命令入口          | 构造 `instance show --id xxx --output json` 并执行命令入口                         | 产生 `command`、`args_digest`、`output_format`；敏感参数不明文出现在观测数据里                                    |
+| `router`       | 请求分类                 | 分别构造 `instance show`、`chat "..."`、`diagnose "CPU 高"` 三类输入调用 `Route()` | `task_type` 分别为 `direct/chat/diagnose`；`task_id` 非空；`intent` 与请求匹配                                    |
+| `orchestrator` | 会话推进与超时           | 跑一个完整 diagnose 场景，再注入一个超时场景                                       | `session_id` 贯通全链路；状态按 `created -> planning -> collecting -> completed/failed` 推进；超时后正确终止      |
+| `planner`      | 主剧本选择与回退         | 注入复制延迟、CPU 高、证据不足三类输入调用 `BuildPlan()`                           | `playbook_id` 选择正确；证据不足时 `fallback=true` 或触发重新规划；`decision_reason` 非空                         |
+| `executor`     | 步骤执行成功、失败、重试 | Mock capability 返回成功、429、5xx、timeout                                        | `step_id` 正确；`capability` 与计划一致；`retry_count` 符合预算；`result_status` 正确标识成功/失败/降级           |
+| `gateway`      | 外部依赖治理             | 用 fake capability 注入慢响应、限流、权限错误                                      | `latency_ms` 有值；`timeout_ms` 使用配置预算；`error_code` 归一为统一错误；只有可重试错误才标记 `retryable=true`  |
+| `evidence`     | 证据写入与去重           | 同一诊断步骤重复写入同源证据，再写入另一条新证据                                   | `evidence_id` 非空；`source` 正确；重复证据 `dedup_hit=true`；正式结论场景下至少存在 1 条有效证据                 |
+| `policy`       | 风险分级                 | 构造 `show/restart/delete` 三类动作候选执行 `Evaluate()`                           | 只读动作为低风险；重启为需确认；删除为阻断或强确认；`matched_rule` 可定位到具体策略                               |
+| `confirm`      | 确认通过、拒绝、过期     | 构造有效 token、拒绝确认、过期 token 三类场景                                      | `confirm_required` 正确；`confirm_result` 分别为 `approved/rejected/expired`；拒绝和过期都不得继续执行            |
+| `responder`    | 正式结论、追问、候选结论 | 分别输入证据充分、证据不足、证据冲突三类会话结果                                   | `result_type` 分别为最终结论/追问/候选结论；正式结论必须 `evidence_ref_count > 0`；证据不足时不能伪装成确定性输出 |
+| `audit`        | 高风险动作留痕           | 执行一次 restart 或 delete 场景并检查审计输出                                      | 存在 `actor/action/decision`；`task_id/session_id` 可串联；敏感字段已脱敏，`redaction_hits` 大于 0                |
+
+### 3.1.1 测试实施建议
+
+| 维度     | 建议做法                              | 说明                                         |
+| -------- | ------------------------------------- | -------------------------------------------- |
+| 事件采集 | 使用内存版 `EventSink` / `AuditSink`  | 测试直接断言结构化事件，避免依赖 stdout 文本 |
+| 时间控制 | 使用 `FakeClock`                      | 便于验证超时、重试间隔和 token 过期          |
+| 外部依赖 | 使用 `FakeGateway` / `FakeCapability` | 便于稳定注入 success、timeout、429、5xx      |
+| ID 生成  | 使用固定 `task_id/session_id` 生成器  | 便于断言链路关联字段是否贯通                 |
+| 断言策略 | 每条业务用例都增加观测断言            | 不只验证“结果对”，还验证“链路走对”           |
 
 ### 3.2 关键指标
 
