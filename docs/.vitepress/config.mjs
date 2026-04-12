@@ -121,6 +121,7 @@ export default withMermaid(defineConfig({
               text: 'OpenTaurus 专栏',
               items: [
                 { text: '专栏概述', link: '/projects/opentaurus/' },
+                { text: '架构设计', link: '/projects/opentaurus/architecture' },
                 { text: '需求设计', link: '/projects/opentaurus/requirements' },
                 { text: '项目随记', link: '/projects/opentaurus/notes' },
                 { text: '如何获取 AK/SK', link: '/projects/opentaurus/aksk' },
