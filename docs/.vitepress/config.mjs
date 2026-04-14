@@ -127,6 +127,13 @@ export default withMermaid(defineConfig({
                 { text: '如何获取 AK/SK', link: '/projects/opentaurus/aksk' },
               ],
             },
+            {
+              text: 'Taurus MCP Server 专栏',
+              items: [
+                { text: '专栏概述', link: '/projects/taurus-mcp-server/' },
+                { text: '华为云 TaurusDB MCP Server 架构', link: '/projects/taurus-mcp-server/taurusdb-architecture' },
+              ],
+            },
           ],
         },
       ],
