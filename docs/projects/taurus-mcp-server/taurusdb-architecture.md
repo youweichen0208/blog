@@ -10,17 +10,18 @@
 
 ### 1.2 核心定位
 
-| 维度 | 决策 |
-|------|------|
-| 语言 | TypeScript（npm 原生生态，MCP SDK 最成熟） |
-| 分发 | npm 包，用户通过 `npx @huaweicloud/taurusdb-mcp` 零安装运行 |
-| 传输 | stdio（本地运行，JSON-RPC over stdin/stdout） |
-| 认证 | 华为云 AK/SK 签名（兼容华为云 JS SDK） |
-| 参考 | Google 的 `@google-cloud/gcloud-mcp` 开源项目 |
+| 维度   | 决策                                                        |
+| ------ | ----------------------------------------------------------- |
+| 语言   | TypeScript（npm 原生生态，MCP SDK 最成熟）                  |
+| 分发   | npm 包，用户通过 `npx @huaweicloud/taurusdb-mcp` 零安装运行 |
+| 传输   | stdio（本地运行，JSON-RPC over stdin/stdout）               |
+| 认证   | 华为云 AK/SK 签名（兼容华为云 JS SDK）                      |
+| 调用层 | 官方 SDK 优先，OpenAPI 兜底                                 |
+| 参考   | Google 的 `@google-cloud/gcloud-mcp` 开源项目               |
 
 ### 1.3 与 gcloud-mcp 的关键差异
 
-gcloud-mcp 通过封装 `gcloud` CLI 命令来操作 Google Cloud，本质上是"让 AI 执行 CLI"。我们的方案**直接调用华为云 TaurusDB OpenAPI**，原因如下：
+gcloud-mcp 通过封装 `gcloud` CLI 命令来操作 Google Cloud，本质上是"让 AI 执行 CLI"。我们的方案**不封装 CLI，而是直接基于 TaurusDB SDK / OpenAPI 调用云服务**，原因如下：
 
 - 华为云没有类似 gcloud 的统一 CLI 工具生态
 - 直接调用 API 可以精确控制输入输出的数据结构，对 AI 更友好
@@ -52,20 +53,26 @@ flowchart TB
     direction TB
 
     MCP["MCP Server\nSDK + stdio transport"]:::core
-    Reg["Tool Registry\n15 TaurusDB tools + 2 operation helpers"]:::core
+    Reg["Curated Tool Registry\nP0 10-12 task-oriented tools"]:::core
+    Gate["Safety Gate\nreadonly + confirmation + scope"]:::core
+    DX["Diagnostic Orchestrator\nfan-out + correlate + summarize"]:::core
 
     subgraph Toolset["Tool groups"]
       direction LR
-      T1["Instances"]:::tool
-      T2["Backups"]:::tool
-      T3["Logs"]:::tool
-      T4["Parameters"]:::tool
+      T1["Inspect"]:::tool
+      T2["Diagnostics"]:::tool
+      T3["Controlled Ops"]:::tool
+      T4["Operation Helpers"]:::tool
     end
 
     Auth["Auth\nAK/SK signer + credential loader"]:::core
-    Http["TaurusDB API Client\nfetch + auto-sign + retry + timeout"]:::core
+    SDK["TaurusDB SDK Adapter\nofficial SDK first + signed fetch fallback"]:::core
 
-    MCP --> Reg --> Toolset --> Auth --> Http
+    MCP --> Reg --> Gate --> Toolset
+    Toolset --> DX
+    Toolset --> SDK
+    DX --> SDK
+    SDK --> Auth
   end
 
   subgraph Huawei["Huawei Cloud TaurusDB API"]
@@ -77,7 +84,7 @@ flowchart TB
   end
 
   Clients -->|"stdio (JSON-RPC 2.0)"| MCP
-  Http -->|"HTTPS + AK/SK signature"| Huawei
+  SDK -->|"HTTPS + AK/SK signature"| Huawei
 ```
 
 ### 2.2 数据流
@@ -87,50 +94,67 @@ flowchart TB
 ```
 用户自然语言 → AI 模型推理 → MCP Client 发送 tools/call
     → stdio → MCP Server 路由到对应 Tool Handler
-    → Tool Handler 构建 API 请求
-    → Auth 模块签名
-    → HTTP Client 发送到华为云 TaurusDB API
-    → 解析响应 → 格式化为 MCP Content → 返回给 AI
+    → Safety Gate 校验只读模式 / 确认 token / 作用域
+    → 如为诊断类工具，Diagnostic Orchestrator 并发聚合多个 TaurusDB 数据源
+    → TaurusDB SDK Adapter 调用官方 SDK，必要时回退到签名 OpenAPI
+    → 解析响应 → 格式化为结构化 MCP Content → 返回给 AI
     → AI 模型组织自然语言回答 → 呈现给用户
 ```
 
 ### 2.3 关键数据流示例
 
-**用户问 "我的 TaurusDB 实例运行状态如何？"**
+**用户问 "帮我诊断 TaurusDB 实例当前状态和风险"**
 
 ```
-1. AI 选择调用 `list_instances` 工具
+1. AI 选择调用 `diagnose_instance` 工具，参数为 `instance_id`
 2. MCP Server 收到 JSON-RPC 请求：
-   { "method": "tools/call", "params": { "name": "list_instances", ... } }
-3. Tool Handler 调用:
-   GET https://{taurusdb-endpoint}/v3/{project_id}/instances
-4. 返回 JSON → 格式化为 MCP TextContent
-5. AI 基于返回的实例列表，用自然语言告知用户各实例的运行状态
+   { "method": "tools/call", "params": { "name": "diagnose_instance", ... } }
+3. Safety Gate 校验当前是否允许执行该工具
+4. Diagnostic Orchestrator 并发调用实例详情、慢日志、错误日志、参数、备份策略
+5. TaurusDB SDK Adapter 通过官方 SDK 或签名 OpenAPI 获取原始响应
+6. 诊断层聚合结果，生成 `summary / findings / evidence / recommendations`
+7. AI 基于结构化诊断结果，用自然语言给出状态判断和运维建议
 ```
 
 ```mermaid
-sequenceDiagram
-  autonumber
-  participant U as User
-  participant AI as AI Model
-  participant MC as MCP Client
-  participant MS as MCP Server (stdio)
-  participant TH as Tool Handler
-  participant AU as Auth (AK/SK)
-  participant API as Huawei Cloud TaurusDB API
+  sequenceDiagram
+    autonumber
+    participant U as User
+    participant AI as AI Model
+    participant MC as MCP Client
+    participant MS as MCP Server
+    participant SG as Safety Gate
+    participant DX as Diagnostic Orchestrator
+  participant SDK as TaurusDB SDK Adapter
+  participant API as Huawei Cloud TaurusDB OpenAPI
 
-  U->>AI: 我的 TaurusDB 实例运行状态如何？
-  AI->>MC: tools/call list_instances
-  MC->>MS: JSON-RPC 2.0 via stdio
-  MS->>TH: Route to instances.list_instances
-  TH->>AU: Sign request (project_id, region)
-  AU-->>TH: Authorization + signed headers
-  TH->>API: GET /v3/{project_id}/instances
-  API-->>TH: 200 OK (JSON)
-  TH-->>MS: MCP content (TextContent JSON)
-  MS-->>MC: JSON-RPC response
-  MC-->>AI: Instances payload
-  AI-->>U: 汇总各实例状态并解释
+  U->>AI: 帮我查看 TaurusDB 实例状态并诊断风险
+  AI->>MC: tools/call diagnose_instance
+  MC->>MS: JSON-RPC via stdio
+  MS->>SG: validate readonly / confirmation / scope
+  SG-->>MS: allowed
+  MS->>DX: dispatch diagnose_instance
+
+  par Instance state
+    DX->>SDK: getInstance(instance_id)
+  and Performance signals
+    DX->>SDK: listSlowLogs(instance_id, time_range)
+    DX->>SDK: listErrorLogs(instance_id, time_range)
+  and Config and backup posture
+    DX->>SDK: getParameters(instance_id)
+    DX->>SDK: getBackupPolicy(instance_id)
+    DX->>SDK: listBackups(instance_id)
+  end
+
+  SDK->>API: signed requests via AK/SK
+  API-->>SDK: JSON responses
+    SDK-->>DX: normalized results
+
+    DX->>DX: correlate status / logs / params / backup posture
+    DX-->>MS: summary + evidence + recommendations
+    MS-->>MC: structured MCP response
+    MC-->>AI: diagnostic payload
+    AI-->>U: 状态、风险和建议
 ```
 
 ---
@@ -148,16 +172,21 @@ sequenceDiagram
 │   │   ├── credential-loader.ts  # 多来源凭证加载（环境变量 > 配置文件 > SDK）
 │   │   └── signer.ts             # AK/SK 请求签名实现
 │   ├── client/
-│   │   ├── taurusdb-client.ts    # 华为云 TaurusDB API HTTP 客户端
+│   │   ├── taurusdb-client.ts    # TaurusDB SDK 适配层（SDK 优先，OpenAPI 兜底）
 │   │   └── types.ts              # API 请求/响应类型定义
+│   ├── diagnostics/
+│   │   ├── diagnose-instance.ts  # 实例健康诊断
+│   │   ├── review-backup-risk.ts # 备份风险审查
+│   │   └── evidence.ts           # 诊断证据归一化
 │   ├── tools/
 │   │   ├── index.ts              # Tool 注册汇总
-│   │   ├── instances.ts          # 实例管理（6 个工具）
-│   │   ├── backups.ts            # 备份管理（5 个工具）
-│   │   ├── logs.ts               # 日志查询（2 个工具）
-│   │   ├── parameters.ts         # 参数配置（2 个工具）
+│   │   ├── instances.ts          # 实例查询类工具
+│   │   ├── backups.ts            # 备份类工具
+│   │   ├── logs.ts               # 日志类工具
+│   │   ├── parameters.ts         # 参数类工具
+│   │   ├── diagnostics.ts        # 诊断类工具
 │   │   ├── operations.ts         # 长任务辅助（2 个工具）
-│   │   └── storage.ts            # 存储管理（2 个工具，可选）
+│   │   └── mutations.ts          # 受控写操作（P1）
 │   ├── commands/
 │   │   └── init.ts               # 一键配置各 AI 客户端
 │   └── utils/
@@ -169,9 +198,11 @@ sequenceDiagram
 │   │   ├── signer.test.ts
 │   │   ├── credential-loader.test.ts
 │   │   ├── formatter.test.ts
+│   │   ├── diagnose-instance.test.ts
 │   │   └── waiter.test.ts
 │   └── integration/
 │       ├── tools.test.ts         # Mock API 的工具集成测试
+│       ├── diagnostics.test.ts   # 诊断工具集成测试
 │       └── operations.test.ts    # 长任务辅助工具集成测试
 ├── package.json
 ├── tsconfig.json
@@ -194,7 +225,7 @@ sequenceDiagram
 
 // 子命令分发
 if (args[0] === "init") {
-  runInit(args);    // 配置 AI 客户端
+  runInit(args); // 配置 AI 客户端
   process.exit(0);
 }
 
@@ -224,41 +255,43 @@ function signRequest(
   method: string,
   path: string,
   headers: Record<string, string>,
-  body: string
-): Record<string, string>   // 返回包含 Authorization 的完整 headers
+  body: string,
+): Record<string, string>; // 返回包含 Authorization 的完整 headers
 ```
 
 #### 3.2.3 API 客户端层 (`client/`)
 
-封装 HTTP 调用，提供类型安全的方法：
+封装 TaurusDB SDK 和签名 OpenAPI 调用，提供统一、可测试的服务访问层：
 
 ```typescript
 class TaurusDbClient {
   async listInstances(
     params?: ListInstancesParams,
-    context?: RequestContext
-  ): Promise<ListInstancesResponse>
+    context?: RequestContext,
+  ): Promise<ListInstancesResponse>;
 
   async getInstance(
     instanceId: string,
-    context?: RequestContext
-  ): Promise<InstanceDetail>
+    context?: RequestContext,
+  ): Promise<InstanceDetail>;
 
   async createBackup(
     params: CreateBackupParams,
-    context?: RequestContext
-  ): Promise<AcceptedOperation>
+    context?: RequestContext,
+  ): Promise<AcceptedOperation>;
 
   async getOperationStatus(
     operationId: string,
-    context?: RequestContext
-  ): Promise<OperationStatus>
+    context?: RequestContext,
+  ): Promise<OperationStatus>;
   // ...
 }
 ```
 
 关键设计决策：
-- **使用原生 `fetch`**，不引入 axios 等额外依赖，保持包体小
+
+- **SDK 优先**：优先复用华为云官方 TaurusDB SDK，减少签名、错误码和接口演进成本
+- **OpenAPI 兜底**：当官方 SDK 覆盖不足或更新滞后时，再回退到手写签名 `fetch`
 - **上下文可覆盖**：每个请求都支持可选 `region` / `project_id`，优先于全局默认配置
 - **自动重试**：默认仅对查询类请求和任务轮询请求重试；写操作只有在 API 明确支持幂等标识时才重试
 - **超时控制**：默认 30 秒，可通过环境变量 `TAURUSDB_MCP_TIMEOUT` 配置
@@ -266,60 +299,101 @@ class TaurusDbClient {
 
 #### 3.2.4 工具层 (`tools/`)
 
-这是核心业务层。每个文件对应一组相关工具。
+这是核心业务层。这里不追求把 50+ TaurusDB OpenAPI 一比一映射为 50+ MCP Tools，而是只暴露最关键、最高频、最适合 AI 调用的任务型工具。
 
 所有工具默认接受可选 `region` / `project_id` 参数，用于覆盖默认上下文，支持多区域和多项目切换。
 
-具体工具集合以 TaurusDB 实际 OpenAPI 能力为准；MVP 先保持与当前方案一致的信息架构，落地时再对不适用的接口做裁剪。
+### 3.2.4.1 Tool 筛选方法
 
-**实例管理 (instances.ts)**
+每个候选工具都按以下 4 个维度评估，单项 1-5 分：
 
-| 工具名 | 对应 API | 风险等级 | 说明 |
-|--------|---------|---------|------|
-| `list_instances` | GET /instances | 低 | 列出所有实例 |
-| `get_instance` | GET /instances/{id} | 低 | 获取实例详情 |
-| `list_datastores` | GET /datastores/{engine} | 低 | 查询可用引擎版本 |
-| `list_flavors` | GET /flavors/{engine} | 低 | 查询可用规格 |
-| `restart_instance` | POST /instances/{id}/action | **高** | 重启实例 |
-| `resize_instance` | POST /instances/{id}/action | **高** | 变更实例规格 |
+- **高频**：用户是否会反复发起这个任务
+- **高价值**：一次调用是否能明显减少排障时间或操作时间
+- **低歧义**：输入输出是否清晰，模型是否不容易误用
+- **可组合**：该工具是否能聚合多个 API，形成比单个 OpenAPI 更高的任务价值
 
-**备份管理 (backups.ts)**
+筛选规则：
 
-| 工具名 | 对应 API | 风险等级 | 说明 |
-|--------|---------|---------|------|
-| `list_backups` | GET /backups | 低 | 查询备份列表 |
-| `create_backup` | POST /backups | 中 | 创建手动备份 |
-| `delete_backup` | DELETE /backups/{id} | **高** | 删除备份 |
-| `get_backup_policy` | GET /instances/{id}/backups/policy | 低 | 查询备份策略 |
-| `set_backup_policy` | PUT /instances/{id}/backups/policy | 中 | 修改备份策略 |
+- 总分 `>= 16` 的候选项优先进入 P0
+- 高风险写操作即使得分高，也默认降级到 P1，并强制走安全闸门
+- 与现有诊断工具高度重叠的候选项延后，避免工具集合膨胀
+- 未暴露为 MCP Tool 的 OpenAPI 仍可作为内部能力，被诊断工具和编排层复用
 
-**日志查询 (logs.ts)**
+### 3.2.4.2 P0 首批 MCP Tools
 
-| 工具名 | 对应 API | 风险等级 | 说明 |
-|--------|---------|---------|------|
-| `list_slow_logs` | GET /instances/{id}/slowlog | 低 | 慢日志 |
-| `list_error_logs` | GET /instances/{id}/errorlog | 低 | 错误日志 |
+| Tool | 高频 | 高价值 | 低歧义 | 可组合 | 总分 | 角色定位 |
+|------|------|--------|--------|--------|------|----------|
+| `list_instances` | 5 | 4 | 5 | 4 | 18 | 实例总览入口 |
+| `get_instance` | 5 | 5 | 5 | 4 | 19 | 单实例详情入口 |
+| `list_backups` | 4 | 4 | 5 | 4 | 17 | 备份可用性核查 |
+| `get_backup_policy` | 3 | 4 | 5 | 4 | 16 | 备份策略核查 |
+| `create_backup` | 3 | 5 | 5 | 3 | 16 | 低歧义、高价值写操作 |
+| `list_slow_logs` | 4 | 5 | 4 | 4 | 17 | 性能问题排查 |
+| `list_error_logs` | 4 | 5 | 4 | 4 | 17 | 故障排查 |
+| `get_instance_configuration` | 4 | 4 | 4 | 4 | 16 | 参数核查 |
+| `get_operation_status` | 3 | 4 | 5 | 4 | 16 | 异步任务辅助 |
+| `wait_operation` | 3 | 4 | 5 | 4 | 16 | 异步任务辅助 |
+| `diagnose_instance` | 5 | 5 | 4 | 5 | 19 | 聚合诊断主入口 |
+| `review_backup_risk` | 4 | 5 | 5 | 5 | 19 | 备份风险审查 |
 
-**参数配置 (parameters.ts)**
+说明：
 
-| 工具名 | 对应 API | 风险等级 | 说明 |
-|--------|---------|---------|------|
-| `get_instance_configuration` | GET /instances/{id}/configurations | 低 | 查看参数 |
-| `update_instance_configuration` | PUT /instances/{id}/configurations | **高** | 修改参数 |
+- `diagnose_instance` 是 P0 中最重要的差异化工具，它不是单个 API 封装，而是对实例状态、日志、参数、备份姿态做聚合判断
+- `review_backup_risk` 通过组合 `list_backups`、`get_backup_policy` 等能力，给出风险等级和改进建议
+- `create_backup` 是唯一进入 P0 的写操作，因为它高价值、低歧义，且安全后果明显小于重启、扩容、改参
 
-**长任务辅助 (operations.ts)**
+### 3.2.4.3 P1 延后工具
 
-| 工具名 | 对应 API | 风险等级 | 说明 |
-|--------|---------|---------|------|
-| `get_operation_status` | 任务状态查询接口 | 低 | 查询异步任务当前状态 |
-| `wait_operation` | 任务状态查询接口 | 低 | 轮询任务直到完成或超时 |
+这些工具有价值，但不适合首批暴露，原因通常是高风险、低频，或与 P0 工具功能重叠：
 
-设计约束：
-- 所有写操作工具必须返回 `accepted`、`running`、`succeeded`、`failed` 之一，而不是默认宣称“已经完成”
-- `restart_instance`、`resize_instance`、`create_backup`、`update_instance_configuration` 等工具返回 `operation_id`
-- AI 可根据需要继续调用 `get_operation_status` 或 `wait_operation`
+| Tool | 处理建议 | 延后原因 |
+|------|----------|----------|
+| `restart_instance` | P1 | 高风险写操作，需严格确认 |
+| `set_backup_policy` | P1 | 写操作，需要明确变更意图 |
+| `update_instance_configuration` | P1 | 高风险，错误参数可能引发业务波动 |
+| `resize_instance` | P2 | 低频且影响面大 |
+| `list_datastores` | P2 | 更偏资源规划，不是日常高频运维 |
+| `list_flavors` | P2 | 更偏选型场景，不是运维主路径 |
+| `delete_backup` | 暂不开放 | 风险高且收益低 |
 
-#### 3.2.5 安全模块 (`utils/safety.ts`)
+### 3.2.4.4 OpenAPI 与 MCP Tool 的关系
+
+这里的核心原则是：
+
+- **OpenAPI 是能力面**：TaurusDB 现有 50+ OpenAPI 和 SDK 方法，代表服务能力全集
+- **MCP Tool 是任务面**：MCP Tool 应该对应用户真正会问的问题，而不是接口目录
+- **诊断工具是组合面**：多个 OpenAPI 可以由一个诊断工具统一编排，对 AI 更友好
+
+因此，未暴露为 MCP Tool 的 OpenAPI 并不会“浪费”：
+
+- 它们仍然由 `taurusdb-client.ts` 和 `diagnostics/` 复用
+- 当用户行为证明某类需求足够高频时，再增量升格为独立 Tool
+- 这样可以把首批工具集合控制在 10-12 个核心任务附近，保持 AI 选 tool 的稳定性
+
+#### 3.2.5 诊断编排层 (`diagnostics/`)
+
+诊断层是 TaurusDB MCP Server 的核心差异化模块，它负责把多个底层 OpenAPI 结果组合成真正可执行的运维判断。
+
+首批诊断能力：
+
+- `diagnose_instance`：聚合实例详情、慢日志、错误日志、关键参数、备份策略，输出健康状态、风险项和建议动作
+- `review_backup_risk`：聚合备份策略、最近备份、失败记录，输出备份覆盖风险和改进建议
+
+统一输出结构：
+
+- `summary`：一句话结论
+- `findings`：风险发现列表
+- `evidence`：支撑结论的原始证据
+- `risk_level`：`low / medium / high`
+- `recommendations`：可执行建议
+
+MVP 的诊断边界：
+
+- 先只消费 TaurusDB 自身可获得的实例、备份、日志、参数信息
+- 暂不强依赖外部监控、告警、事件系统，避免 Phase 1 依赖面过大
+- Phase 2 再考虑接入云监控、告警事件等跨服务信号
+
+#### 3.2.6 安全模块 (`utils/safety.ts`)
 
 参考 gcloud-mcp 的命令黑名单机制，我们对高风险操作添加更强的服务端保护：
 
@@ -346,7 +420,7 @@ const server = new McpServer({
   name: "huaweicloud-taurusdb",
   version: "0.1.0",
   capabilities: {
-    tools: {},           // 支持工具调用
+    tools: {}, // 支持工具调用
     // resources: {},    // 未来可暴露实例信息为 MCP Resource
     // prompts: {},      // 未来可提供预设 Prompt 模板
   },
@@ -359,30 +433,39 @@ const server = new McpServer({
 
 ```typescript
 server.tool(
-  "tool_name",                    // 工具名（snake_case）
-  "Description for the AI...",    // 给 AI 看的描述（英文，清晰准确）
-  {                               // 参数 Schema（Zod 定义）
+  "tool_name", // 工具名（snake_case）
+  "Description for the AI...", // 给 AI 看的描述（英文，清晰准确）
+  {
+    // 参数 Schema（Zod 定义）
     param1: z.string().describe("..."),
     region: z.string().optional().describe("Override default region"),
     project_id: z.string().optional().describe("Override default project"),
-    confirmation_token: z.string().optional().describe("Required for high-risk mutations"),
+    confirmation_token: z
+      .string()
+      .optional()
+      .describe("Required for high-risk mutations"),
   },
-  async (params) => {             // 处理函数
+  async (params) => {
+    // 处理函数
     try {
       const result = await client.someApiCall(params);
       return {
-        content: [{
-          type: "text",
-          text: JSON.stringify(formatSuccess(result), null, 2),
-        }],
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(formatSuccess(result), null, 2),
+          },
+        ],
       };
     } catch (error) {
       return {
-        content: [{ type: "text", text: JSON.stringify(formatError(error), null, 2) }],
+        content: [
+          { type: "text", text: JSON.stringify(formatError(error), null, 2) },
+        ],
         isError: true,
       };
     }
-  }
+  },
 );
 ```
 
@@ -431,6 +514,7 @@ server.tool(
 ```
 
 设计要求：
+
 - `summary` 面向 AI，总结当前结果，不要求模型重新解析整段原始 JSON
 - `data` 保留原始业务结果或裁剪后的关键字段
 - `metadata` 必须包含 `request_id`，便于排障和工单定位
@@ -442,11 +526,13 @@ server.tool(
 API 返回的原始 JSON 往往包含大量对 AI 无用的字段。格式化策略：
 
 **保留关键原始信息**（推荐方案）：
+
 - 在 `data` 中保留完整业务结果或最小必要子集，不丢失诊断所需字段
 - 在 `summary` 中提炼 AI 最常用的关键信息，降低模型解析成本
 - 在 `metadata` 中补充请求上下文、重试性和任务轮询提示
 
 **精简格式**（后续优化）：
+
 - 对 `list_instances` 等返回大量数据的接口，提取关键字段
 - 例如只保留 `id, name, status, engine, flavor, created_at`
 - 通过 `formatter.ts` 统一处理
@@ -489,11 +575,11 @@ flowchart LR
 
 采用 Conventional Commits + release-please 自动管理：
 
-| Commit 前缀 | 版本变化 | 示例 |
-|-------------|---------|------|
-| `fix:` | Patch (0.1.0 → 0.1.1) | `fix: handle API timeout correctly` |
-| `feat:` | Minor (0.1.0 → 0.2.0) | `feat: add storage resize tool` |
-| `feat!:` / `BREAKING CHANGE:` | Major (0.x → 1.0) | `feat!: change auth config format` |
+| Commit 前缀                   | 版本变化              | 示例                                |
+| ----------------------------- | --------------------- | ----------------------------------- |
+| `fix:`                        | Patch (0.1.0 → 0.1.1) | `fix: handle API timeout correctly` |
+| `feat:`                       | Minor (0.1.0 → 0.2.0) | `feat: add storage resize tool`     |
+| `feat!:` / `BREAKING CHANGE:` | Major (0.x → 1.0)     | `feat!: change auth config format`  |
 
 ### 5.4 用户安装体验
 
@@ -536,20 +622,22 @@ npx @huaweicloud/taurusdb-mcp init  # 打印配置说明
 
 建议用户创建专用 IAM 用户，按使用场景授权：
 
-| 场景 | 推荐 IAM 策略 | 工具范围 |
-|------|-------------|---------|
+| 场景     | 推荐 IAM 策略                              | 工具范围        |
+| -------- | ------------------------------------------ | --------------- |
 | 只读运维 | TaurusDB 只读策略（按实际 IAM 策略名配置） | list/get 类工具 |
-| 日常运维 | TaurusDB 运维策略（按实际 IAM 策略名配置） | 全部工具 |
-| 生产环境 | 自定义策略（排除 delete） | 查询 + 备份 |
+| 日常运维 | TaurusDB 运维策略（按实际 IAM 策略名配置） | 全部工具        |
+| 生产环境 | 自定义策略（排除 delete）                  | 查询 + 备份     |
 
 ### 6.3 安全边界
 
 **不做的事**：
+
 - 不存储凭证到磁盘（从环境变量/配置文件实时读取）
 - 不在日志中输出 AK/SK
 - 不提供删除实例、重置密码等不可逆操作的工具
 
 **做的事**：
+
 - 所有 API 调用走 HTTPS
 - AK/SK 每次请求实时签名，不缓存签名结果
 - 默认只读；只有显式设置 `TAURUSDB_MCP_ENABLE_MUTATIONS=true` 才开启写操作
@@ -567,6 +655,7 @@ npx @huaweicloud/taurusdb-mcp init  # 打印配置说明
 ├── auth/signer.test.ts          # 签名算法正确性（固定输入验证输出）
 ├── auth/credential-loader.test.ts  # 多来源凭证加载逻辑
 ├── utils/formatter.test.ts      # 数据格式化
+├── diagnostics/diagnose-instance.test.ts  # 诊断证据聚合与结论生成
 ├── utils/safety.test.ts         # 安全策略判断
 ├── utils/waiter.test.ts         # 长任务轮询、超时与退避
 └── commands/init.test.ts        # 配置文件生成
@@ -574,6 +663,7 @@ npx @huaweicloud/taurusdb-mcp init  # 打印配置说明
 集成测试 (vitest + mock)
 ├── tools/instances.test.ts      # Mock HTTP → 验证 Tool 输入输出
 ├── tools/backups.test.ts
+├── tools/diagnostics.test.ts    # diagnose_instance / review_backup_risk
 ├── tools/logs.test.ts
 └── tools/operations.test.ts     # operation status / wait 行为
 
@@ -605,6 +695,7 @@ vi.mock("../src/client/taurusdb-client", () => ({
 - 所有异步写操作返回统一的四态状态字段和 `operation_id`
 - 所有错误响应都包含 `request_id`、`status_code`、`retryable`
 - `wait_operation` 在成功、失败、超时三种路径下都能稳定返回
+- `diagnose_instance` 必须稳定输出 `summary`、`findings`、`evidence`、`recommendations`
 
 ---
 
@@ -612,15 +703,18 @@ vi.mock("../src/client/taurusdb-client", () => ({
 
 ### Phase 1 — MVP (当前)
 
-- 15 个核心 TaurusDB 工具 + 2 个长任务辅助工具
+- 10-12 个精选 TaurusDB MCP Tools
+- 包含 2 个长任务辅助工具和 2 个聚合诊断工具
 - stdio 本地传输
+- 官方 SDK 优先，OpenAPI 兜底
 - npm 包发布
 - 基础文档
 - 默认只读 + 二阶段确认
 
 ### Phase 2 — 增强
 
-- 接入华为云官方 JS SDK（替换手写签名）
+- 扩展 P1 受控写操作（如重启、改参、修改备份策略）
+- 接入云监控、告警事件等外部运维信号
 - 添加 MCP Resources（将实例信息暴露为可订阅资源）
 - 添加 MCP Prompts（预设运维 Prompt 模板）
 - 响应格式优化（精简 JSON，提取关键字段）
@@ -645,34 +739,48 @@ vi.mock("../src/client/taurusdb-client", () => ({
 
 ### 运行时依赖
 
-| 包 | 用途 | 大小 |
-|---|------|------|
-| `@modelcontextprotocol/sdk` | MCP 协议实现 | ~50KB |
-| `zod` | 参数 Schema 验证 | ~60KB |
+| 包                          | 用途             | 大小  |
+| --------------------------- | ---------------- | ----- |
+| `@modelcontextprotocol/sdk` | MCP 协议实现     | ~50KB |
+| `zod`                       | 参数 Schema 验证 | ~60KB |
+| TaurusDB 官方 SDK（可选）   | 服务访问优先实现 | 视实际包体而定 |
 
 总计约 110KB，非常轻量。用户通过 npx 首次下载约 2-3 秒。
 
 ### 开发依赖
 
-| 包 | 用途 |
-|---|------|
-| `typescript` | 编译 |
-| `vitest` | 测试框架 |
-| `tsx` | 开发时直接运行 TS |
-| `eslint` | 代码规范 |
+| 包           | 用途              |
+| ------------ | ----------------- |
+| `typescript` | 编译              |
+| `vitest`     | 测试框架          |
+| `tsx`        | 开发时直接运行 TS |
+| `eslint`     | 代码规范          |
 
-### 为什么不直接用华为云 JS SDK？
+### SDK 选型策略
 
-华为云对应数据库服务的 JS SDK 模块通常会携带较完整的 API 类型定义，这会显著增加 `npx` 首次下载时间。当前方案手写 HTTP 调用 + 签名，优先保持包体小；Phase 2 再评估是否切换到对应的官方 SDK。
+推荐采用“**SDK 优先，OpenAPI 兜底**”的实现方式：
+
+- 优先使用官方 TaurusDB SDK，减少协议细节、错误码和签名维护成本
+- 对 SDK 尚未覆盖或更新滞后的接口，由 `taurusdb-client.ts` 回退到签名 `fetch`
+- 这样既能利用官方生态，又不会因为 SDK 覆盖问题卡住 MCP Tool 迭代
+
+### 为什么不把 50+ OpenAPI 全做成 MCP Tools？
+
+因为 MCP Tool 不是接口目录，而是任务入口。
+
+- 如果把 50+ OpenAPI 一比一暴露为 Tools，模型选错工具的概率会明显升高
+- 很多低频接口更适合作为诊断编排的内部能力，而不是独立暴露给 AI
+- 精选 10-12 个高频、高价值、低歧义、可组合的任务型工具，更符合 MCP 的使用方式
 
 ---
 
 ## 10. 风险与应对
 
-| 风险 | 影响 | 应对 |
-|------|------|------|
-| 华为云 API 版本更新 | 部分工具失效 | 集成测试覆盖 + 定期验证 |
-| MCP SDK 破坏性更新 | Server 无法启动 | 锁定 SDK 主版本 + renovate 自动 PR |
-| npm scope 占用 | 无法使用 @huaweicloud | 备选: `huaweicloud-taurusdb-mcp`（无 scope） |
-| AK/SK 泄露 | 安全事故 | 文档强调最小权限 + 不提供销毁性工具 |
-| AI 误操作生产库 | 数据损坏 | 只读模式 + 高风险工具描述警告 |
+| 风险                | 影响                  | 应对                                         |
+| ------------------- | --------------------- | -------------------------------------------- |
+| 华为云 API 版本更新 | 部分工具失效          | 集成测试覆盖 + 定期验证                      |
+| MCP SDK 破坏性更新  | Server 无法启动       | 锁定 SDK 主版本 + renovate 自动 PR           |
+| Tool 集合膨胀       | AI 选错工具、维护成本上升 | 按四维评分控制 P0 数量，OpenAPI 默认先不暴露 |
+| npm scope 占用      | 无法使用 @huaweicloud | 备选: `huaweicloud-taurusdb-mcp`（无 scope） |
+| AK/SK 泄露          | 安全事故              | 文档强调最小权限 + 不提供销毁性工具          |
+| AI 误操作生产库     | 数据损坏              | 只读模式 + 二阶段确认 + 高风险工具警告       |
