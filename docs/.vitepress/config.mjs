@@ -114,26 +114,30 @@ export default withMermaid(defineConfig({
       '/agent/': aiDevSidebar,
       '/projects/': [
         {
-          text: '项目实战',
+          text: '项目概览',
           items: [
             { text: '概述', link: '/projects/' },
-            {
-              text: 'OpenTaurus 专栏',
-              items: [
-                { text: '专栏概述', link: '/projects/opentaurus/' },
-                { text: '架构设计', link: '/projects/opentaurus/architecture' },
-                { text: '需求设计', link: '/projects/opentaurus/requirements' },
-                { text: '项目随记', link: '/projects/opentaurus/notes' },
-                { text: '如何获取 AK/SK', link: '/projects/opentaurus/aksk' },
-              ],
-            },
-            {
-              text: 'Taurus MCP Server 专栏',
-              items: [
-                { text: '专栏概述', link: '/projects/taurus-mcp-server/' },
-                { text: '华为云 TaurusDB MCP Server 架构', link: '/projects/taurus-mcp-server/taurusdb-architecture' },
-              ],
-            },
+          ],
+        },
+        {
+          text: 'OpenTaurus 专栏',
+          link: '/projects/opentaurus/',
+          collapsed: false,
+          items: [
+            { text: '专栏概述', link: '/projects/opentaurus/' },
+            { text: '架构设计', link: '/projects/opentaurus/architecture' },
+            { text: '需求设计', link: '/projects/opentaurus/requirements' },
+            { text: '项目随记', link: '/projects/opentaurus/notes' },
+            { text: '如何获取 AK/SK', link: '/projects/opentaurus/aksk' },
+          ],
+        },
+        {
+          text: 'Taurus MCP Server 专栏',
+          link: '/projects/taurus-mcp-server/',
+          collapsed: false,
+          items: [
+            { text: '专栏概述', link: '/projects/taurus-mcp-server/' },
+            { text: '华为云 TaurusDB MCP Server 架构', link: '/projects/taurus-mcp-server/taurusdb-architecture' },
           ],
         },
       ],
