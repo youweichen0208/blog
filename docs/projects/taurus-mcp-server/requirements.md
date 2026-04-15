@@ -32,7 +32,7 @@ TaurusDB 的日常运维本质上是一个“多信息源、多步骤、强上�
 | ---- | ---- |
 | 任务型工具优先 | 不把 50+ OpenAPI 原样暴露为 50+ MCP Tools |
 | 诊断优先于 CRUD | 强调 `diagnose_instance`、`review_backup_risk` 这类组合能力 |
-| 默认安全 | 默认只读，高风险写操作必须经过确认和审计 |
+| 默认安全 | 默认只读；高风险变更保留 `confirmation_token`；真正云侧操作由 CTS 自动审计 |
 | AI 友好 | 输入输出低歧义，避免大模型高频选错工具 |
 | 易部署 | 支持 `npx` 零安装运行，适配 Claude Desktop、Cursor 等客户端 |
 | 易扩展 | 后续可平滑接入更多 TaurusDB 能力和跨服务信号 |
@@ -89,7 +89,8 @@ Google Cloud 的路线给出了另一组启发：
 - **而是** 面向 TaurusDB 运维和诊断的任务型 MCP Server
 - 首版优先解决“查询、诊断、备份风险审查、受控低风险写操作”
 - 工具数量控制在小而精的范围，内部仍保留完整 OpenAPI/SDK 能力面
-- 安全策略、确认机制、审计链路必须从第一版就进入设计，而不是后补
+- 审计链路默认对标阿里云 / 华为云：云侧动作走平台自动审计，本地只保留轻量结构化日志
+- 高风险变更额外保留 `confirmation_token`，用更强的事前控制覆盖数据库运维场景
 
 ---
 
@@ -123,7 +124,7 @@ Google Cloud 的路线给出了另一组启发：
 | S-05 | Safety Gate | 只读默认、确认 token、工具级风险拦截 | P0 |
 | S-06 | Formatter | 统一成功/失败 envelope，降低模型解析成本 | P0 |
 | S-07 | Waiter | 处理异步任务轮询、退避和超时 | P0 |
-| S-08 | Audit Log | 记录关键调用链路和高风险动作留痕 | P1 |
+| S-08 | Local Structured Log | 记录轻量本地结构化日志，并关联 `task_id/request_id` | P1 |
 | S-09 | Multi-project Context | 管理默认上下文和局部覆盖策略 | P1 |
 | S-10 | Capability Promotion | 根据使用频次把内部 API 逐步升格为独立 Tool | P1 |
 
@@ -137,6 +138,20 @@ Google Cloud 的路线给出了另一组启发：
 | 差异化诊断 | `diagnose_instance`、`review_backup_risk` |
 | 安全边界 | 默认只读，高风险写操作不进入首版默认暴露集合 |
 
+### 3.4 关键术语
+
+| 术语 | 含义 |
+| ---- | ---- |
+| 查询工具 | 只读工具，不改变 TaurusDB 资源状态，例如 `list_instances`、`get_instance` |
+| `mutation` / 写操作工具 | 会改变远端资源状态的工具，例如 `create_backup`、`restart_instance`、`update_instance_configuration` |
+| 高风险工具 | 一旦执行就可能影响可用性、配置稳定性或数据安全的写操作，需要额外保护 |
+| 默认不暴露 | 服务启动时不把该工具注册进 `tools/list`，模型默认看不到也选不到 |
+| `confirmation_token` | 服务端在第一次高风险调用时签发的短期有效确认令牌，绑定工具名、目标资源、参数摘要和过期时间；第二次调用带上它才允许真正执行 |
+| `task_id` | 每次 MCP 工具调用的内部关联 ID，用于串联结构化日志和响应 |
+| `CTS` | 华为云云审计服务，用于记录真正触达云侧的资源操作 |
+| `CTS 追踪器` | 将 CTS 审计事件转储到 LTS/OBS 的配置 |
+| `request_id` | 华为云 API 在真正发起上游请求后返回的请求号，可用于工单定位和云侧排障；如果请求在本地就被拦截，则不会有这个字段 |
+
 ---
 
 ## 04 · 方案概要设计
@@ -147,7 +162,7 @@ Google Cloud 的路线给出了另一组启发：
 | ---- | ---- |
 | 任务面高于接口面 | 工具命名和语义对齐用户任务，不对齐底层 API 目录 |
 | 证据优先 | 诊断输出必须带证据，不输出无依据结论 |
-| 安全左移 | 风险分级、确认、审计在服务端收口 |
+| 安全左移 | 最小权限、默认不暴露、高风险确认和 CTS 自动审计组合收口 |
 | 结果统一 | 所有工具输出统一 envelope，便于 AI 客户端消费 |
 | 实现可演进 | 首版 `stdio`，后续可演进到 remote MCP |
 
@@ -163,6 +178,7 @@ flowchart LR
   C["Claude / Cursor / VS Code"]:::client --> S["TaurusDB MCP Server<br/>stdio transport"]:::core
   S --> R["Tool Registry + Schema"]:::core
   R --> G["Safety Gate"]:::core
+  G --> L["Local Structured Logs<br/>task_id / block / request_id"]:::core
   G --> T1["Inspect Tools"]:::tool
   G --> T2["Diagnostic Tools"]:::tool
   G --> T3["Controlled Ops"]:::tool
@@ -171,6 +187,8 @@ flowchart LR
   T3 --> A
   D --> A
   A --> H["Huawei Cloud TaurusDB API / SDK"]:::cloud
+  H --> CTS["CTS"]:::cloud
+  CTS --> X["LTS / OBS"]:::cloud
 ```
 
 ### 4.3 模块划分
@@ -182,7 +200,7 @@ flowchart LR
 | `client/` | TaurusDB SDK / OpenAPI 适配、错误归一 |
 | `tools/` | 查询类、写操作类、异步辅助类工具实现 |
 | `diagnostics/` | `diagnose_instance`、`review_backup_risk` 等组合能力 |
-| `utils/safety.ts` | 默认只读、确认 token、风险控制 |
+| `utils/safety.ts` | 默认只读、确认 token、权限与风险控制 |
 | `utils/formatter.ts` | 统一响应封装、字段裁剪、错误摘要 |
 | `utils/waiter.ts` | 轮询异步任务、退避和超时控制 |
 
@@ -196,7 +214,16 @@ flowchart LR
 | Operation Helpers | `get_operation_status`、`wait_operation` | 管理异步任务状态 |
 | Controlled Ops | `create_backup`，后续 `restart_instance` | 在受控边界内逐步开放写操作 |
 
-### 4.5 与架构文的分工
+### 4.5 审计与确认策略
+
+| 操作类型 | 代表工具 | 默认策略 |
+| -------- | -------- | -------- |
+| 只读查询 | `list_instances`、`get_instance` | 只受权限控制，不需要 confirmation；不产生云侧变更审计 |
+| 低歧义写操作 | `create_backup` | 受权限控制；真正执行后由 CTS 自动审计 |
+| 高风险变更 | `restart_instance`、`resize_instance`、`update_instance_configuration` | 默认不暴露；即使暴露也要求 `confirmation_token`；执行后再由 CTS 自动审计 |
+| 销毁性操作 | `delete_instance`、`reset_password` | 首版不暴露 |
+
+### 4.6 与架构文的分工
 
 本篇只定义“为什么做、做什么、首版怎么收口”。更细的实现细节以 [taurusdb-architecture.md](./taurusdb-architecture) 为准，包括：
 
@@ -217,12 +244,12 @@ flowchart LR
 | MCP Server 启动 | 启动服务并执行 `tools/list` | Server 名称、版本、P0 工具集合与预期一致 |
 | Credential Loader | 环境变量、配置文件、缺失凭证三类场景 | 凭证来源优先级正确；缺失时错误可解释 |
 | Tool Registry | 查询类和写操作类工具注册 | 默认只暴露只读工具；启用 mutations 后才出现写工具 |
-| Safety Gate | 高风险工具首次调用 | 返回影响说明和 `confirmation_token`，不直接执行 |
-| TaurusDB Client Adapter | SDK 成功、OpenAPI fallback、权限错误 | 错误被统一归类；`request_id` 可透出到 metadata |
+| Safety Gate | 高风险工具首次调用 | 返回影响说明和 `confirmation_token`，不直接执行；同时写本地结构化日志 |
+| TaurusDB Client Adapter | SDK 成功、OpenAPI fallback、权限错误 | 错误被统一归类；只要真实请求到了云侧，`request_id` 就会透出到 metadata |
 | Diagnostic Orchestrator | 聚合实例详情、日志、备份策略 | 输出包含 `summary/findings/evidence/recommendations` |
 | Formatter | 查询成功、异步 accepted、权限错误 | envelope 字段稳定；`summary` 可直接给模型消费 |
 | Waiter | 任务成功、任务失败、任务超时 | 轮询退避符合预期；超时不会无限等待 |
-| Audit | 高风险写操作确认通过 / 拒绝 | 审计记录完整，敏感字段脱敏 |
+| Audit | 高风险写操作确认通过 / 拒绝 | 本地结构化日志完整；真实云侧操作可通过 `request_id` 关联 CTS |
 
 ### 5.2 核心指标
 
@@ -234,7 +261,8 @@ flowchart LR
 | 异步任务状态查询 P95 | < 3s |
 | 高风险操作漏拦截率 | 0 |
 | 敏感字段脱敏命中率 | 100% |
-| 错误响应中 `request_id` 透出率 | 100% |
+| 已发起云侧请求的响应中 `request_id` 透出率 | 100% |
+| 本地拦截路径中 `task_id` 透出率 | 100% |
 
 ### 5.3 故障注入观测点
 
@@ -245,7 +273,7 @@ flowchart LR
 | OpenAPI 429 / 5xx | Mock 限流和服务端错误 | 可重试错误才重试，最终结果带 `retryable` |
 | 日志接口超时 | 慢日志 / 错误日志接口长时间无响应 | 诊断输出降级，但不导致整个服务崩溃 |
 | 确认 token 过期 | 使用旧 token 再次发起变更 | 动作被阻断，并提示重新确认 |
-| 审计写入失败 | Mock 审计 sink 失败 | 主链路可完成，内部有错误标记 |
+| 本地结构化日志写入失败 | Mock JSONL 写入失败 | 查询链路可降级；高风险写操作首次签发 token 时至少要记录一条本地日志 |
 
 ---
 
@@ -267,6 +295,8 @@ flowchart LR
 | TC-10 | 高风险工具确认通过 | 已获得有效 token | 带 token 再次调用重启 | 动作执行一次，审计完整 |
 | TC-11 | 高风险工具确认过期 | token 已过期 | 带过期 token 调用 | 动作被阻断，提示重新确认 |
 | TC-12 | 错误 envelope 稳定 | Mock 403 / 404 / 429 / 500 | 调用任意工具 | 错误结构字段完整，`retryable` 判断正确 |
+| TC-13 | 本地拦截请求的关联字段 | 高风险工具首次调用且未真正下发云侧请求 | 调用一次 `restart_instance` | 返回 `task_id`、`confirmation_token`，且没有伪造 `request_id` |
+| TC-14 | 云侧执行后的审计关联 | 高风险工具确认通过且云侧已接受请求 | 调用一次确认后的 `restart_instance` | 返回 `task_id` + `request_id`，并可用于后续关联 CTS 事件 |
 
 ### 6.2 回归测试包
 
@@ -274,7 +304,7 @@ flowchart LR
 | ------ | -------- | ---- |
 | 冒烟回归 | `TC-01`, `TC-02`, `TC-06` | 验证查询和诊断主链路可用 |
 | 备份回归 | `TC-03`, `TC-04`, `TC-05`, `TC-07` | 验证备份和风险审查能力 |
-| 安全回归 | `TC-09`, `TC-10`, `TC-11` | 验证确认机制和审计链路 |
+| 安全回归 | `TC-09`, `TC-10`, `TC-11`, `TC-14` | 验证确认机制和 CTS 关联链路 |
 | 错误回归 | `TC-08`, `TC-12` | 验证降级和错误可解释性 |
 
 ### 6.3 发布验收标准
@@ -284,7 +314,8 @@ flowchart LR
 - P0 工具均有可重复执行的契约测试
 - 高风险写操作默认关闭，且测试覆盖首次调用、确认通过、确认过期三类路径
 - 诊断工具输出固定结构，且结论必带证据
-- 关键错误类型具备稳定 `summary + error.code + request_id`
+- 关键错误类型具备稳定 `summary + error.code + task_id`，如已触达云侧则额外带 `request_id`
+- 高风险变更执行后的响应可以通过 `request_id` 继续关联 CTS 事件
 - 文档与侧边栏已同步，用户能从专栏页直接进入需求文档和架构文档
 
 ---

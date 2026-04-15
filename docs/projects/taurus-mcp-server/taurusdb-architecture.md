@@ -17,6 +17,7 @@
 | 传输   | stdio（本地运行，JSON-RPC over stdin/stdout）               |
 | 认证   | 华为云 AK/SK 签名（兼容华为云 JS SDK）                      |
 | 调用层 | 官方 SDK 优先，OpenAPI 兜底                                 |
+| 审计   | 云侧操作依赖 CTS 自动审计，CTS 追踪器转储到 LTS/OBS；服务端仅保留轻量结构化日志 |
 | 参考   | Google 的 `@google-cloud/gcloud-mcp` 开源项目               |
 
 ### 1.3 与 gcloud-mcp 的关键差异
@@ -54,8 +55,9 @@ flowchart TB
 
     MCP["MCP Server\nSDK + stdio transport"]:::core
     Reg["Curated Tool Registry\nP0 10-12 task-oriented tools"]:::core
-    Gate["Safety Gate\nreadonly + confirmation + scope"]:::core
+    Gate["Safety Gate\nexposure + permission + confirmation"]:::core
     DX["Diagnostic Orchestrator\nfan-out + correlate + summarize"]:::core
+    Local["Local Structured Logs\nstderr + JSONL\n(task_id correlation)"]:::core
 
     subgraph Toolset["Tool groups"]
       direction LR
@@ -69,22 +71,27 @@ flowchart TB
     SDK["TaurusDB SDK Adapter\nofficial SDK first + signed fetch fallback"]:::core
 
     MCP --> Reg --> Gate --> Toolset
+    Gate -. local decision events .-> Local
     Toolset --> DX
     Toolset --> SDK
     DX --> SDK
     SDK --> Auth
+    SDK -. request_id / task_id mapping .-> Local
   end
 
-  subgraph Huawei["Huawei Cloud TaurusDB API"]
+  subgraph Huawei["Huawei Cloud"]
     direction LR
-    DB1[("Instances")]:::cloud
-    DB2[("Backups")]:::cloud
-    DB3[("Logs")]:::cloud
-    DB4[("Parameters")]:::cloud
+    API["TaurusDB OpenAPI / SDK"]:::cloud
+    CTS["CTS\nCloud Trace Service"]:::cloud
+    LTS["LTS"]:::cloud
+    OBS["OBS"]:::cloud
   end
 
   Clients -->|"stdio (JSON-RPC 2.0)"| MCP
-  SDK -->|"HTTPS + AK/SK signature"| Huawei
+  SDK -->|"HTTPS + AK/SK signature"| API
+  API -->|"management events"| CTS
+  CTS -. trace export .-> LTS
+  CTS -. archival .-> OBS
 ```
 
 ### 2.2 数据流
@@ -94,9 +101,11 @@ flowchart TB
 ```
 用户自然语言 → AI 模型推理 → MCP Client 发送 tools/call
     → stdio → MCP Server 路由到对应 Tool Handler
-    → Safety Gate 校验只读模式 / 确认 token / 作用域
+    → Safety Gate 校验工具是否暴露 / 当前 AK/SK 或临时凭证是否具备权限 / 是否需要 confirmation_token
     → 如为诊断类工具，Diagnostic Orchestrator 并发聚合多个 TaurusDB 数据源
-    → TaurusDB SDK Adapter 调用官方 SDK，必要时回退到签名 OpenAPI
+    → 如需发起云侧请求，TaurusDB SDK Adapter 调用官方 SDK，必要时回退到签名 OpenAPI
+    → 真正执行到云侧的操作由 CTS 自动审计，若配置 CTS 追踪器则转储到 LTS/OBS
+    → MCP 服务本地仅写轻量结构化日志（如 `task_id`、`tool_blocked`、`confirmation_issued`、`request_id`）
     → 解析响应 → 格式化为结构化 MCP Content → 返回给 AI
     → AI 模型组织自然语言回答 → 呈现给用户
 ```
@@ -131,7 +140,7 @@ flowchart TB
   U->>AI: 帮我查看 TaurusDB 实例状态并诊断风险
   AI->>MC: tools/call diagnose_instance
   MC->>MS: JSON-RPC via stdio
-  MS->>SG: validate readonly / confirmation / scope
+  MS->>SG: validate exposure / permission / scope
   SG-->>MS: allowed
   MS->>DX: dispatch diagnose_instance
 
@@ -155,6 +164,57 @@ flowchart TB
     MS-->>MC: structured MCP response
     MC-->>AI: diagnostic payload
     AI-->>U: 状态、风险和建议
+```
+
+### 2.4 高风险变更与审计流
+
+**用户问 "重启这个 TaurusDB 实例"**
+
+```
+1. AI 选择调用 `restart_instance`
+2. Safety Gate 先检查该工具是否已暴露，以及当前凭证是否具备权限
+3. 首次调用只返回 `confirmation_token` 和 `expires_at`，同时写本地结构化日志
+4. 用户确认后，AI 使用原参数 + `confirmation_token` 再次调用
+5. 服务端校验 token 未过期、未使用且参数摘要一致
+6. TaurusDB API 真正执行变更，返回 `request_id`
+7. 云侧操作进入 CTS；若客户配置了 CTS 追踪器，则后续转储到 LTS/OBS
+8. MCP 服务在本地结构化日志中记录 `task_id -> request_id` 映射，便于后续排障
+```
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant U as User
+  participant AI as AI Model
+  participant MC as MCP Client
+  participant MS as MCP Server
+  participant SG as Safety Gate
+  participant LOG as Local Logs
+  participant SDK as TaurusDB SDK Adapter
+  participant API as TaurusDB API
+  participant CTS as CTS
+  participant ARCH as LTS/OBS
+
+  U->>AI: 重启这个实例
+  AI->>MC: tools/call restart_instance
+  MC->>MS: JSON-RPC via stdio
+  MS->>SG: validate exposure / permission / risk
+  SG-->>MS: confirmation required
+  MS->>LOG: write task_id + confirmation_issued
+  MS-->>MC: confirmation_token + expires_at + task_id
+  MC-->>AI: confirmation required
+  U->>AI: 确认执行
+  AI->>MC: tools/call restart_instance + confirmation_token
+  MC->>MS: JSON-RPC via stdio
+  MS->>SG: validate token + params digest
+  SG-->>MS: allowed
+  MS->>SDK: restartInstance()
+  SDK->>API: signed request with AK/SK
+  API-->>SDK: accepted + request_id
+  API->>CTS: auto audit event
+  CTS->>ARCH: tracker export / archive
+  MS->>LOG: write task_id + request_id
+  MS-->>MC: accepted + request_id + task_id
 ```
 
 ---
@@ -395,19 +455,39 @@ MVP 的诊断边界：
 
 #### 3.2.6 安全模块 (`utils/safety.ts`)
 
-参考 gcloud-mcp 的命令黑名单机制，我们对高风险操作添加更强的服务端保护：
+结合阿里云 OpenAPI MCP 的“权限前置 + 平台自动审计”思路，以及华为云 CTS 的能力边界，我们采用“云侧自动审计 + 本地轻量结构化日志 + 高风险 confirmation_token”的混合策略：
 
 **策略 1：默认只读**
-服务端默认只注册查询类工具；只有设置 `TAURUSDB_MCP_ENABLE_MUTATIONS=true` 后才暴露写操作工具。
+服务端默认只注册查询类工具。这里的“默认不暴露”不是“注册了但运行时报错”，而是根本不把写操作工具注册进 `tools/list`；只有设置 `TAURUSDB_MCP_ENABLE_MUTATIONS=true` 后，相关 mutation 工具才会对客户端可见。
 
-**策略 2：高风险操作二阶段确认**
+**策略 2：权限前置**
+所有已暴露的工具都完全受当前 AK/SK 或临时凭证权限控制。像 `create_backup` 这类低歧义写操作，可只依赖权限与云侧 CTS 审计，不强制 confirmation。
+
+**策略 3：高风险变更二阶段确认**
 `restart_instance`、`resize_instance`、`delete_backup`、`update_instance_configuration` 首次调用只返回影响说明和 `confirmation_token`，第二次调用携带 token 才真正执行。
 
-**策略 3：Tool 描述中嵌入警告**
+**策略 4：Tool 描述中嵌入警告**
 高风险工具的描述中仍然保留明确警告，帮助模型在交互层主动要求人工确认。
 
-**策略 4：不暴露销毁性操作**
+**策略 5：不暴露销毁性操作**
 首期不提供 `delete_instance`（删除实例）和 `reset_password`（重置密码）工具。这类操作应通过控制台手动执行。
+
+**策略 6：审计对标阿里云 / 华为云**
+真正发往云侧的操作交由 CTS 自动审计，并通过 CTS 追踪器转储到 LTS/OBS 做留存与分析；MCP 服务本地只保留轻量结构化日志，用于记录 `tool_blocked`、`confirmation_issued`、`request_id` 等服务端决策事件。
+
+#### 3.2.6.1 术语约定
+
+| 术语 | 含义 |
+| ---- | ---- |
+| 查询工具 | 只读工具，不改变远端资源状态 |
+| `mutation` | 会改变远端资源状态的写操作工具 |
+| 高风险 mutation | 例如 `restart_instance`、`resize_instance`、`update_instance_configuration`，需要确认和审计 |
+| 默认不暴露 | 启动时不注册进 `tools/list`，模型默认无法发现和调用 |
+| `confirmation_token` | 一次性、短期有效、不可伪造的确认令牌，绑定工具名、目标资源、参数摘要、签发时间和过期时间 |
+| `task_id` | 每次 MCP 工具调用的内部链路 ID |
+| `CTS` | 华为云云审计服务，记录真正执行到云侧的资源操作 |
+| `CTS 追踪器` | 将 CTS 事件转储到 LTS/OBS 的配置 |
+| `request_id` | 华为云 API 在真正发起上游请求后返回的请求号；本地拦截场景没有该字段 |
 
 ---
 
@@ -485,6 +565,7 @@ server.tool(
     "instance_id": "a4b5c6"
   },
   "metadata": {
+    "task_id": "task-01",
     "region": "cn-north-4",
     "project_id": "05d7...",
     "request_id": "9f4c...",
@@ -507,8 +588,32 @@ server.tool(
     "retryable": false
   },
   "metadata": {
+    "task_id": "task-01",
     "region": "cn-north-4",
     "request_id": "9f4c..."
+  }
+}
+```
+
+**需确认响应**
+
+```json
+{
+  "ok": false,
+  "summary": "Restarting this instance may interrupt client traffic. Re-run with confirmation_token to continue.",
+  "error": {
+    "code": "CONFIRMATION_REQUIRED",
+    "message": "This tool is a high-risk mutation and requires explicit confirmation.",
+    "retryable": true
+  },
+  "data": {
+    "confirmation_token": "ctok_eyJhbGciOi...",
+    "expires_at": "2026-04-14T13:05:00Z",
+    "risk_level": "high"
+  },
+  "metadata": {
+    "task_id": "task-02",
+    "region": "cn-north-4"
   }
 }
 ```
@@ -517,9 +622,42 @@ server.tool(
 
 - `summary` 面向 AI，总结当前结果，不要求模型重新解析整段原始 JSON
 - `data` 保留原始业务结果或裁剪后的关键字段
-- `metadata` 必须包含 `request_id`，便于排障和工单定位
+- `metadata` 必须始终包含 `task_id`
+- `request_id` 只在真正请求过华为云 API 时返回，便于排障和工单定位；本地拦截场景不得伪造该字段
 - 异步操作统一使用 `accepted`、`running`、`succeeded`、`failed` 四态
 - 错误对象必须显式给出 `retryable`，避免模型盲目重试
+
+### 4.3.1 `confirmation_token` 设计要求
+
+`confirmation_token` 不是登录态 token，也不是给客户端长期保存的凭证。它只是一次高风险变更的短期确认凭证，服务端应保证：
+
+- token 对调用方是 opaque 的，不要求客户端解析内部内容
+- token 至少绑定 `tool_name`、`resource_id`、`normalized_params_digest`
+- token 具备明确过期时间，推荐默认 TTL 为 5 分钟，可配置范围建议为 2-10 分钟
+- 第二次调用时，若工具名、目标资源或参数摘要不匹配，应直接拒绝执行
+- token 使用一次后立即失效，避免重复提交
+- token 本身不携带 AK/SK 等敏感信息
+
+推荐的使用流程：
+
+1. 客户端第一次调用高风险 mutation，例如 `restart_instance`
+2. 服务端不执行真实变更，只返回 `CONFIRMATION_REQUIRED`、`confirmation_token`、`expires_at` 和 `task_id`
+3. 客户端把原始参数原样保留，在第二次调用时追加 `confirmation_token`
+4. 服务端校验 token 是否存在、是否过期、是否已使用，以及参数摘要是否与第一次一致
+5. 校验通过后才真正发起云侧请求；否则返回 `TOKEN_EXPIRED`、`TOKEN_ALREADY_USED` 或 `TOKEN_MISMATCH`
+
+TTL 建议：
+
+- 默认值：5 分钟
+- 测试环境：可放宽到 10 分钟，减少反复确认成本
+- 生产环境：建议保持 5 分钟；不建议超过 15 分钟
+- 特别高风险操作：可缩短到 2-3 分钟，并要求更强的参数绑定
+
+工程建议：
+
+- token 应由服务端签名或存入服务端状态存储，不能由客户端自行拼装
+- 第二次调用除 `confirmation_token` 外，其他参数应与第一次保持一致
+- 若用户修改了实例 ID、region 或关键变更参数，应视为一次新的高风险请求，重新签发 token
 
 ### 4.4 响应格式化策略
 
@@ -641,8 +779,77 @@ npx @huaweicloud/taurusdb-mcp init  # 打印配置说明
 - 所有 API 调用走 HTTPS
 - AK/SK 每次请求实时签名，不缓存签名结果
 - 默认只读；只有显式设置 `TAURUSDB_MCP_ENABLE_MUTATIONS=true` 才开启写操作
-- 高风险操作采用二阶段确认 token，而不是只依赖模型“先问一句”
+- 高风险操作采用二阶段确认 token；低歧义写操作主要依赖权限和 CTS 自动审计
 - 每个工具允许 `region` / `project_id` 局部覆盖默认配置
+- 真正发往云侧的操作由 CTS 自动审计，可通过 CTS 追踪器转储到 LTS/OBS 做长期留存和分析
+- MCP 服务默认只保留轻量结构化日志，用于记录本地决策事件和 `task_id -> request_id` 关联
+
+### 6.4 默认审计策略（对标阿里云 / 华为云）
+
+默认方案不是把自定义服务事件写入 CTS，而是采用分层处理：
+
+- 真正触达云侧 TaurusDB API 的操作：交由 CTS 自动审计
+- CTS 追踪器：把审计事件转储到 LTS/OBS，满足集中检索、归档和合规留存
+- MCP 服务本地结构化日志：仅记录服务端决策事件，例如 `tool_blocked`、`confirmation_issued`、`token_mismatch`、`local_validation_failed`
+
+设计边界：
+
+- CTS 只审计真正发往云侧的操作，不接收自定义 MCP 服务事件
+- 本地结构化日志不是云审计替代品，只承担链路关联和服务端排障职责
+- 若客户需要统一检索本地结构化日志，可额外通过日志采集器接入其自有 LTS 或内部日志平台，但这不是默认硬依赖
+
+### 6.5 本地结构化日志范围
+
+建议记录的本地事件：
+
+- `tool_invoked`
+- `tool_blocked`
+- `confirmation_issued`
+- `confirmation_approved`
+- `confirmation_rejected`
+- `token_expired`
+- `token_mismatch`
+- `upstream_request_sent`
+- `tool_completed`
+- `tool_failed`
+
+建议字段：
+
+- `task_id`
+- `tool_name`
+- `risk_level`
+- `region`
+- `project_id`
+- `target_resource`
+- `normalized_args_digest`
+- `confirmation_token_fingerprint`（可选）
+- `request_id`（若已发起云侧请求）
+- `timestamp`
+- `redaction_hits`
+
+执行策略建议：
+
+- 查询类工具：本地日志可 best-effort，不阻塞主链路
+- 高风险 mutation：首次返回 `confirmation_token` 时至少要落一条本地结构化日志
+- 真正执行成功后，应再落一条包含 `task_id` 与 `request_id` 的本地结构化日志，便于后续与 CTS 事件关联
+
+### 6.6 `request_id` 与 `task_id` 的定位关系
+
+两者分工不同：
+
+- `task_id`：定位“一次 MCP 工具调用”
+- `request_id`：定位“一次真实发往华为云 API 的上游请求”
+
+推荐的定位方式：
+
+1. 用户侧先拿响应里的 `task_id`
+2. 在 MCP 服务本地结构化日志中搜索 `task_id`
+3. 若日志里已出现 `request_id`，再到 CTS 或云侧工单体系中按 `request_id` 继续定位
+
+注意：
+
+- 首次被本地拦截的高风险请求，通常只有 `task_id`，没有 `request_id`
+- 只有真正下发到 TaurusDB API 的请求，才应该带云侧 `request_id`
 
 ---
 
@@ -693,7 +900,8 @@ vi.mock("../src/client/taurusdb-client", () => ({
 - `TAURUSDB_MCP_ENABLE_MUTATIONS` 未开启时，高风险工具不注册或调用即失败
 - 高风险工具首次调用只返回 `confirmation_token`，不会真实执行
 - 所有异步写操作返回统一的四态状态字段和 `operation_id`
-- 所有错误响应都包含 `request_id`、`status_code`、`retryable`
+- 已真实请求云侧的错误响应必须包含 `request_id`、`status_code`、`retryable`
+- 本地拦截路径必须稳定返回 `task_id`，且不得伪造 `request_id`
 - `wait_operation` 在成功、失败、超时三种路径下都能稳定返回
 - `diagnose_instance` 必须稳定输出 `summary`、`findings`、`evidence`、`recommendations`
 
@@ -783,4 +991,4 @@ vi.mock("../src/client/taurusdb-client", () => ({
 | Tool 集合膨胀       | AI 选错工具、维护成本上升 | 按四维评分控制 P0 数量，OpenAPI 默认先不暴露 |
 | npm scope 占用      | 无法使用 @huaweicloud | 备选: `huaweicloud-taurusdb-mcp`（无 scope） |
 | AK/SK 泄露          | 安全事故              | 文档强调最小权限 + 不提供销毁性工具          |
-| AI 误操作生产库     | 数据损坏              | 只读模式 + 二阶段确认 + 高风险工具警告       |
+| AI 误操作生产库     | 数据损坏              | 最小权限 + 默认不暴露 + 高风险 confirmation + CTS 自动审计 |
