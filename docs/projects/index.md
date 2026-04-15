@@ -8,4 +8,4 @@
 构建一个结合命令行工具和智能代理的项目，记录从需求设计到落地实现的实践过程。
 
 ### [Taurus MCP Server 专栏](./taurus-mcp-server/)
-构建面向华为云 TaurusDB 的 MCP Server，让 AI 客户端可以通过自然语言完成运维操作。
+围绕华为云 TaurusDB 的数据面 MCP 设计与实现，重点是让 AI 客户端通过自然语言完成 schema 探查、SQL 查询和受控 SQL 执行。
