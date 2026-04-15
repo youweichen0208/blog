@@ -4,4 +4,5 @@
 
 ## 文章导航
 
+- [华为云 TaurusDB MCP Server — 需求背景与概要设计](./requirements)
 - [华为云 TaurusDB MCP Server — 架构与方案设计](./taurusdb-architecture)

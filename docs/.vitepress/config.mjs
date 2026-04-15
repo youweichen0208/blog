@@ -137,6 +137,7 @@ export default withMermaid(defineConfig({
           collapsed: false,
           items: [
             { text: '专栏概述', link: '/projects/taurus-mcp-server/' },
+            { text: '需求背景与概要设计', link: '/projects/taurus-mcp-server/requirements' },
             { text: '华为云 TaurusDB MCP Server 架构', link: '/projects/taurus-mcp-server/taurusdb-architecture' },
           ],
         },
