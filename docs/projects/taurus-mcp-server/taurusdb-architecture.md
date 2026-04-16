@@ -700,6 +700,50 @@ type GuardrailDecision = {
 - `medium`：先返回风险说明，部分场景允许直接执行
 - `low`：直接执行
 
+对象关系可以画成这样：
+
+```mermaid
+flowchart LR
+  A[original_sql] --> B[normalizeSql]
+  B --> C[normalized_sql]
+  C --> D[parse to AST]
+  D --> E[SqlClassification]
+  E --> F[sql-validator]
+  F --> G[GuardrailDecision]
+  C --> H[sql_hash]
+  H --> G
+  G --> I[Tool Handler]
+  I -->|allow| J[Executor]
+  I -->|confirm| K[Confirmation Store]
+  I -->|block| L[Blocked Response]
+  K --> M[confirmation_token]
+  M --> I
+  J --> N[QueryResult / MutationResult]
+  G --> O[Audit Logger]
+  H --> O
+  N --> O
+```
+
+这张图里几个对象的职责分别是：
+
+- `original_sql`
+  用户或模型原始生成的 SQL 文本
+- `normalized_sql`
+  给系统做稳定比较和解析的 SQL 文本
+- `SqlClassification`
+  Guardrail 从 AST 中抽取出来的“事实对象”
+- `GuardrailDecision`
+  Guardrail 输出给下游的“裁决对象”
+- `QueryResult / MutationResult`
+  Executor 真正执行完成后的结果对象
+
+这也是为什么 `GuardrailDecision` 里需要带 `sql_hash`：
+
+- Tool Handler 需要它决定是否确认
+- Confirmation Store 需要它绑定 token
+- Audit Logger 需要它关联整条链路
+- Executor 和最终响应也可以复用同一个指纹，不必重复计算
+
 ##### 3.2.5.6 运行时限制怎么落地
 
 Guardrail 不应该只停留在“返回一个风险等级”，它还要把决策落成执行参数。
@@ -825,6 +869,92 @@ return executor.run(sql, {
 - 本地只落结构化 JSONL
 - 不默认保存完整结果集
 - 原始 SQL 文本可选保存，默认只保存 hash 和归一化摘要
+
+##### 3.2.6.1 为什么不把每一条 SQL 都上报 CTS
+
+不建议把每一条数据面 SQL 都上报到 CTS。
+
+原因很直接：
+
+- CTS 更适合承接管控面、治理面、关键操作面事件，不适合作为高频 SQL 明细流水仓
+- 数据面 SQL 的量级通常远高于管控面操作，全部上报会让噪音远大于价值
+- 很多只读 SQL 的审计价值在于可追踪，而不是必须进入云审计主账本
+- 如果把每一条 SQL 都强耦合到 CTS，链路复杂度、成本和检索负担都会明显上升
+- SQL 本身可能包含敏感表名、字段名或字面量，不适合原样进入更宽的审计分发面
+
+更合理的思路是做**分层审计**，而不是“一刀切全部进 CTS”。
+
+##### 3.2.6.2 推荐的分层审计策略
+
+建议把审计拆成 3 层：
+
+**第一层：MCP 本地结构化审计**
+
+这是数据面 MCP 的主审计层，建议默认开启，记录最小必要元数据：
+
+- `task_id`
+- `query_id`
+- `sql_hash`
+- `statement_type`
+- `risk_level`
+- `decision`
+- `duration_ms`
+- `row_count` 或 `affected_rows`
+
+这一层覆盖：
+
+- 所有 `execute_sql`
+- 所有被阻断的高风险 SQL
+- 所有签发 `confirmation_token` 的请求
+- 所有执行失败的请求
+- `execute_readonly_sql` 可记录最小摘要，不要求保留完整结果
+
+**第二层：数据库原生日志 / 审计能力**
+
+如果客户本身已经启用数据库审计、慢日志、general log 或内核审计能力，这一层负责回答“数据库到底执行了什么”。
+
+它更适合承接：
+
+- 精确 SQL 回放
+- 慢 SQL 排查
+- 内核侧真实执行证据
+
+**第三层：CTS 或更上层治理审计**
+
+CTS 不建议接所有 SQL，而建议只接少量关键治理事件摘要，例如：
+
+- 开启或关闭 `TAURUSDB_MCP_ENABLE_MUTATIONS`
+- 数据源 profile 被新增、修改、删除
+- 高风险写 SQL 已确认并执行
+- 高风险 SQL 被 Guardrail 阻断
+- 审计策略、脱敏策略、权限策略被修改
+
+也就是说，**CTS 里放“关键治理事件”，不要放“每条 SQL 明细”**。
+
+##### 3.2.6.3 推荐口径
+
+如果后续确实需要和 CTS 打通，推荐上报的是“事件摘要”，而不是原始 SQL 明文：
+
+```json
+{
+  "event_type": "mcp_sql_mutation_confirmed",
+  "task_id": "task-02",
+  "query_id": "qry-02",
+  "sql_hash": "c194...",
+  "statement_type": "update",
+  "risk_level": "high",
+  "datasource": "prod_orders",
+  "database": "orders_db",
+  "affected_rows": 1
+}
+```
+
+这样做有几个好处：
+
+- CTS 保持低噪音、高价值
+- 审计字段足够做治理追踪
+- 不把原始 SQL 和结果集扩散到不必要的链路里
+- 真要深挖明细时，再回到 MCP 本地审计或数据库原生日志中查
 
 ---
 
