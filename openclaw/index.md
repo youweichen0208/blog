@@ -171,3 +171,156 @@ Step 5: 运行配置向导
 ```bash
 docker compose run --rm openclaw-cn-cli onboard
 ```
+
+## OpenClaw Docker部署排查问题总结
+
+### 部署背景
+
+使用 Docker Compose 部署 OpenClaw（`jiulingyun803/openclaw-cn:latest`），包含两个服务：
+
+- `openclaw-cn-gateway`：常驻后台网关服务（端口 18789、18790）
+- `openclaw-cn-cli`：交互式命令行工具
+
+### 遇到的问题及解决方案
+
+#### 问题1: Gateway Token Missing（令牌缺失）
+
+**错误信息**
+
+```bash
+disconnected (1008): unauthorized: gateway token missing
+```
+
+**原因**`.env`文件里的`OPENCLAW_GATEWAY_TOKEN`还是占位符`your-secure-token-here`，没有设置实际的token。
+
+解决方案生成一个安全随机的token：
+
+```bash
+openssl rand -hex 32
+```
+
+填入x`.env`：
+
+```bash
+OPENCLAW_GATEWAY_TOKEN=你生成的token
+```
+
+重启服务：
+
+```bash
+docker compose down && docker compose up -d
+```
+
+#### 问题2: docker-compose.yml 格式错误
+
+错误现象混用了两种environment赋值语法:
+
+```yaml
+OPENCLAW_GATEWAY_TOKEN=xxx        # 等号格式
+CLAUDE_AI_SESSION_KEY: ${...}     # 冒号格式
+```
+
+**原因**Docker Compose 的 environment 块中，等号格式和冒号格式不能混用。
+
+**解决方案**统一使用冒号格式（保持 YAML 风格）：
+
+```yaml
+environment:
+  OPENCLAW_GATEWAY_TOKEN: xxx
+  CLAUDE_AI_SESSION_KEY: ${CLAUDE_AI_SESSION_KEY}
+```
+
+#### 问题3: Token Mismatch（令牌不匹配）
+
+**错误信息**
+
+```bash
+disconnected (1008): unauthorized: gateway token mismatch
+```
+
+**原因**OpenClaw 在首次运行时会自动生成自己的 token 并保存到状态目录，与 `.env` 中手动配置的 token 不一致。
+**解决方案**通过 dashboard 命令获取实际生效的 token：
+
+```bash
+docker compose exec openclaw-cn-gateway node dist/index.js dashboard --no-open
+```
+
+输出会显示实际的token：
+
+```bash
+Dashboard URL: http://127.0.0.1:18789/?token=实际的token
+```
+
+把这个token填回`.env`，然后重启服务保持一致。
+
+#### 问题4:Pairing Required（需要配对）
+
+**错误信息**
+
+```bash
+disconnected (1008): pairing required
+```
+
+**原因**OpenClaw 出于安全考虑，新设备（浏览器）连接网关时需要管理员手动批准配对，并不是 Claude 凭证的问题。
+
+**解决方案**
+**步骤一：查看待匹配设备**
+
+```bash
+docker compose exec openclaw-cn-gateway node dist/index.js devices list
+```
+
+输出中会有`Pending`列表，记下Request ID。
+
+**步骤二：批准配对**
+
+```bash
+docker compose exec openclaw-cn-gateway node dist/index.js devices approve <Request-ID>
+```
+
+**步骤三：刷新浏览器页面**
+
+## 关键命令速查
+
+| 命令                                                                              | 用途                    |
+| --------------------------------------------------------------------------------- | ----------------------- |
+| `docker compose up -d`                                                            | 启动所有服务            |
+| `docker compose down`                                                             | 停止并删除容器          |
+| `docker compose logs openclaw-cn-gateway --tail=50`                               | 查看网关日志            |
+| `docker compose exec openclaw-cn-gateway env \| grep TOKEN`                       | 检查容器内环境变量      |
+| `docker compose exec openclaw-cn-gateway node dist/index.js dashboard --no-open`  | 获取带 token 的访问 URL |
+| `docker compose exec openclaw-cn-gateway node dist/index.js devices list`         | 查看设备配对状态        |
+| `docker compose exec openclaw-cn-gateway node dist/index.js devices approve <id>` | 批准设备配对            |
+
+## 完整部署流程总结
+
+1. 准备 `.env` 文件，配置基础变量（数据目录、端口等）
+2. 用 `openssl rand -hex 32` 生成 token，填入 `OPENCLAW_GATEWAY_TOKEN`
+3. 启动服务：`docker compose up -d`
+4. 用 dashboard 命令获取实际 token，确保与 `.env` 一致（如不一致则更新并重启）
+5. 在浏览器打开带 token 的 dashboard URL
+6. 处理 pairing required：在网关容器内执行 `devices approve` 批准浏览器配对
+7. 刷新页面，连接成功
+
+## 卸载清理
+
+```bash
+# 停止并删除容器
+docker compose down
+
+# 删除镜像
+docker rmi jiulingyun803/openclaw-cn:latest
+
+# 删除数据目录
+rm -rf ./data
+
+# 清理 Docker 缓存（可选）
+docker system prune -a
+```
+
+## 经验总结
+
+- **OpenClaw 的 token 管理是状态化的**：首次运行后 token 存储在状态目录里，环境变量配置不一定生效，要以容器实际生成的为准。
+- **pairing required 是设备级安全机制**：不是凭证问题，需要管理员手动批准每个新接入的设备。
+- **CLI 与 Gateway 跨容器通信问题**：在 Docker 部署中，建议直接用 `docker compose exec` 在 Gateway 容器内执行命令，避免网络配置麻烦。
+- **错误信息要细看**：`token missing`、`token mismatch`、`pairing required` 是三个不同阶段的问题，对应不同的解决方案。
