@@ -368,6 +368,32 @@ class SqlExecutor {
 - 长查询可查询状态、可取消
 - 写 SQL 由服务端包裹为单次事务边界，避免客户端自己发 `BEGIN/COMMIT`
 
+##### 3.2.4.1 Executor 执行流程图
+
+```mermaid
+flowchart TB
+  A[Tool Handler 收到 SQL 和上下文] --> B[读取 GuardrailDecision]
+  B --> C{action}
+  C -->|block| D[直接返回阻断响应]
+  C -->|confirm 且无 token| E[返回 confirmation_token]
+  C -->|allow 或已确认| F[构造执行参数]
+  F --> G[创建或复用连接池]
+  G --> H[打开数据库会话]
+  H --> I[注入运行时限制 timeout max_rows readonly]
+  I --> J{statement type}
+  J -->|readonly| K[executeReadonly]
+  J -->|mutation| L[executeMutation]
+  K --> M[生成 query_id]
+  L --> M
+  M --> N[执行 SQL]
+  N --> O{成功?}
+  O -->|否| P[归一化错误并写审计日志]
+  O -->|是| Q[裁剪结果集并脱敏]
+  Q --> R[写审计日志]
+  P --> S[返回统一 envelope]
+  R --> S
+```
+
 #### 3.2.5 安全层 (`safety/`)
 
 安全层是数据面 MCP 和“直接给模型一个数据库账号”之间的根本区别。
@@ -437,6 +463,28 @@ WHERE id = 1001;
 
 也就是说，**AST 校验不是“检查 SQL 长得像不像对”，而是“检查 SQL 的语义结构是否符合安全规则”**。
 
+AST 解析链路可以画成这样：
+
+```mermaid
+flowchart TB
+  A[原始 SQL] --> B[normalizeSql]
+  B --> C[生成 normalized_sql 和 sql_hash]
+  C --> D[按 engine 选择 parser adapter]
+  D --> E[parse to AST]
+  E --> F{解析成功?}
+  F -->|否| G[返回语法错误]
+  F -->|是| H[遍历 AST]
+  H --> I[抽取 statement_type]
+  H --> J[抽取 tables columns]
+  H --> K[抽取 WHERE LIMIT JOIN ORDER BY]
+  H --> L[判断是否 multi statement]
+  I --> M[组装 SqlClassification]
+  J --> M
+  K --> M
+  L --> M
+  M --> N[交给 sql-validator]
+```
+
 ##### 3.2.5.2 Guardrail 的分层执行流程
 
 建议把 Guardrail 设计成 6 层，而不是一个大函数里堆所有 if/else：
@@ -466,6 +514,34 @@ SQL 文本
 → explain / cost validate
 → decision: allow / confirm / block
 → executor.run with runtime limits
+```
+
+Guardrail 的决策流程可以画成这样：
+
+```mermaid
+flowchart TB
+  A[toolName sql context] --> B[normalize]
+  B --> C[parse AST and classify]
+  C --> D[Tool Scope Validate]
+  D --> E{通过?}
+  E -->|否| Z1[block]
+  E -->|是| F[Static Rules Validate]
+  F --> G{命中阻断?}
+  G -->|是| Z1
+  G -->|否| H[Load Schema Snapshot]
+  H --> I[Schema-aware Validate]
+  I --> J{字段表敏感列校验通过?}
+  J -->|否| Z1
+  J -->|是| K{需要 Explain?}
+  K -->|否| L[Merge Decision]
+  K -->|是| M[Run Explain]
+  M --> N[Cost Validate]
+  N --> L
+  L --> O{risk level}
+  O -->|low| Z2[allow]
+  O -->|medium| Z3[allow or confirm]
+  O -->|high| Z4[confirm]
+  O -->|blocked| Z1
 ```
 
 ##### 3.2.5.3 分类层输出什么
