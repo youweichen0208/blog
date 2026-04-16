@@ -400,6 +400,335 @@ class SqlExecutor {
 - 文件系统相关 SQL
 - 会修改全局参数的 SQL
 
+##### 3.2.5.1 AST 校验是什么意思
+
+AST 是 Abstract Syntax Tree，也就是抽象语法树。把 SQL 解析成 AST，本质上是在把一段字符串变成“结构化语义对象”。
+
+例如下面这条 SQL：
+
+```sql
+UPDATE orders
+SET status = 'cancelled'
+WHERE id = 1001;
+```
+
+在 Guardrail 看来，不应该只是一段文本，而应该被解析成类似这样的结构：
+
+```typescript
+{
+  kind: "update",
+  table: "orders",
+  set: [{ column: "status", value: "cancelled" }],
+  where: {
+    op: "=",
+    left: { column: "id" },
+    right: { literal: 1001 },
+  },
+}
+```
+
+这样做的价值是：
+
+- 可以可靠识别语句类型，而不是靠正则猜它是不是 `UPDATE`
+- 可以判断是不是多语句，而不是用分号硬拆
+- 可以知道 `WHERE` 是否存在、作用在哪些列上
+- 可以抽取引用的表、字段、函数、排序、分页和 join 结构
+- 可以对不同引擎做 adapter，而不是把所有 SQL 方言混在一起处理
+
+也就是说，**AST 校验不是“检查 SQL 长得像不像对”，而是“检查 SQL 的语义结构是否符合安全规则”**。
+
+##### 3.2.5.2 Guardrail 的分层执行流程
+
+建议把 Guardrail 设计成 6 层，而不是一个大函数里堆所有 if/else：
+
+1. 归一化层
+   保留原始 SQL，生成 `normalized_sql`、`sql_hash`，统一空白和注释处理
+2. 解析层
+   按引擎调用 parser adapter，把 SQL 解析为 AST；解析失败直接返回语法类错误
+3. 分类层
+   从 AST 提取 `statement_type`、引用表、引用列、是否多语句、是否含 `WHERE/LIMIT/JOIN/ORDER BY`
+4. 静态规则层
+   不连数据库即可判断的规则，如多语句、DCL、危险 DDL、无 `WHERE` 的 `UPDATE/DELETE`
+5. Schema / Explain 层
+   结合 schema 信息和执行计划继续判断列是否存在、索引是否可能命中、是否疑似全表扫描
+6. 运行时约束层
+   把最终决策转成 executor 参数，例如 `readonly`、`timeout_ms`、`max_rows`、`requires_confirmation`
+
+对应的调用顺序如下：
+
+```text
+SQL 文本
+→ normalize
+→ parse to AST
+→ classify
+→ static validate
+→ schema-aware validate
+→ explain / cost validate
+→ decision: allow / confirm / block
+→ executor.run with runtime limits
+```
+
+##### 3.2.5.3 分类层输出什么
+
+`sql-classifier.ts` 建议只做“抽取事实”，不直接做策略决策。它的输出可以设计成这样：
+
+```typescript
+type SqlClassification = {
+  engine: "mysql" | "postgresql" | "unknown";
+  statementType:
+    | "select"
+    | "show"
+    | "explain"
+    | "describe"
+    | "insert"
+    | "update"
+    | "delete"
+    | "alter"
+    | "drop"
+    | "create"
+    | "grant"
+    | "revoke"
+    | "unknown";
+  normalizedSql: string;
+  sqlHash: string;
+  isMultiStatement: boolean;
+  referencedTables: string[];
+  referencedColumns: string[];
+  hasWhere: boolean;
+  hasLimit: boolean;
+  hasJoin: boolean;
+  hasSubquery: boolean;
+  hasOrderBy: boolean;
+  hasAggregate: boolean;
+};
+```
+
+这个阶段不回答“能不能执行”，只回答“这条 SQL 到底是什么”。
+
+##### 3.2.5.4 校验层怎么分
+
+`sql-validator.ts` 不应该只做一层检查，建议拆成 4 种校验。
+
+**第一层：Tool 级校验**
+
+先看当前工具允许什么：
+
+- `execute_readonly_sql` 只允许 `SELECT / SHOW / EXPLAIN / DESCRIBE`
+- `execute_sql` 才允许 `INSERT / UPDATE / DELETE`
+- `execute_sql` 默认不暴露，只有开启 mutations 才能用
+
+这层主要防止“用错工具”。
+
+**第二层：静态语义校验**
+
+这层只依赖 AST，不依赖数据库实时状态。建议至少覆盖这些规则：
+
+| 规则 | 命中条件 | 默认动作 |
+| ---- | -------- | -------- |
+| 多语句阻断 | AST 判断为多 statement | `blocked` |
+| DCL 阻断 | `GRANT / REVOKE` | `blocked` |
+| 危险 DDL 阻断 | `DROP DATABASE`、`TRUNCATE` | `blocked` |
+| 全局参数阻断 | `SET GLOBAL` 等 | `blocked` |
+| 写 SQL 无条件限制 | `UPDATE/DELETE` 没有 `WHERE` | `high` 或 `blocked` |
+| 只读大查询预警 | 普通明细查询没有 `LIMIT` | `medium` |
+| 宽表全量查询预警 | `SELECT *` 且非聚合查询 | `medium` |
+
+注意：`LIMIT` 不是绝对规则。像聚合 SQL：
+
+```sql
+SELECT dt, count(*) FROM orders GROUP BY dt;
+```
+
+这种查询即使没有 `LIMIT`，也不能简单判死刑。更合理的做法是：
+
+- 明细查询缺少 `LIMIT` 时提高风险
+- 聚合查询缺少 `LIMIT` 时交给 Explain 阶段继续判断
+
+**第三层：Schema 感知校验**
+
+这层会用到 `Schema Introspector` 的结果，做更精确的校验：
+
+- 引用的表是否存在
+- 引用的列是否存在
+- `WHERE` 条件列是不是索引列、主键列或常见过滤列
+- `ORDER BY` 字段是否可能触发大排序
+- 是否访问敏感字段，如手机号、证件号、邮箱、token
+
+这里的目标不是代替数据库编译器，而是把“大模型常犯错”提前挡住。
+
+例如模型生成：
+
+```sql
+SELECT user_id, phone_number FROM orders WHERE created_time > now() - interval 7 day;
+```
+
+如果 `orders` 根本没有 `phone_number` 字段，就没必要真的发到数据库再报错，可以直接在 Guardrail 层返回“字段不存在，建议先 `describe_table`”。
+
+**第四层：Explain / 成本校验**
+
+这一层主要处理“语法上合法，但代价可能很大”的 SQL。
+
+建议对以下语句强制进入 Explain：
+
+- 所有 `UPDATE/DELETE`
+- 所有 `ALTER`
+- 有 `JOIN`、子查询、排序、聚合的大查询
+- 没有明显限制条件的 `SELECT`
+
+Explain 重点看这些信号：
+
+- 预计扫描行数是否过大
+- 是否命中索引
+- 是否出现 `Using temporary` / `Using filesort` 一类高代价特征
+- 是否疑似全表扫描
+- 写 SQL 预计影响行数是否过大
+
+这一步的输出不是数据库原始计划，而是 Guardrail 需要的摘要：
+
+```typescript
+type ExplainRiskSummary = {
+  fullTableScanLikely: boolean;
+  indexHitLikely: boolean;
+  estimatedRows: number | null;
+  usesTempStructure: boolean;
+  usesFilesort: boolean;
+  riskHints: string[];
+};
+```
+
+##### 3.2.5.5 最终决策模型
+
+前面的分类和校验最后会收敛成一个统一决策对象：
+
+```typescript
+type GuardrailDecision = {
+  action: "allow" | "confirm" | "block";
+  riskLevel: "low" | "medium" | "high" | "blocked";
+  reasonCodes: string[];
+  normalizedSql: string;
+  sqlHash: string;
+  requiresExplain: boolean;
+  requiresConfirmation: boolean;
+  runtimeLimits: {
+    readonly: boolean;
+    timeoutMs: number;
+    maxRows: number;
+  };
+};
+```
+
+建议的决策逻辑：
+
+- `blocked`：直接拒绝，不进入 executor
+- `high`：默认拒绝，或在显式开启 mutations 时进入确认流
+- `medium`：先返回风险说明，部分场景允许直接执行
+- `low`：直接执行
+
+##### 3.2.5.6 运行时限制怎么落地
+
+Guardrail 不应该只停留在“返回一个风险等级”，它还要把决策落成执行参数。
+
+建议至少控制这些运行时限制：
+
+- `readonly`
+  只读工具必须走只读会话或只读账号
+- `timeout_ms`
+  防止模型跑出超长查询
+- `max_rows`
+  防止结果集把上下文塞爆
+- `max_columns`
+  防止宽表直接把几十上百列全抛给模型
+- `redaction_policy`
+  对敏感列做脱敏
+
+注意一个原则：
+
+- **默认不要静默改写用户 SQL 语义**
+
+例如对没有 `LIMIT` 的查询，更稳的做法通常是：
+
+- 返回风险提示，请模型补限制条件
+- 或服务端仅在返回层截断结果，而不是偷偷把 SQL 改成另一个意思
+
+##### 3.2.5.7 一个推荐的伪代码方案
+
+```typescript
+async function inspectSql(input: {
+  toolName: string;
+  sql: string;
+  context: SessionContext;
+}): Promise<GuardrailDecision> {
+  const normalized = normalizeSql(input.sql);
+  const ast = parseSql(normalized.sql, input.context.engine);
+  const cls = classifySql(ast, normalized);
+
+  const toolDecision = validateToolScope(input.toolName, cls);
+  if (toolDecision.action === "block") return toolDecision;
+
+  const staticDecision = validateStaticRules(cls);
+  if (staticDecision.action === "block") return staticDecision;
+
+  const schemaSnapshot = await schemaIntrospector.load(input.context);
+  const schemaDecision = validateSchemaAwareRules(cls, schemaSnapshot);
+  if (schemaDecision.action === "block") return schemaDecision;
+
+  const explainSummary = shouldExplain(cls)
+    ? await executor.explain(normalized.sql, input.context)
+    : null;
+
+  const costDecision = validateCostRules(cls, explainSummary);
+  return mergeDecision(cls, staticDecision, schemaDecision, costDecision);
+}
+```
+
+然后在 Tool Handler 里这样使用：
+
+```typescript
+const decision = await inspectSql({ toolName, sql, context });
+
+if (decision.action === "block") {
+  return formatBlocked(decision);
+}
+
+if (decision.action === "confirm" && !confirmationToken) {
+  return formatConfirmationRequired(decision);
+}
+
+return executor.run(sql, {
+  readonly: decision.runtimeLimits.readonly,
+  timeoutMs: decision.runtimeLimits.timeoutMs,
+  maxRows: decision.runtimeLimits.maxRows,
+});
+```
+
+##### 3.2.5.8 典型 SQL 的判定示例
+
+| SQL | AST / 结构特征 | 结果 |
+| --- | -------------- | ---- |
+| `SHOW TABLES` | 只读、低代价 | `allow` |
+| `SELECT * FROM orders LIMIT 100` | 只读、有 `LIMIT`，但宽表风险待观察 | `allow` 或 `medium` |
+| `SELECT * FROM orders` | 明细查询、无 `LIMIT` | `confirm` 或 `block` |
+| `SELECT dt, count(*) FROM orders GROUP BY dt` | 聚合查询，无 `LIMIT` 但不一定危险 | 进入 Explain 再判断 |
+| `UPDATE orders SET status='x' WHERE id=1` | 写 SQL、有明确条件 | `confirm` |
+| `UPDATE orders SET status='x'` | 写 SQL、无 `WHERE` | `block` |
+| `DELETE FROM orders WHERE created_at < '2024-01-01'` | 写 SQL、有条件但可能影响大量行 | Explain 后 `confirm` |
+| `TRUNCATE orders` | 阻断语句 | `block` |
+
+##### 3.2.5.9 为什么不能只靠正则
+
+只靠正则做 Guardrail 很快会失效，原因很简单：
+
+- SQL 方言很多，大小写、引号、函数、注释写法都不同
+- 子查询、CTE、嵌套表达式会让正则几乎不可维护
+- 很多风险不是看关键词，而是看结构关系
+- `UPDATE ... WHERE ...` 和 `UPDATE ...` 的风险差异，本质上是 AST 结构差异
+
+所以实现上建议是：
+
+- 正则只做非常轻量的预清洗
+- 真正的分类和校验必须基于 AST
+- 成本和影响面判断再叠加 Explain 与 schema 信息
+
 #### 3.2.6 审计层 (`utils/audit.ts`)
 
 数据面场景下，光有数据库自身日志还不够，因为还需要记录 MCP 服务端的决策过程。建议每次调用都记录：

@@ -145,7 +145,7 @@ TaurusDB 数据面 MCP Server 的首版定义为：
 | S-02 | SQL Profile Loader | 多来源读取数据源配置和数据库凭证 | P0 |
 | S-03 | Data Source Resolver | 解析默认数据源、当前数据库、局部覆盖上下文 | P0 |
 | S-04 | Schema Introspector | 从系统表中抽取 schema、索引、统计信息，并做短期缓存 | P0 |
-| S-05 | SQL Guardrail | SQL 解析、语句分类、风险判定、黑白名单和约束注入 | P0 |
+| S-05 | SQL Guardrail | 基于 AST 的 SQL 解析、语句分类、风险判定、黑白名单和运行时约束注入 | P0 |
 | S-06 | SQL Executor | 建立数据库会话、执行语句、跟踪状态和取消查询 | P0 |
 | S-07 | Confirmation Gate | 对写 SQL 和高风险只读 SQL 签发 `confirmation_token` | P0 |
 | S-08 | Formatter | 统一成功 / 失败 / 需确认 envelope，降低模型解析成本 | P0 |
