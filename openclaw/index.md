@@ -324,3 +324,418 @@ docker system prune -a
 - **pairing required 是设备级安全机制**：不是凭证问题，需要管理员手动批准每个新接入的设备。
 - **CLI 与 Gateway 跨容器通信问题**：在 Docker 部署中，建议直接用 `docker compose exec` 在 Gateway 容器内执行命令，避免网络配置麻烦。
 - **错误信息要细看**：`token missing`、`token mismatch`、`pairing required` 是三个不同阶段的问题，对应不同的解决方案。
+
+## 如何给 OpenClaw 增加 Skill
+
+OpenClaw 的 Skill 可以理解成给 Agent 的“能力说明书”。它不是直接写一个浏览器脚本，也不是绕过页面限制，而是告诉 Agent：
+
+- 什么场景下应该启用这个能力
+- 启用后先读哪些参考资料
+- 具体执行步骤和停止条件是什么
+- 哪些行为不能做
+- 最后应该用什么格式汇报结果
+
+在 Docker 部署里，配置目录被挂载到了容器内的 `/home/node/.openclaw`：
+
+```yaml
+volumes:
+  - ${OPENCLAW_CONFIG_DIR:-./data/.openclaw}:/home/node/.openclaw
+  - ${OPENCLAW_WORKSPACE_DIR:-./data/clawd}:/home/node/clawd
+```
+
+所以宿主机上的目录：
+
+```bash
+/Users/youweichen/projects/openclaw-docker/data/.openclaw
+```
+
+会对应到容器内：
+
+```bash
+/home/node/.openclaw
+```
+
+### 1. Skill-only 插件的目录结构
+
+这次我做的是一个 `boss-recruiting` skill-only 插件。最终目录结构如下：
+
+```text
+data/.openclaw/extensions/boss-recruiting/
+├── index.ts
+├── openclaw.plugin.json
+├── package.json
+└── skills/
+    └── boss-recruiting/
+        ├── SKILL.md
+        ├── agents/
+        │   └── openai.yaml
+        └── references/
+            ├── boss-recruiting-playbook.md
+            └── job-profile-template.md
+```
+
+几个关键点：
+
+- `openclaw.plugin.json` 是 OpenClaw 识别插件的 manifest。
+- `package.json` 里的 `openclaw.extensions` 告诉 OpenClaw 插件入口文件在哪里。
+- `index.ts` 是最小插件入口；skill-only 插件可以不注册工具，只暴露 skill。
+- `skills/boss-recruiting/SKILL.md` 是真正给 Agent 看的技能说明。
+- `references/` 放更详细的参考资料，避免 `SKILL.md` 过长。
+
+### 2. 创建插件目录
+
+在宿主机的 OpenClaw Docker 项目目录中执行：
+
+```bash
+cd /Users/youweichen/projects/openclaw-docker
+mkdir -p data/.openclaw/extensions/boss-recruiting/skills
+```
+
+如果使用 Codex 的 `skill-creator` 初始化，可以先生成标准 Skill 骨架：
+
+```bash
+python3 ~/.codex/skills/.system/skill-creator/scripts/init_skill.py \
+  boss-recruiting \
+  --path /Users/youweichen/projects/openclaw-docker/data/.openclaw/extensions/boss-recruiting/skills \
+  --resources references \
+  --interface display_name='BOSS Recruiting' \
+  --interface short_description='Low-frequency BOSS recruiting workflows' \
+  --interface default_prompt='Use $boss-recruiting to screen candidates and draft compliant BOSS recruiting outreach.'
+```
+
+这个命令会生成：
+
+```text
+skills/boss-recruiting/SKILL.md
+skills/boss-recruiting/agents/openai.yaml
+skills/boss-recruiting/references/
+```
+
+### 3. 写 openclaw.plugin.json
+
+插件 manifest 最小内容如下：
+
+```json
+{
+  "id": "boss-recruiting",
+  "name": "BOSS Recruiting",
+  "description": "Low-frequency employer-side BOSS直聘 candidate screening, outreach, and reply skill.",
+  "skills": ["./skills"],
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}
+```
+
+说明：
+
+- `id` 要和配置里的插件 ID 对上。
+- `skills: ["./skills"]` 表示这个插件提供 skill 目录。
+- `configSchema` 必须存在，即使没有配置项也要写空 schema。
+
+可以用下面命令检查 JSON 是否合法：
+
+```bash
+python3 -m json.tool data/.openclaw/extensions/boss-recruiting/openclaw.plugin.json
+```
+
+### 4. 写 package.json
+
+OpenClaw 的插件发现逻辑会读取 `package.json` 里的 `openclaw.extensions`。如果缺少 `package.json`，直接 `plugins install` 会报：
+
+```text
+extracted package missing package.json
+```
+
+最小 `package.json`：
+
+```json
+{
+  "name": "@local/boss-recruiting",
+  "version": "0.1.0",
+  "description": "Skill-only OpenClaw extension for low-frequency BOSS recruiting workflows.",
+  "type": "module",
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}
+```
+
+### 5. 写最小 index.ts
+
+Skill-only 插件不需要注册额外工具，保留一个空注册函数即可：
+
+```ts
+export default function register(_api: unknown) {
+  // Skill-only plugin. The manifest exposes ./skills to OpenClaw.
+}
+```
+
+OpenClaw 会通过插件 manifest 里的 `skills` 字段读取 `./skills` 目录。
+
+### 6. 写 SKILL.md
+
+`SKILL.md` 必须有 frontmatter，至少包含：
+
+```markdown
+---
+name: boss-recruiting
+description: "BOSS直聘招聘方工作流。Use when OpenClaw needs to help a recruiter on BOSS直聘 screen candidates, draft or send low-frequency personalized first-contact messages, reply to candidate questions, summarize conversations, or maintain a job profile and compliant outreach playbook."
+---
+```
+
+正文建议包含：
+
+- Overview：这个 skill 做什么。
+- Required References：哪些资料需要按需读取。
+- Operating Rules：硬性边界。
+- Workflow：执行步骤。
+- Sending Gate：什么条件下允许自动发送。
+- Stop Conditions：什么情况下必须停止。
+- Output Format：每轮如何汇报。
+
+这次 `boss-recruiting` 的核心策略是：
+
+- 招聘方身份。
+- BOSS 直聘候选人筛选、主动联系、回复。
+- 低频自动发送，不做全自动海投。
+- 默认每轮最多联系 5 人。
+- 候选人拒绝、平台风控提示、薪资合同等敏感问题时停止或请求确认。
+- 不绕过验证码、不调用隐藏 API、不规避平台限制。
+
+### 7. 写 references
+
+我把详细内容拆成了两个 reference：
+
+```text
+references/job-profile-template.md
+references/boss-recruiting-playbook.md
+```
+
+`job-profile-template.md` 用来收集岗位信息：
+
+- 公司/团队
+- 岗位名称
+- 地点和工作模式
+- 薪资范围
+- 必须条件
+- 加分条件
+- 硬性不匹配条件
+- 面试流程
+- 常见问题答案
+
+`boss-recruiting-playbook.md` 用来定义实际招聘动作：
+
+- 候选人评分规则
+- 首次打招呼模板
+- 薪资、地点、技术栈、面试流程等回复模板
+- follow-up 规则
+- batch summary 模板
+
+这样做的好处是 `SKILL.md` 保持短，Agent 只在需要的时候加载详细参考资料。
+
+### 8. 启用插件
+
+如果插件已经放在：
+
+```bash
+data/.openclaw/extensions/boss-recruiting
+```
+
+也就是容器内：
+
+```bash
+/home/node/.openclaw/extensions/boss-recruiting
+```
+
+可以直接启用：
+
+```bash
+docker exec openclaw-docker-openclaw-cn-gateway-1 \
+  node dist/index.js plugins enable boss-recruiting
+```
+
+这个命令会写入：
+
+```json
+"plugins": {
+  "entries": {
+    "boss-recruiting": {
+      "enabled": true
+    }
+  }
+}
+```
+
+如果直接对同一个 extensions 目录执行 `plugins install --link`，可能会报：
+
+```text
+插件已存在: /home/node/.openclaw/extensions/boss-recruiting (请先删除)
+```
+
+原因是插件已经在全局 extensions 目录下，被 OpenClaw 自动发现了，此时用 `plugins enable` 更合适。
+
+### 9. 配置插件 allow list
+
+OpenClaw 安全检查会提示：
+
+```text
+Extensions exist but plugins.allow is not set
+```
+
+含义是：`extensions` 目录下存在插件，但没有明确白名单。建议在 `openclaw.json` 里加：
+
+```json
+"plugins": {
+  "allow": [
+    "openclaw-weixin",
+    "boss-recruiting",
+    "memory-core"
+  ],
+  "entries": {
+    "openclaw-weixin": {
+      "enabled": true
+    },
+    "boss-recruiting": {
+      "enabled": true
+    }
+  }
+}
+```
+
+这样可以避免以后某个被发现的本地插件意外加载。
+
+### 10. 重启 Gateway
+
+OpenClaw CLI 启用插件后会提示：
+
+```text
+Restart the gateway to apply.
+```
+
+在 Docker Compose 部署中重启：
+
+```bash
+cd /Users/youweichen/projects/openclaw-docker
+docker compose up -d --force-recreate openclaw-cn-gateway
+```
+
+### 11. 验证插件是否加载
+
+查看已启用插件：
+
+```bash
+docker exec openclaw-docker-openclaw-cn-gateway-1 \
+  node dist/index.js plugins list --enabled --json
+```
+
+期望看到：
+
+```json
+{
+  "id": "boss-recruiting",
+  "name": "BOSS Recruiting",
+  "enabled": true,
+  "status": "loaded"
+}
+```
+
+验证 skill snapshot 是否注入：
+
+```bash
+docker exec openclaw-docker-openclaw-cn-gateway-1 node --input-type=module -e '
+import { loadConfig } from "/app/dist/config/config.js";
+import { buildWorkspaceSkillSnapshot } from "/app/dist/agents/skills.js";
+const cfg = loadConfig();
+const snap = buildWorkspaceSkillSnapshot("/home/node/.openclaw/workspace", { config: cfg });
+console.log(JSON.stringify({
+  skills: snap.skills.map(s => s.name),
+  hasBoss: snap.skills.some(s => s.name === "boss-recruiting"),
+  promptHasBoss: snap.prompt.includes("boss-recruiting")
+}, null, 2));
+'
+```
+
+期望输出：
+
+```json
+{
+  "skills": [
+    "boss-recruiting"
+  ],
+  "hasBoss": true,
+  "promptHasBoss": true
+}
+```
+
+检查 Gateway 健康状态：
+
+```bash
+docker exec openclaw-docker-openclaw-cn-gateway-1 node dist/index.js health
+```
+
+如果刚重启后马上检查，偶尔会出现：
+
+```text
+gateway closed (1006 abnormal closure)
+```
+
+通常是 Gateway 还没完全就绪，等几秒再重试即可。
+
+### 12. 如何使用这个招聘 Skill
+
+在 OpenClaw 里可以这样触发：
+
+```text
+使用 $boss-recruiting，帮我根据下面岗位配置在 BOSS 直聘上筛选并低频联系候选人：
+
+岗位：Java 后端开发
+地点：上海
+薪资：25k-35k
+必须条件：3 年以上 Java / Spring Boot / MySQL 经验
+加分项：有高并发或电商经验
+硬性排除：不接受上海办公
+面试流程：一面技术，二面主管，HR 沟通
+每轮最多联系 5 人
+```
+
+也可以让它只写草稿：
+
+```text
+使用 $boss-recruiting，根据这个候选人资料帮我写一条 BOSS 直聘首次打招呼消息，先不要发送。
+```
+
+回复候选人时：
+
+```text
+使用 $boss-recruiting，这个候选人问“薪资可以到多少”，根据岗位配置帮我回复。
+```
+
+### 13. 安全和合规边界
+
+招聘自动化很容易踩两个坑：平台风控和误发承诺。所以这个 skill 里必须明确边界：
+
+- 不做全自动海投。
+- 不绕过验证码、风控、登录、限流。
+- 不调用隐藏接口。
+- 不保存候选人隐私到长期记忆。
+- 不根据年龄、性别、婚育、民族、宗教等非岗位因素筛选。
+- 不承诺未确认的薪资、offer、职级、远程政策。
+- 候选人拒绝或不感兴趣后立即停止。
+- 平台出现风险提示时停止操作并汇报。
+
+核心原则：让 Agent 做筛选和沟通辅助，而不是让它变成违规群发器。
+
+### 14. 本次踩到的点
+
+1. 只有 `openclaw.plugin.json` 不够，插件安装器还需要 `package.json`。
+2. 插件已经在 `/home/node/.openclaw/extensions` 下时，不需要 `install --link`，直接 `plugins enable <id>` 更合适。
+3. `plugins enable` 后要重启 Gateway。
+4. `plugins list --enabled --json` 能确认插件是否 loaded。
+5. `buildWorkspaceSkillSnapshot` 能确认 skill 是否真的进入 Agent prompt。
+6. `plugins.allow` 建议显式配置，减少本地扩展自动加载风险。
+7. `quick_validate.py` 依赖 `PyYAML`，本机没装时可以先用 Ruby 或手动检查 YAML frontmatter。
