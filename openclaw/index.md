@@ -2,6 +2,10 @@
 
 OpenClaw是一个自托管AI Gateway。可以把他理解成：各种聊天入口，控制面板，CLI，移动端节点，统一节点，统一接到一个本地或远程运行的网关上，再由网关把消息转给AI Agent。官方文档描述的典型人物结构是: 聊天应用/插件 -> Gateway -> Agent，同时还可接CLI, Web Control UI, macOS App，移动端节点。
 
+相关配置文章：
+
+- [OpenClaw Docker 部署下如何配置 Chrome Browser Relay](./browser-relay-docker.md)
+
 ## 2. 先建立正确认知：OpenClaw的几个核心概念
 
 ### 2.1 Gateway

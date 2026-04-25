@@ -116,6 +116,7 @@ export default withMermaid(defineConfig({
           text: 'OpenClaw',
           items: [
             { text: '部署与 Skill 实战', link: '/openclaw/' },
+            { text: 'Chrome Browser Relay 配置', link: '/openclaw/browser-relay-docker' },
             { text: '实践进度', link: '/openclaw/progress' },
           ],
         },
