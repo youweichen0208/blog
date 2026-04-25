@@ -7,6 +7,7 @@
 - Chrome 扩展必须连接宿主机本地的 Browser Relay。
 - `openclaw browser serve` 不建议放进 Docker 里跑。
 - Docker 里的 Gateway 通过 `host.docker.internal:18791` 访问宿主机上的 Browser Control。
+- 本机 Docker + 本机 Chrome 场景下，推荐 `openclaw browser serve --bind 127.0.0.1 --port 18791`，不要加 `--token`。
 
 ## 1. 组件关系
 
@@ -33,7 +34,7 @@ Chrome 标签页
 
 ## 2. 为什么 browser serve 不放进 Docker
 
-直觉上可能会想把下面这个命令也放进 `docker-compose.yml`：
+直觉上可能会想把下面这个命令也放进 `docker-compose.yml`，或者在宿主机用非环回地址加 token 启动：
 
 ```bash
 openclaw browser serve --bind 0.0.0.0 --port 18791 --token TOKEN
@@ -60,6 +61,14 @@ Docker Gateway
   -> 宿主机 openclaw browser serve
 ```
 
+在同一台 Mac 上跑 Docker Gateway 和 Chrome 时，`openclaw browser serve` 可以只绑定宿主机 loopback：
+
+```bash
+openclaw browser serve --bind 127.0.0.1 --port 18791
+```
+
+Docker Desktop 可以通过 `host.docker.internal` 访问宿主机的 loopback 服务，所以不需要把 Browser Control 绑定到 `0.0.0.0`。
+
 ## 3. 安装 Chrome 扩展文件
 
 在宿主机终端运行：
@@ -80,6 +89,20 @@ openclaw browser extension install
 /Users/your-username/.openclaw/browser/chrome-extension
 ```
 
+如果 Chrome 的文件选择器里不方便选择 `.openclaw` 这种隐藏目录，可以把扩展复制到项目里的可见目录：
+
+```bash
+mkdir -p /Users/your-username/projects/openclaw-docker/chrome-extension
+cp -R /Users/your-username/.openclaw/browser/chrome-extension/. \
+  /Users/your-username/projects/openclaw-docker/chrome-extension/
+```
+
+后续加载扩展时，直接选择：
+
+```text
+/Users/your-username/projects/openclaw-docker/chrome-extension
+```
+
 ## 4. 加载到 Chrome
 
 打开 Chrome：
@@ -95,8 +118,10 @@ chrome://extensions
 3. 选择扩展目录：
 
 ```text
-/Users/your-username/.openclaw/browser/chrome-extension
+/Users/your-username/projects/openclaw-docker/chrome-extension
 ```
+
+如果没有复制到可见目录，也可以选择原始目录 `/Users/your-username/.openclaw/browser/chrome-extension`。在 macOS 文件选择窗口中，按 `Command + Shift + G` 可以直接输入隐藏目录路径。
 
 加载成功后，扩展名通常是：
 
@@ -111,38 +136,33 @@ Clawdbot Browser Relay
 在宿主机新开一个终端窗口，运行：
 
 ```bash
-openclaw browser serve --bind 0.0.0.0 --port 18791 --token GATEWAY_TOKEN
-```
-
-例如：
-
-```bash
-openclaw browser serve --bind 0.0.0.0 --port 18791 --token GATEWAY_TOKEN
-```
-
-注意不要把 `--token` 和 token 分成两条命令。下面这种写法是错的：
-
-```bash
-openclaw browser serve --bind 0.0.0.0 --port 18791 --token
-GATEWAY_TOKEN
+openclaw browser serve --bind 127.0.0.1 --port 18791
 ```
 
 如果要换行，行尾要加反斜杠：
 
 ```bash
 openclaw browser serve \
-  --bind 0.0.0.0 \
-  --port 18791 \
-  --token GATEWAY_TOKEN
+  --bind 127.0.0.1 \
+  --port 18791
 ```
 
 看到类似输出就说明成功：
 
 ```text
-Browser control listening on http://0.0.0.0:18791/
+Browser control listening on http://127.0.0.1:18791/
+认证：关闭（仅限环回）。
 ```
 
 这个终端窗口要保持运行。关闭后，Chrome 扩展和 Gateway 的浏览器控制链路会断。
+
+注意：本机 Docker + 本机 Chrome 这个场景，不建议使用：
+
+```bash
+openclaw browser serve --bind 0.0.0.0 --port 18791 --token GATEWAY_TOKEN
+```
+
+这种启动方式会让 Browser Control 开启 Bearer token 认证，并且可能导致 `18792` 上的 Chrome Extension Relay / CDP Relay 返回 `Unauthorized`，进而让 Agent 的 browser 工具失败。
 
 ## 6. 配置 Docker Gateway 访问宿主机
 
@@ -180,10 +200,24 @@ services:
   "browser": {
     "enabled": true,
     "controlUrl": "http://host.docker.internal:18791",
-    "controlToken": "GATEWAY_TOKEN",
     "defaultProfile": "chrome"
   }
 }
+```
+
+如果之前为了测试加过下面这些配置，可以删掉或留空，避免误导排查：
+
+```json
+{
+  "browser": {
+    "controlToken": "GATEWAY_TOKEN"
+  }
+}
+```
+
+```yaml
+environment:
+  OPENCLAW_BROWSER_CONTROL_TOKEN: GATEWAY_TOKEN
 ```
 
 重启 Gateway：
@@ -200,6 +234,8 @@ docker compose up -d
 Relay port: 18792
 Gateway token: GATEWAY_TOKEN
 ```
+
+这里的 `Gateway token` 是扩展 UI 自己要求的字段，可以继续填 OpenClaw Gateway token。由于 Browser Relay 只绑定在本机 loopback，Browser Control 本身不需要 Bearer token。
 
 保存后，扩展会尝试访问：
 
@@ -227,7 +263,7 @@ docker exec openclaw-docker-openclaw-cn-gateway-1 node -e "require('dns').lookup
 验证 Gateway 容器能访问 Browser Control：
 
 ```bash
-docker exec openclaw-docker-openclaw-cn-gateway-1 node -e "fetch('http://host.docker.internal:18791/', {headers:{Authorization:'Bearer GATEWAY_TOKEN'}}).then(async r=>{console.log(r.status); console.log(await r.text())}).catch(e=>{console.error(String(e)); process.exit(1)})"
+docker exec openclaw-docker-openclaw-cn-gateway-1 node -e "fetch('http://host.docker.internal:18791/').then(async r=>{console.log(r.status); console.log(await r.text())}).catch(e=>{console.error(String(e)); process.exit(1)})"
 ```
 
 如果返回 `200` 和一段 browser 状态 JSON，说明容器到宿主机 browser control 是通的。
@@ -235,26 +271,61 @@ docker exec openclaw-docker-openclaw-cn-gateway-1 node -e "fetch('http://host.do
 验证宿主机扩展 relay：
 
 ```bash
-curl -I http://127.0.0.1:18792/
+curl -i http://127.0.0.1:18792/json/version
 ```
 
-如果返回 `HTTP/1.1 200 OK`，说明扩展 relay 正在宿主机本地监听。
+如果返回 `HTTP/1.1 200 OK` 和一段 JSON，说明扩展 relay 正在宿主机本地监听。
+
+如果这里返回 `401 Unauthorized`，通常说明 `openclaw browser serve` 是用 `--bind 0.0.0.0 --token ...` 启动的。停掉它，改用：
+
+```bash
+openclaw browser serve --bind 127.0.0.1 --port 18791
+```
+
+然后重启 Docker Gateway。
 
 ## 10. 常见问题
 
-### option '--token TOKEN' argument missing
+### Error: Unauthorized
 
-原因是 `--token` 后面换行了，导致 token 没有作为参数传进去。
+如果 Agent browser 工具报：
 
-正确写法：
+```text
+Can't reach the OpenClaw-CN browser control service ... (Error: Unauthorized)
+```
+
+优先检查 `18792/json/version`：
 
 ```bash
-openclaw browser serve --bind 0.0.0.0 --port 18791 --token GATEWAY_TOKEN
+curl -i http://127.0.0.1:18792/json/version
 ```
+
+如果返回 `401 Unauthorized`，说明 Browser Relay/CDP Relay 也被 token 保护了，browser 工具访问时会失败。
+
+处理方式：
+
+1. 停掉当前 `openclaw browser serve`。
+2. 改用 loopback 无 token 启动：
+
+```bash
+openclaw browser serve --bind 127.0.0.1 --port 18791
+```
+
+3. 重启 Docker Gateway：
+
+```bash
+docker compose up -d --force-recreate openclaw-cn-gateway
+```
+
+4. 确认 BOSS 直聘标签页上的 Browser Relay 扩展仍然是 `ON`。
+
+### option '--token TOKEN' argument missing
+
+如果你仍然选择使用 `--token`，`--token` 后面不能换行，否则 shell 会认为 token 缺失。
 
 ### zsh: command not found: token
 
-原因同上：token 被 shell 当成下一条命令执行了。
+原因同上：token 被 shell 当成下一条命令执行了。本机 Docker + 本机 Chrome 场景下，推荐直接不用 `--token`。
 
 ### 扩展显示 Not connected
 
@@ -264,6 +335,7 @@ openclaw browser serve --bind 0.0.0.0 --port 18791 --token GATEWAY_TOKEN
 - Chrome 扩展选项里的 `Relay port` 是否是 `18792`。
 - Chrome 扩展选项里的 token 是否和 Gateway token 一致。
 - 你点击的是不是 `Clawdbot Browser Relay`，而不是其他扩展。
+- `curl -i http://127.0.0.1:18792/json/version` 是否返回 `200`，而不是 `401 Unauthorized`。
 
 ### No bots / create one on EasyClaw
 

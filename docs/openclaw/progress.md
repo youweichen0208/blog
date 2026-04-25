@@ -2,6 +2,24 @@
 
 ## 2026-04-25
 
+### 已完成：新增 Docker 部署下 Chrome Browser Relay 配置文章
+
+目标：记录 OpenClaw Gateway 跑在 Docker 中时，如何通过宿主机 Chrome 扩展接管 BOSS 直聘等已登录标签页。
+
+完成内容：
+
+- 新增 `/Users/youweichen/projects/blog/openclaw/browser-relay-docker.md`。
+- 说明了 `openclaw browser serve` 为什么不建议放进 Docker：Chrome 扩展 relay 只接受 loopback 连接，Docker 端口映射会破坏这个假设。
+- 梳理了正确链路：Chrome 扩展连接宿主机 `127.0.0.1:18792`，Docker Gateway 通过 `host.docker.internal:18791` 访问宿主机 Browser Control。
+- 补充了扩展安装、Chrome 加载、扩展选项、BOSS 直聘标签页附加、验证命令和常见错误。
+- 记录了 `--token` 后换行导致 `argument missing` 的排查方式。
+
+注意事项：
+
+- 文章中的 token 示例应按部署环境替换，不建议在公开博客中保留真实 token。
+- Browser Relay 能读取和操作附加标签页，建议使用独立 Chrome 配置文件，不要附加银行、支付、邮箱等敏感页面。
+- 2026-04-25 追加修正：本机 Docker + 本机 Chrome 场景下，推荐 `openclaw browser serve --bind 127.0.0.1 --port 18791`，不要加 `--token`；否则 `18792/json/version` 可能返回 `401 Unauthorized`，导致 Agent browser 工具失败。
+
 ### 已完成：新增 boss-recruiting skill-only 插件
 
 目标：给本地 Docker 部署的 OpenClaw 增加一个招聘方使用的 BOSS 直聘 skill，让 Agent 能低频筛选候选人、写主动联系话术、回复候选人问题。

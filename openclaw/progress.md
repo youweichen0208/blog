@@ -18,6 +18,7 @@
 
 - 文章中的 token 示例应按部署环境替换，不建议在公开博客中保留真实 token。
 - Browser Relay 能读取和操作附加标签页，建议使用独立 Chrome 配置文件，不要附加银行、支付、邮箱等敏感页面。
+- 2026-04-25 追加修正：本机 Docker + 本机 Chrome 场景下，推荐 `openclaw browser serve --bind 127.0.0.1 --port 18791`，不要加 `--token`；否则 `18792/json/version` 可能返回 `401 Unauthorized`，导致 Agent browser 工具失败。
 
 ### 已完成：新增 boss-recruiting skill-only 插件
 
