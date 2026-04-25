@@ -42,6 +42,7 @@ export default withMermaid(defineConfig({
       { text: 'AIOps 专栏', link: '/aiops/' },
       { text: '数据结构', link: '/data-structures/' },
       { text: 'Go 语言', link: '/go/' },
+      { text: 'OpenClaw', link: '/openclaw/' },
       {
         text: 'AI 开发',
         items: [
@@ -112,6 +113,15 @@ export default withMermaid(defineConfig({
       '/mcp/': aiDevSidebar,
       '/cli/': aiDevSidebar,
       '/agent/': aiDevSidebar,
+      '/openclaw/': [
+        {
+          text: 'OpenClaw',
+          items: [
+            { text: '部署与 Skill 实战', link: '/openclaw/' },
+            { text: '实践进度', link: '/openclaw/progress' },
+          ],
+        },
+      ],
       '/projects/': [
         {
           text: '项目概览',
