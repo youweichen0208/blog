@@ -200,11 +200,9 @@ MCP 支持两种传输协议：**stdio** 和 **SSE (Server-Sent Events)**。
 
 本教程按照以下顺序组织：
 
-1. **[快速入门](./getting-started.md)**：5 分钟搭建第一个 MCP 服务器
-2. **[传输协议详解](./transport.md)**：深入理解 stdio 和 SSE
-3. **[Claude 配置](./claude-config.md)**：如何在 Claude Desktop 中配置 MCP
-4. **[构建 MCP 服务器](./build-server.md)**：从零开始开发自定义服务器
-5. **[运维实战](./devops-practice.md)**：真实场景下的 MCP 应用
+1. **[Claude 配置](./claude-config.md)**：如何在 Claude Desktop 中配置 MCP
+2. **[Inspector 调试](./inspector.md)**：使用 MCP Inspector 调试本地和远程 MCP 服务
+3. **[本地 stdio 实战](./local-stdio.md)**：以本地 TaurusDB MCP Server 为例配置 stdio 传输
 
 ## 5. 前置知识
 
@@ -277,7 +275,7 @@ python test_mcp.py
 
 ## 8. 下一步
 
-准备好了吗？让我们从[快速入门](./getting-started.md)开始，5 分钟搭建你的第一个 MCP 服务器！
+准备好了吗？可以先从 [Claude 配置](./claude-config.md) 开始，再用 [Inspector 调试](./inspector.md) 验证 MCP 服务是否正常。
 
 ---
 

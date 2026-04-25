@@ -6,11 +6,9 @@ const aiDevSidebar = [
     text: 'MCP 协议',
     items: [
       { text: '概述', link: '/mcp/' },
-      { text: '快速入门', link: '/mcp/getting-started' },
-      { text: '传输协议详解', link: '/mcp/transport' },
       { text: 'Claude 配置', link: '/mcp/claude-config' },
-      { text: '构建 MCP 服务器', link: '/mcp/build-server' },
-      { text: '运维实战', link: '/mcp/devops-practice' },
+      { text: 'Inspector 调试', link: '/mcp/inspector' },
+      { text: '本地 stdio 实战', link: '/mcp/local-stdio' },
     ],
   },
   {
