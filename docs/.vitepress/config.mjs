@@ -36,6 +36,7 @@ export default withMermaid(defineConfig({
     nav: [
       { text: '首页', link: '/' },
       { text: '博客', link: '/posts/' },
+      { text: '股票', link: '/stock/' },
       { text: '技术教程', link: '/tutorials/' },
       { text: 'AIOps 专栏', link: '/aiops/' },
       { text: '数据结构', link: '/data-structures/' },
@@ -55,6 +56,15 @@ export default withMermaid(defineConfig({
 
     // 侧边栏
     sidebar: {
+      '/stock/': [
+        {
+          text: '股票投资',
+          collapsed: false,
+          items: [
+            { text: '股票投资入门教程', link: '/stock/' },
+          ],
+        },
+      ],
       '/posts/': [
         {
           text: '博客文章',

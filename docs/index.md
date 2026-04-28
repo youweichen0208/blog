@@ -25,3 +25,4 @@ features:
 ## 最新文章
 
 - [Hello World](/posts/hello-world)
+- [股票投资入门教程](/stock/)
