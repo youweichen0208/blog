@@ -369,7 +369,7 @@ const { site } = useData()
 @media (max-width: 640px) {
   .home-shell {
     width: min(100vw - 20px, 1200px);
-    padding-top: 20px;
+    padding-top: 12px;
   }
 
   .hero-copy,
@@ -378,12 +378,38 @@ const { site } = useData()
     padding: 20px;
   }
 
+  .hero-title {
+    font-size: clamp(34px, 13vw, 52px);
+    line-height: 1.02;
+  }
+
+  .hero-dek {
+    margin-top: 16px;
+    font-size: 16px;
+    line-height: 1.72;
+  }
+
+  .section-heading h2 {
+    font-size: clamp(28px, 10vw, 36px);
+  }
+
+  .section-card h3,
+  .recent-card h3 {
+    font-size: 21px;
+  }
+
+  .section-card p,
+  .recent-card p {
+    line-height: 1.72;
+  }
+
   .hero-actions {
     gap: 10px;
   }
 
   .home-button {
-    flex: 1 1 160px;
+    flex: 1 1 100%;
+    min-height: 42px;
   }
 }
 
