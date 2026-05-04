@@ -1,193 +1,222 @@
-import { defineConfig } from 'vitepress'
-import { withMermaid } from 'vitepress-plugin-mermaid'
+import { defineConfig } from "vitepress";
+import { withMermaid } from "vitepress-plugin-mermaid";
 
 const aiDevSidebar = [
   {
-    text: 'MCP 协议',
+    text: "MCP 协议",
     items: [
-      { text: '概述', link: '/mcp/' },
-      { text: 'Claude 配置', link: '/mcp/claude-config' },
-      { text: 'Inspector 调试', link: '/mcp/inspector' },
-      { text: '本地 stdio 实战', link: '/mcp/local-stdio' },
+      { text: "概述", link: "/mcp/" },
+      { text: "Claude 配置", link: "/mcp/claude-config" },
+      { text: "Inspector 调试", link: "/mcp/inspector" },
+      { text: "本地 stdio 实战", link: "/mcp/local-stdio" },
     ],
   },
   {
-    text: 'CLI 开发',
-    items: [
-      { text: '概述', link: '/cli/' },
-    ],
+    text: "CLI 开发",
+    items: [{ text: "概述", link: "/cli/" }],
   },
   {
-    text: 'Agent 开发',
-    items: [
-      { text: '概述', link: '/agent/' },
-    ],
+    text: "Agent 开发",
+    items: [{ text: "概述", link: "/agent/" }],
   },
-]
+  {
+    text: "Skill",
+    items: [{ text: "概述", link: "/skill/" }],
+  },
+];
 
-export default withMermaid(defineConfig({
-  lang: 'zh-CN',
-  title: '我的博客',
-  description: '基于 VitePress 的个人博客',
-  base: '/blog/',
+export default withMermaid(
+  defineConfig({
+    appearance: false,
+    lang: "zh-CN",
+    title: "我的博客",
+    description: "记录后端架构、AI开发与日常思考",
+    base: "/blog/",
 
-  themeConfig: {
-    // 导航栏
-    nav: [
-      { text: '首页', link: '/' },
-      { text: '博客', link: '/posts/' },
-      { text: '股票', link: '/stock/' },
-      { text: '技术教程', link: '/tutorials/' },
-      { text: 'AIOps 专栏', link: '/aiops/' },
-      { text: '数据结构', link: '/data-structures/' },
-      { text: 'Go 语言', link: '/go/' },
-      { text: 'OpenClaw', link: '/openclaw/' },
-      {
-        text: 'AI 开发',
-        items: [
-          { text: 'MCP 协议', link: '/mcp/' },
-          { text: 'CLI 开发', link: '/cli/' },
-          { text: 'Agent 开发', link: '/agent/' },
-        ],
+    head: [
+      ["link", { rel: "preconnect", href: "https://fonts.googleapis.com" }],
+      [
+        "link",
+        {
+          rel: "preconnect",
+          href: "https://fonts.gstatic.com",
+          crossorigin: "",
+        },
+      ],
+      [
+        "link",
+        {
+          href: "https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@500;700&display=swap",
+          rel: "stylesheet",
+        },
+      ],
+    ],
+
+    markdown: {
+      theme: {
+        light: "github-light",
+        dark: "one-dark-pro",
       },
-      { text: '项目实战', link: '/projects/' },
-      { text: 'GitHub', link: 'https://github.com' },
-    ],
-
-    // 侧边栏
-    sidebar: {
-      '/stock/': [
-        {
-          text: '股票投资',
-          collapsed: false,
-          items: [
-            { text: '股票投资入门教程', link: '/stock/' },
-          ],
-        },
-      ],
-      '/posts/': [
-        {
-          text: '博客文章',
-          items: [
-            { text: 'Hello World', link: '/posts/hello-world' },
-          ],
-        },
-      ],
-      '/tutorials/': [
-        {
-          text: '技术教程',
-          items: [
-            { text: 'VPN 搭建教程', link: '/tutorials/build-vpn' },
-            { text: 'Jenkins CI/CD 实战', link: '/tutorials/jenkins-cicd' },
-          ],
-        },
-      ],
-      '/aiops/': [
-        {
-          text: 'AIOps 专栏',
-          items: [
-            { text: '概述', link: '/aiops/' },
-            { text: '智能体 Coze', link: '/aiops/coze' },
-            { text: 'RAG 实战指南', link: '/aiops/rag' },
-            { text: 'Prometheus + Grafana 监控', link: '/aiops/prometheus' },
-          ],
-        },
-      ],
-      '/data-structures/': [
-        {
-          text: '数据结构',
-          items: [
-            { text: '概述', link: '/data-structures/' },
-            { text: '递归详解', link: '/data-structures/recursion' },
-            { text: '链表', link: '/data-structures/linked-list' },
-          ],
-        },
-      ],
-      '/go/': [
-        {
-          text: 'Go 语言',
-          items: [
-            { text: '简介', link: '/go/' },
-            { text: '指针详解', link: '/go/pointer' },
-            { text: '函数', link: '/go/func' },
-            { text: '结构体', link: '/go/struct' },
-            { text: '接口', link: '/go/interface' },
-            { text: '错误处理', link: '/go/error' },
-            { text: 'Goroutine', link: '/go/goroutine' },
-            { text: 'Channel', link: '/go/channel' },
-          ],
-        },
-      ],
-      '/mcp/': aiDevSidebar,
-      '/cli/': aiDevSidebar,
-      '/agent/': aiDevSidebar,
-      '/openclaw/': [
-        {
-          text: 'OpenClaw',
-          items: [
-            { text: '部署与 Skill 实战', link: '/openclaw/' },
-            { text: 'Chrome Browser Relay 配置', link: '/openclaw/browser-relay-docker' },
-            { text: '实践进度', link: '/openclaw/progress' },
-          ],
-        },
-      ],
-      '/projects/': [
-        {
-          text: '项目概览',
-          items: [
-            { text: '概述', link: '/projects/' },
-          ],
-        },
-        {
-          text: 'OpenTaurus 专栏',
-          link: '/projects/opentaurus/',
-          collapsed: false,
-          items: [
-            { text: '专栏概述', link: '/projects/opentaurus/' },
-            { text: '架构设计', link: '/projects/opentaurus/architecture' },
-            { text: '需求设计', link: '/projects/opentaurus/requirements' },
-            { text: '项目随记', link: '/projects/opentaurus/notes' },
-            { text: '如何获取 AK/SK', link: '/projects/opentaurus/aksk' },
-          ],
-        },
-        {
-          text: 'Taurus MCP Server 专栏',
-          link: '/projects/taurus-mcp-server/',
-          collapsed: false,
-          items: [
-            { text: '专栏概述', link: '/projects/taurus-mcp-server/' },
-            { text: '需求背景与概要设计', link: '/projects/taurus-mcp-server/requirements' },
-            { text: '华为云 TaurusDB MCP Server 架构', link: '/projects/taurus-mcp-server/taurusdb-architecture' },
-          ],
-        },
-      ],
-    '/open-taurus/': [
-        {
-          text: 'Open Taurus — HWRDS CLI',
-          items: [
-            { text: '专栏概述', link: '/open-taurus/' },
-            { text: 'M01 · configure 配置命令', link: '/open-taurus/m01-configure' },
-            { text: 'M02 · config-store 配置存储', link: '/open-taurus/m02-config-store' },
-            { text: 'M03 · sdk-client HTTP 客户端', link: '/open-taurus/m03-sdk-client' },
-            { text: 'M04 · ak-sk-signer 签名模块', link: '/open-taurus/m04-ak-sk-signer' },
-            { text: 'M05 · flavor-list 规格查询', link: '/open-taurus/m05-flavor-list' },
-            { text: 'M06 · formatter 格式化输出', link: '/open-taurus/m06-formatter' },
-            { text: 'M07 · color 彩色输出', link: '/open-taurus/m07-color' },
-            { text: 'M08 · instance-create 创建实例', link: '/open-taurus/m08-instance-create' },
-            { text: 'M09 · waiter 等待机制', link: '/open-taurus/m09-waiter' },
-            { text: 'M10 · instance-list 列出实例', link: '/open-taurus/m10-instance-list' },
-            { text: 'M11 · instance-show 查看详情', link: '/open-taurus/m11-instance-show' },
-            { text: 'M12 · instance-delete 删除实例', link: '/open-taurus/m12-instance-delete' },
-            { text: 'M13 · instance-restart 重启实例', link: '/open-taurus/m13-instance-restart' },
-            { text: 'M14 · error-polish-test 收尾', link: '/open-taurus/m14-error-polish-test' },
-          ],
-        },
-      ],
+      lineNumbers: true,
     },
 
-    // 社交链接
-    socialLinks: [
-      { icon: 'github', link: 'https://github.com' }
-    ],
-  },
-}))
+    themeConfig: {
+      nav: [
+        { text: "首页", link: "/" },
+        { text: "博客", link: "/posts/" },
+        { text: "股票", link: "/stock/" },
+        { text: "Go", link: "/go/" },
+        { text: "数据结构", link: "/data-structures/" },
+        { text: "OpenClaw", link: "/openclaw/" },
+        {
+          text: "AI 开发",
+          items: [
+            { text: "MCP 协议", link: "/mcp/" },
+            { text: "CLI 开发", link: "/cli/" },
+            { text: "AIOps", link: "/aiops/" },
+            { text: "Agent", link: "/agent/" },
+            { text: "Skill", link: "/skill/" },
+          ],
+        },
+        { text: "项目实战", link: "/projects/" },
+        { text: "教程", link: "/tutorials/" },
+        { text: "GitHub", link: "https://github.com" },
+      ],
+
+      sidebar: {
+        "/stock/": [
+          {
+            text: "股票投资",
+            collapsed: false,
+            items: [{ text: "股票投资入门教程", link: "/stock/" }],
+          },
+        ],
+        "/posts/": [
+          {
+            text: "博客文章",
+            items: [{ text: "Hello World", link: "/posts/hello-world" }],
+          },
+        ],
+        "/tutorials/": [
+          {
+            text: "技术教程",
+            items: [
+              { text: "VPN 搭建", link: "/tutorials/build-vpn" },
+              { text: "Jenkins CI/CD", link: "/tutorials/jenkins-cicd" },
+              { text: "Linux 命令", link: "/tutorials/linux" },
+            ],
+          },
+        ],
+        "/aiops/": [
+          {
+            text: "AIOps",
+            items: [
+              { text: "概述", link: "/aiops/" },
+              { text: "智能体 Coze", link: "/aiops/coze" },
+              { text: "RAG 实战", link: "/aiops/rag" },
+              { text: "Prometheus + Grafana", link: "/aiops/prometheus" },
+            ],
+          },
+        ],
+        "/data-structures/": [
+          {
+            text: "数据结构",
+            items: [
+              { text: "概述", link: "/data-structures/" },
+              { text: "递归详解", link: "/data-structures/recursion" },
+              { text: "链表", link: "/data-structures/linked-list" },
+            ],
+          },
+        ],
+        "/go/": [
+          {
+            text: "Go 语言",
+            items: [
+              { text: "简介", link: "/go/" },
+              { text: "指针", link: "/go/pointer" },
+              { text: "函数", link: "/go/func" },
+              { text: "结构体", link: "/go/struct" },
+              { text: "接口", link: "/go/interface" },
+              { text: "错误处理", link: "/go/error" },
+              { text: "Goroutine", link: "/go/goroutine" },
+              { text: "Channel", link: "/go/channel" },
+            ],
+          },
+        ],
+        "/mcp/": aiDevSidebar,
+        "/cli/": aiDevSidebar,
+        "/agent/": aiDevSidebar,
+        "/skill/": aiDevSidebar,
+        "/openclaw/": [
+          {
+            text: "OpenClaw",
+            items: [
+              { text: "部署与实战", link: "/openclaw/" },
+              { text: "Browser Relay", link: "/openclaw/browser-relay-docker" },
+              { text: "实践进度", link: "/openclaw/progress" },
+            ],
+          },
+        ],
+        "/projects/": [
+          {
+            text: "项目",
+            items: [{ text: "概述", link: "/projects/" }],
+          },
+          {
+            text: "OpenTaurus",
+            link: "/projects/opentaurus/",
+            collapsed: false,
+            items: [
+              { text: "概述", link: "/projects/opentaurus/" },
+              { text: "架构设计", link: "/projects/opentaurus/architecture" },
+              { text: "需求", link: "/projects/opentaurus/requirements" },
+              { text: "随记", link: "/projects/opentaurus/notes" },
+              { text: "AK/SK", link: "/projects/opentaurus/aksk" },
+            ],
+          },
+          {
+            text: "Taurus MCP",
+            link: "/projects/taurus-mcp-server/",
+            collapsed: false,
+            items: [
+              { text: "概述", link: "/projects/taurus-mcp-server/" },
+              {
+                text: "需求背景",
+                link: "/projects/taurus-mcp-server/requirements",
+              },
+              {
+                text: "架构设计",
+                link: "/projects/taurus-mcp-server/taurusdb-architecture",
+              },
+            ],
+          },
+        ],
+        "/open-taurus/": [
+          {
+            text: "Open Taurus — HWRDS CLI",
+            items: [
+              { text: "专栏概述", link: "/open-taurus/" },
+              { text: "M01 · configure 配置命令", link: "/open-taurus/m01-configure" },
+              { text: "M02 · config-store 配置存储", link: "/open-taurus/m02-config-store" },
+              { text: "M03 · sdk-client HTTP 客户端", link: "/open-taurus/m03-sdk-client" },
+              { text: "M04 · ak-sk-signer 签名模块", link: "/open-taurus/m04-ak-sk-signer" },
+              { text: "M05 · flavor-list 规格查询", link: "/open-taurus/m05-flavor-list" },
+              { text: "M06 · formatter 格式化输出", link: "/open-taurus/m06-formatter" },
+              { text: "M07 · color 彩色输出", link: "/open-taurus/m07-color" },
+              { text: "M08 · instance-create 创建实例", link: "/open-taurus/m08-instance-create" },
+              { text: "M09 · waiter 等待机制", link: "/open-taurus/m09-waiter" },
+              { text: "M10 · instance-list 列出实例", link: "/open-taurus/m10-instance-list" },
+              { text: "M11 · instance-show 查看详情", link: "/open-taurus/m11-instance-show" },
+              { text: "M12 · instance-delete 删除实例", link: "/open-taurus/m12-instance-delete" },
+              { text: "M13 · instance-restart 重启实例", link: "/open-taurus/m13-instance-restart" },
+              { text: "M14 · error-polish-test 收尾", link: "/open-taurus/m14-error-polish-test" },
+            ],
+          },
+        ],
+      },
+
+      socialLinks: [{ icon: "github", link: "https://github.com" }],
+      outline: { level: [2, 3] },
+    },
+  }),
+);
