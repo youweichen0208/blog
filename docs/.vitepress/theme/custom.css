@@ -105,7 +105,7 @@ button,
 }
 
 .VPNavBar {
-  width: min(calc(100vw - 24px), 1320px);
+  width: min(calc(100vw - 32px), 1380px);
   margin: 0 auto;
   border: 0 !important;
   border-radius: 0;
@@ -116,13 +116,17 @@ button,
 }
 
 .VPNavBar.has-sidebar {
-  width: min(calc(100vw - 24px), 1380px);
+  width: min(calc(100vw - 32px), 1380px);
 }
 
 .VPNavBar .container {
   max-width: none !important;
-  padding: 0 20px !important;
+  padding: 0 12px !important;
   background: transparent !important;
+}
+
+.VPNavBar .content {
+  padding-left: 12px;
 }
 
 .VPNavBar .content,
@@ -194,7 +198,7 @@ button,
 }
 
 .VPHome {
-  padding-top: 24px !important;
+  padding-top: 52px !important;
 }
 
 .custom-home .VPHero,
@@ -293,20 +297,46 @@ button,
 }
 
 .VPDoc .container {
-  max-width: 1320px !important;
+  max-width: 1380px !important;
   padding: 32px 24px 88px !important;
 }
 
+.VPDoc.has-sidebar > .container {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  width: 100%;
+  max-width: none !important;
+  margin: 0;
+  box-sizing: border-box;
+}
+
 .VPDoc.has-aside .content-container {
-  max-width: 840px !important;
+  max-width: 800px !important;
 }
 
 .VPDoc .aside {
-  display: none !important;
+  display: block !important;
+  padding-left: 8px;
+}
+
+.VPDoc.has-sidebar > .container > .aside {
+  flex: 0 0 240px;
+  width: 240px;
+  max-width: 240px;
+  padding-left: 0;
+  margin-left: -16px;
+}
+
+.VPDoc.has-sidebar > .container > .content {
+  flex: 0 1 840px;
+  width: min(840px, 100%);
+  min-width: 0;
+  padding: 0;
 }
 
 .VPDoc:not(.has-sidebar) .content-container {
-  max-width: 840px !important;
+  max-width: 800px !important;
 }
 
 .VPDoc .content,
@@ -321,7 +351,12 @@ button,
   border-radius: 0;
   background: #fff !important;
   box-shadow: none;
-  padding: 28px 40px 36px !important;
+  padding: 28px 32px 36px !important;
+}
+
+.VPDoc.has-sidebar > .container > .content > .content-container {
+  width: 100%;
+  max-width: none !important;
 }
 
 .vp-doc {
@@ -386,7 +421,14 @@ button,
   }
 
   .VPSidebar {
-    padding-top: 120px !important;
+    left: 0 !important;
+    width: 100% !important;
+    padding: 120px 0 0 !important;
+  }
+
+  .VPSidebar .nav {
+    margin-left: max(16px, calc((100vw - 1380px) / 2 + 24px));
+    width: 240px;
   }
 
   .VPDoc .container {
@@ -559,13 +601,100 @@ button,
   color: var(--blog-ink-soft);
 }
 
-.VPDocAside .outline {
-  display: none !important;
+.VPDocAside .outline,
+.VPDocAside .VPDocAsideOutline {
+  display: block !important;
+  position: sticky;
+  top: 112px;
+  width: 240px;
+  padding: 18px 16px;
+  border: 1px solid var(--blog-border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--blog-shadow-soft);
 }
 
 .VPDocAside .outline-link:hover,
 .VPDocAside .outline-link.active {
   color: var(--blog-accent);
+}
+
+.VPDocAside .outline-title {
+  margin-bottom: 14px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--blog-ink-soft);
+}
+
+.VPDocAside .outline-marker {
+  display: none;
+}
+
+.VPDocAside .VPDocAsideOutline ol,
+.VPDocAside .VPDocAsideOutline ul,
+.VPDocAside .outline ol,
+.VPDocAside .outline ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.VPDocAside .VPDocAsideOutline li,
+.VPDocAside .outline li {
+  margin: 0;
+}
+
+.VPDocAside .VPDocAsideOutline li + li,
+.VPDocAside .outline li + li {
+  margin-top: 4px;
+}
+
+.VPDocAside .VPDocAsideOutline li > ul,
+.VPDocAside .VPDocAsideOutline li > ol,
+.VPDocAside .outline li > ul,
+.VPDocAside .outline li > ol {
+  margin-top: 4px;
+  padding-left: 12px;
+  max-height: none;
+  overflow: visible;
+  opacity: 1;
+  transform: none;
+}
+
+.VPDocAside .outline-link {
+  display: block;
+  padding: 8px 10px 8px 12px;
+  border-left: 2px solid transparent;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+  text-decoration: none;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.VPDocAside .VPDocAsideOutline li > ul .outline-link,
+.VPDocAside .VPDocAsideOutline li > ol .outline-link,
+.VPDocAside .outline li > ul .outline-link,
+.VPDocAside .outline li > ol .outline-link {
+  padding-top: 6px;
+  padding-bottom: 6px;
+  font-size: 12px;
+  color: var(--blog-ink-faint);
+}
+
+.VPDocAside .outline-link:hover {
+  background: rgba(37, 99, 235, 0.05);
+}
+
+.VPDocAside .outline-link.active {
+  border-left-color: var(--blog-accent);
+  background: rgba(37, 99, 235, 0.08);
+  font-weight: 700;
 }
 
 .VPDocFooter {
@@ -672,16 +801,35 @@ button,
   }
 
   .VPHome {
-    padding-top: 20px !important;
+    padding-top: 32px !important;
+  }
+
+  .VPDoc.has-sidebar > .container {
+    display: block;
+    width: auto;
+    margin: 0;
+  }
+
+  .VPDoc.has-sidebar > .container > .content,
+  .VPDoc.has-sidebar > .container > .aside {
+    width: auto;
   }
 
   .VPSidebar .nav,
   .VPDoc .container {
     padding-top: 28px !important;
   }
+
+  .VPDoc .aside {
+    display: none !important;
+  }
 }
 
 @media (max-width: 640px) {
+  .VPHome {
+    padding-top: 24px !important;
+  }
+
   .VPLocalNav {
     display: none !important;
   }

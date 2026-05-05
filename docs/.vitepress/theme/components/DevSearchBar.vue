@@ -54,7 +54,7 @@ const filteredItems = computed(() => {
   position: relative;
   display: flex;
   align-items: center;
-  width: min(540px, 100%);
+  width: min(420px, 100%);
   min-width: 0;
   min-height: 42px;
   padding: 0 12px;

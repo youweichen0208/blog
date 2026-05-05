@@ -98,7 +98,7 @@ const { site } = useData()
 .home-shell {
   width: min(1200px, calc(100vw - 40px));
   margin: 0 auto;
-  padding: 32px 0 88px;
+  padding: 56px 0 88px;
 }
 
 .home-hero {
@@ -353,6 +353,7 @@ const { site } = useData()
 @media (max-width: 900px) {
   .home-shell {
     width: min(100vw - 24px, 1200px);
+    padding-top: 40px;
     padding-bottom: 64px;
   }
 
@@ -369,7 +370,7 @@ const { site } = useData()
 @media (max-width: 640px) {
   .home-shell {
     width: min(100vw - 20px, 1200px);
-    padding-top: 12px;
+    padding-top: 20px;
   }
 
   .hero-copy,
