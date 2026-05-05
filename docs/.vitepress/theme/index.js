@@ -3,6 +3,7 @@ import { useData } from 'vitepress'
 import { h, onMounted } from 'vue'
 import './custom.css'
 import PaperHome from './components/PaperHome.vue'
+import DevSearchBar from './components/DevSearchBar.vue'
 
 export default {
   extends: DefaultTheme,
@@ -15,6 +16,7 @@ export default {
       {
         'layout-top': () =>
           h('a', { href: '#main-content', class: 'skip-link' }, '跳到正文'),
+        'nav-bar-content-before': () => h(DevSearchBar),
         ...(frontmatter.value.layout === 'home'
           ? {
               'home-hero-before': () => h(PaperHome),

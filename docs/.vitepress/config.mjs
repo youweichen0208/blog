@@ -54,7 +54,7 @@ export default withMermaid(
 
     markdown: {
       theme: {
-        light: "github-light",
+        light: "one-dark-pro",
         dark: "one-dark-pro",
       },
       lineNumbers: true,
@@ -78,7 +78,6 @@ export default withMermaid(
             { text: "Skill", link: "/skill/" },
           ],
         },
-        { text: "项目实战", link: "/projects/" },
         { text: "教程", link: "/tutorials/" },
         { text: "GitHub", link: "https://github.com" },
       ],
@@ -154,40 +153,6 @@ export default withMermaid(
               { text: "部署与实战", link: "/openclaw/" },
               { text: "Browser Relay", link: "/openclaw/browser-relay-docker" },
               { text: "实践进度", link: "/openclaw/progress" },
-            ],
-          },
-        ],
-        "/projects/": [
-          {
-            text: "项目",
-            items: [{ text: "概述", link: "/projects/" }],
-          },
-          {
-            text: "OpenTaurus",
-            link: "/projects/opentaurus/",
-            collapsed: false,
-            items: [
-              { text: "概述", link: "/projects/opentaurus/" },
-              { text: "架构设计", link: "/projects/opentaurus/architecture" },
-              { text: "需求", link: "/projects/opentaurus/requirements" },
-              { text: "随记", link: "/projects/opentaurus/notes" },
-              { text: "AK/SK", link: "/projects/opentaurus/aksk" },
-            ],
-          },
-          {
-            text: "Taurus MCP",
-            link: "/projects/taurus-mcp-server/",
-            collapsed: false,
-            items: [
-              { text: "概述", link: "/projects/taurus-mcp-server/" },
-              {
-                text: "需求背景",
-                link: "/projects/taurus-mcp-server/requirements",
-              },
-              {
-                text: "架构设计",
-                link: "/projects/taurus-mcp-server/taurusdb-architecture",
-              },
             ],
           },
         ],

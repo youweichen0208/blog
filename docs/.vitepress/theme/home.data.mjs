@@ -14,7 +14,6 @@ const sectionLabelMap = {
   mcp: 'MCP',
   openclaw: 'OpenClaw',
   posts: '博客',
-  projects: '项目',
   tutorials: '教程',
 }
 
@@ -26,7 +25,6 @@ const sectionOrder = [
   'aiops',
   'agent',
   'cli',
-  'projects',
   'tutorials',
   'openclaw',
 ]
@@ -227,6 +225,18 @@ export default defineLoader({
         date: formatDateLabel(page.date),
       }))
 
+    const searchItems = pages
+      .filter((page) => page.link !== '/')
+      .filter((page) => page.relativePath !== 'README.md')
+      .map((page) => ({
+        title: page.title,
+        excerpt: page.description,
+        link: page.link,
+        section: page.sectionLabel,
+        sectionKey: page.sectionKey,
+        date: formatDateLabel(page.date),
+      }))
+
     const totalArticles = pages
       .filter((page) => page.link !== '/')
       .filter((page) => !/\/(?:index|README)\.md$/u.test(page.relativePath))
@@ -242,6 +252,7 @@ export default defineLoader({
       sections,
       sectionHighlights,
       recentPages,
+      searchItems,
       stats: {
         totalSections: sectionHighlights.length,
         totalArticles,
