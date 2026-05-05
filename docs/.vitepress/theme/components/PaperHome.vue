@@ -96,17 +96,17 @@ const { site } = useData()
 
 <style scoped>
 .home-shell {
-  width: min(1200px, calc(100vw - 40px));
+  width: min(1320px, calc(100vw - 48px));
   margin: 0 auto;
-  padding: 56px 0 88px;
+  padding: 48px 0 92px;
 }
 
 .home-hero {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(300px, 0.9fr);
-  gap: 28px;
+  gap: 22px;
   align-items: stretch;
-  padding: 22px 0 48px;
+  padding: 18px 0 42px;
 }
 
 .hero-copy,
@@ -119,12 +119,12 @@ const { site } = useData()
 }
 
 .hero-copy {
-  padding: 32px;
+  padding: 36px;
 }
 
 .hero-kicker,
 .section-kicker {
-  margin: 0 0 16px;
+  margin: 0 0 14px;
   font-size: 12px;
   line-height: 1;
   letter-spacing: 0.18em;
@@ -135,16 +135,16 @@ const { site } = useData()
 .hero-title {
   margin: 0;
   font-family: var(--blog-font-display);
-  font-size: clamp(48px, 7vw, 88px);
-  line-height: 0.96;
+  font-size: clamp(46px, 6vw, 78px);
+  line-height: 0.98;
   color: var(--blog-ink-strong);
 }
 
 .hero-dek {
   max-width: 680px;
-  margin: 20px 0 0;
+  margin: 18px 0 0;
   font-size: 18px;
-  line-height: 1.8;
+  line-height: 1.76;
   color: var(--blog-ink);
 }
 
@@ -152,16 +152,17 @@ const { site } = useData()
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  margin-top: 28px;
+  margin-top: 30px;
 }
 
 .home-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 44px;
-  padding: 0 18px;
+  min-height: 46px;
+  padding: 0 20px;
   border: 1px solid var(--blog-border-strong);
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
   text-decoration: none;
@@ -198,13 +199,13 @@ const { site } = useData()
 .hero-metrics {
   display: grid;
   grid-template-columns: 1fr;
-  padding: 8px;
+  padding: 10px;
 }
 
 .metric-card {
   display: grid;
   gap: 12px;
-  padding: 22px 20px;
+  padding: 24px 22px;
   border-bottom: 1px solid var(--blog-border);
 }
 
@@ -232,13 +233,13 @@ const { site } = useData()
 }
 
 .home-band {
-  padding-top: 24px;
+  padding-top: 30px;
 }
 
 .section-heading {
   display: grid;
   gap: 8px;
-  margin-bottom: 22px;
+  margin-bottom: 20px;
 }
 
 .section-heading h2 {
@@ -253,7 +254,7 @@ const { site } = useData()
 .recent-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 16px;
+  gap: 18px;
 }
 
 .section-card,
@@ -261,7 +262,8 @@ const { site } = useData()
   display: grid;
   gap: 14px;
   min-height: 100%;
-  padding: 24px;
+  padding: 26px;
+  border-radius: 14px;
   text-decoration: none;
   transition:
     transform 0.2s ease,
@@ -314,8 +316,8 @@ const { site } = useData()
 .section-card h3,
 .recent-card h3 {
   margin: 0;
-  font-size: 24px;
-  line-height: 1.22;
+  font-size: 26px;
+  line-height: 1.18;
   color: var(--blog-ink-strong);
 }
 
@@ -352,7 +354,7 @@ const { site } = useData()
 
 @media (max-width: 900px) {
   .home-shell {
-    width: min(100vw - 24px, 1200px);
+    width: min(100vw - 24px, 1320px);
     padding-top: 40px;
     padding-bottom: 64px;
   }
@@ -369,7 +371,7 @@ const { site } = useData()
 
 @media (max-width: 640px) {
   .home-shell {
-    width: min(100vw - 20px, 1200px);
+    width: min(100vw - 20px, 1320px);
     padding-top: 20px;
   }
 

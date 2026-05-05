@@ -4,6 +4,7 @@ import { h, onMounted } from 'vue'
 import './custom.css'
 import PaperHome from './components/PaperHome.vue'
 import DevSearchBar from './components/DevSearchBar.vue'
+import DocIntro from './components/DocIntro.vue'
 
 export default {
   extends: DefaultTheme,
@@ -17,6 +18,7 @@ export default {
         'layout-top': () =>
           h('a', { href: '#main-content', class: 'skip-link' }, '跳到正文'),
         'nav-bar-content-before': () => h(DevSearchBar),
+        'doc-before': () => h(DocIntro),
         ...(frontmatter.value.layout === 'home'
           ? {
               'home-hero-before': () => h(PaperHome),

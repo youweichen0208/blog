@@ -30,10 +30,14 @@ const filteredItems = computed(() => {
       v-model="query"
       type="text"
       class="dev-search-input"
-      placeholder="Find notes, guides, and posts..."
+      placeholder="Search"
       aria-label="Search blog content"
     />
-    <div class="dev-search-label">Powered by local index</div>
+    <div class="dev-search-shortcuts" aria-hidden="true">
+      <span class="dev-search-key">⌘</span>
+      <span class="dev-search-key">⇧</span>
+      <span class="dev-search-key">P</span>
+    </div>
 
     <div class="dev-search-dropdown">
       <a
@@ -54,58 +58,74 @@ const filteredItems = computed(() => {
   position: relative;
   display: flex;
   align-items: center;
-  width: min(420px, 100%);
+  gap: 8px;
+  width: min(320px, 100%);
   min-width: 0;
-  min-height: 42px;
-  padding: 0 12px;
-  border: 1px solid rgba(37, 99, 235, 0.16);
-  border-radius: 12px;
-  background: rgba(248, 250, 252, 0.96);
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+  min-height: 44px;
+  padding: 0 10px 0 12px;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: none;
 }
 
 .dev-search-icon {
   flex: 0 0 auto;
-  margin-right: 8px;
-  color: #2563eb;
-  font-size: 16px;
+  color: #111827;
+  font-size: 15px;
 }
 
 .dev-search-input {
   flex: 1 1 auto;
   min-width: 0;
-  height: 40px;
+  height: 42px;
   border: 0;
   background: transparent;
-  color: #0f172a;
+  color: #111827;
   font-size: 14px;
+  font-weight: 500;
   outline: 0;
 }
 
 .dev-search-input::placeholder {
-  color: #94a3b8;
+  color: #475569;
 }
 
-.dev-search-label {
+.dev-search-shortcuts {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+}
+
+.dev-search-key {
   flex: 0 0 auto;
-  margin-left: 10px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 6px;
   color: #64748b;
-  font-size: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
   white-space: nowrap;
+  background: #fff;
 }
 
 .dev-search-dropdown {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 10px);
   left: 0;
   right: 0;
   display: grid;
   gap: 0;
   padding: 8px 0;
-  border: 1px solid rgba(37, 99, 235, 0.14);
-  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 22px 50px rgba(15, 23, 42, 0.12);
   opacity: 0;
   pointer-events: none;
   transform: translateY(-4px);
@@ -121,12 +141,12 @@ const filteredItems = computed(() => {
 .dev-search-item {
   display: grid;
   gap: 4px;
-  padding: 10px 14px;
+  padding: 11px 14px;
   text-decoration: none;
 }
 
 .dev-search-item:hover {
-  background: rgba(37, 99, 235, 0.06);
+  background: rgba(37, 99, 235, 0.05);
 }
 
 .dev-search-item strong {
@@ -143,10 +163,17 @@ const filteredItems = computed(() => {
 
 @media (max-width: 960px) {
   .dev-search-bar {
-    width: 100%;
+    width: min(280px, 100%);
+    min-height: 42px;
+    padding: 0 10px;
   }
 
-  .dev-search-label {
+  .dev-search-input {
+    height: 40px;
+    font-size: 14px;
+  }
+
+  .dev-search-shortcuts {
     display: none;
   }
 }

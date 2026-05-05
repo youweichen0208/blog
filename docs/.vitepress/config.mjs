@@ -183,6 +183,7 @@ export default withMermaid(
 
       socialLinks: [{ icon: "github", link: "https://github.com" }],
       outline: { level: [2, 3] },
+      outlineTitle: "ON THIS PAGE",
     },
   }),
 );
