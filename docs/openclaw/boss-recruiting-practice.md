@@ -64,6 +64,7 @@ data/.openclaw/extensions/boss-recruiting/
 - `scripts/batch-greet-current-unread.mjs`
 - `scripts/send-current-intake-request.mjs`
 - `scripts/process-current-chat-intake.mjs`
+- `scripts/boss-event-loop.mjs`
 
 对应的 npm 入口：
 
@@ -73,6 +74,23 @@ npm run batch-greet-current-unread
 npm run send-current-intake-request
 npm run process-current-chat-intake
 ```
+
+如果你想把“学生主动来聊 -> 学校筛选 -> 自动发采集模板 -> 收齐后落 Excel”做成常驻后台，还可以运行：
+
+```bash
+npm run boss-event-loop
+```
+
+后面实测更稳的方式不是单独起一个 Chrome profile，而是让 `boss-event-loop` 直接连已经跑通的 Browser Relay：
+
+```text
+launchd boss-event-loop
+  -> ws://127.0.0.1:18792/cdp
+  -> Clawdbot Browser Relay 扩展
+  -> 当前已登录的 BOSS 标签页
+```
+
+这样不会再遇到“独立 Chrome 没登录 / 起不来 / profile 不稳定”的问题。
 
 ## 4. 第一步：当前页未读候选人筛选
 
@@ -232,6 +250,37 @@ npm run send-current-intake-request
 同学你好，感谢你回复...
 ```
 
+### 继续踩坑：系统提示不能当作候选人真实回复
+
+后面做常驻自动采集时，还遇到过一个更隐蔽的问题。BOSS 页面里的下面这些文案：
+
+```text
+对方想发送附件简历给您，您是否同意
+拒绝 / 同意
+点击预览附件简历
+黄帅博简历.pdf
+```
+
+本质上是系统提示，不是候选人真正发给你的自然语言回复。
+
+如果把这些文本也一起喂给自动分类器，容易出现两类误判：
+
+1. 把 `拒绝` 当成候选人不感兴趣，于是误发：
+
+```text
+好的，理解。谢谢回复，后续不打扰你了，祝你顺利。
+```
+
+2. 把“发简历”“附件”“pdf”误当成普通问答，走错回复路由。
+
+后面稳定下来的做法是：
+
+- 在消息抽取层先过滤系统提示
+- `拒绝 / 同意 / pdf / 点击预览附件简历` 不进入消息分类
+- 自动回复只基于候选人真实自然语言回复
+
+这样才不会把平台 UI 提示误当成候选人态度。
+
 ## 7. 第四步：候选人回复后自动写入 Excel
 
 候选人把 6 个字段回全后，选中这个聊天，运行：
@@ -280,7 +329,61 @@ Sheet 名固定是：
 9. BOSS昵称
 10. 备注
 
-## 8. 这套流程目前仍有的边界
+## 8. 第五步：把自动采集做成后台守护
+
+如果你不想每次手动选中聊天、手动触发脚本，可以把 `boss-event-loop` 做成宿主机 `launchd` 常驻任务。
+
+真实跑通后的职责收敛成两件事：
+
+1. 候选人主动来聊，且学校命中 allowlist 时，直接发送基础信息采集模板
+2. 候选人把 6 项信息补全后，自动写入当天 Excel
+
+这里有两个后来确认的产品决策：
+
+- 学生主动来找你时，不再先发“你好，张某某，你和我们岗位比较贴近”这种客套介绍
+- 直接发采集模板更稳，也更符合当前业务目标
+
+最终固定下来的首轮模板是：
+
+```text
+同学你好，感谢你回复。为了方便进一步沟通华为云软件研发岗位，麻烦你补充以下信息：
+姓名：
+联系电话：
+毕业时间：
+毕业院校：
+专业：
+邮箱：
+谢谢。
+```
+
+这样能避免两类问题：
+
+- 首轮岗位介绍冗长，候选人并不继续补信息
+- 自动守护把“可以发一份简历看看吗”误路由成别的对话模板
+
+## 9. 常驻守护的真实依赖
+
+要让后台持续监听成立，需要这两层都活着：
+
+1. `launchd` 里的 `boss-event-loop`
+2. 宿主机 `openclaw browser serve` + Chrome 扩展 relay
+
+这里有三个真实排查点：
+
+- `openclaw browser serve` 当前版本需要能读到 `OPENCLAW_GATEWAY_TOKEN`，否则 `18792` 起不来
+- 本机 Node 版本如果低于 22，`openclaw-cn` 会直接拒绝启动
+- `18792` 端口存在不代表一定能用；如果扩展还没附加当前 BOSS 标签页，agent 连 `/cdp` 仍然可能返回 `503`
+
+所以后台守护的稳定链路应理解成：
+
+```text
+launchd boss-event-loop
+  -> ws://127.0.0.1:18792/cdp
+  -> Browser Relay 扩展
+  -> 当前已登录并已附加的 BOSS 标签页
+```
+
+## 10. 这套流程目前仍有的边界
 
 ### 边界 1：学校匹配仍然要继续收紧
 
@@ -335,7 +438,7 @@ Sheet 名固定是：
 { "ok": true, "method": "click_send" }
 ```
 
-## 9. 推荐的实际使用顺序
+## 11. 推荐的实际使用顺序
 
 ### 场景 A：先筛选，再打招呼
 
@@ -359,7 +462,7 @@ npm run send-current-intake-request
 npm run process-current-chat-intake
 ```
 
-## 10. 最后的建议
+## 12. 最后的建议
 
 如果你是第一次落地这一套，不要一上来就批量发。
 
@@ -376,4 +479,3 @@ npm run process-current-chat-intake
 - 每一步都能验证
 - 每一步都能停下来
 - 每一步都知道自己到底是“写进输入框了”，还是“平台真的发出去了”
-

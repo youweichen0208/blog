@@ -7,7 +7,8 @@
 - Chrome 扩展必须连接宿主机本地的 Browser Relay。
 - `openclaw browser serve` 不建议放进 Docker 里跑。
 - Docker 里的 Gateway 通过 `host.docker.internal:18791` 访问宿主机上的 Browser Control。
-- 本机 Docker + 本机 Chrome 场景下，推荐 `openclaw browser serve --bind 127.0.0.1 --port 18791`，不要加 `--token`。
+- 当前版本里，Chrome 扩展 relay 初始化时仍然需要读到 Gateway token；最稳的方式是给 `openclaw browser serve` 带上 `OPENCLAW_GATEWAY_TOKEN` 环境变量，而不是给 Browser Control 单独加 Bearer token。
+- 本机如果默认 Node 版本低于 22，`openclaw-cn` 可能直接拒绝启动。
 
 ## 1. 组件关系
 
@@ -64,10 +65,20 @@ Docker Gateway
 在同一台 Mac 上跑 Docker Gateway 和 Chrome 时，`openclaw browser serve` 可以只绑定宿主机 loopback：
 
 ```bash
+OPENCLAW_GATEWAY_TOKEN=GATEWAY_TOKEN \
 openclaw browser serve --bind 127.0.0.1 --port 18791
 ```
 
 Docker Desktop 可以通过 `host.docker.internal` 访问宿主机的 loopback 服务，所以不需要把 Browser Control 绑定到 `0.0.0.0`。
+
+如果你机器上有多个 Node，建议显式保证 `openclaw` 走的是 Node 22。真实排查里遇到过：
+
+```text
+openclaw-cn requires Node >=22.0.0
+Detected: node 20.x
+```
+
+这种情况下，看起来像是 relay 配置问题，其实是 CLI 根本没启动成功。
 
 ## 3. 安装 Chrome 扩展文件
 
@@ -162,7 +173,7 @@ Browser control listening on http://127.0.0.1:18791/
 openclaw browser serve --bind 0.0.0.0 --port 18791 --token GATEWAY_TOKEN
 ```
 
-这种启动方式会让 Browser Control 开启 Bearer token 认证，并且可能导致 `18792` 上的 Chrome Extension Relay / CDP Relay 返回 `Unauthorized`，进而让 Agent 的 browser 工具失败。
+这种启动方式会让 Browser Control 开启 Bearer token 认证，并且可能导致 `18792` 上的 Chrome Extension Relay / CDP Relay 返回 `Unauthorized`，进而让 Agent 的 browser 工具失败。当前更稳的做法是：给 `browser serve` 注入 `OPENCLAW_GATEWAY_TOKEN`，但 Browser Control 本身仍然只绑定 loopback。
 
 ## 6. 配置 Docker Gateway 访问宿主机
 
@@ -243,6 +254,8 @@ Gateway token: GATEWAY_TOKEN
 http://127.0.0.1:18792/
 ```
 
+如果 `18792` 已经监听，但 agent 连 `/cdp` 仍然返回 `503`，通常不是 token 问题，而是扩展虽然在线，但还没有附加到一个可控的标签页。
+
 ## 8. 附加 BOSS 直聘标签页
 
 1. 打开 BOSS 直聘页面。
@@ -250,7 +263,7 @@ http://127.0.0.1:18792/
 3. 如果 Chrome 提示调试器权限，允许。
 4. 徽章显示 `ON`，说明当前标签页已经附加。
 
-附加成功后，Agent 才能通过 browser 工具读取和操作这个标签页。
+附加成功后，Agent 才能通过 browser 工具读取和操作这个标签页。如果后面要做后台守护（例如常驻的 BOSS 自动采集 loop），这一步尤其关键：`18792` 只表示 relay 端口已存在；只有当前 BOSS 页确实附加后，CDP relay 才能给守护脚本用。
 
 ## 9. 验证命令
 

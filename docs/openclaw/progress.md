@@ -2,6 +2,31 @@
 
 ## 2026-05-09
 
+### 已完成：把 BOSS 自动采集切到 Browser Relay 常驻守护
+
+目标：让 Docker 里的 OpenClaw Gateway 继续复用宿主机已登录的 Chrome + BOSS 标签页，不再依赖单独 Chrome profile，同时把“学校命中 -> 信息采集 -> Excel 落表”做成后台持续监听。
+
+完成内容：
+
+- 把 `boss-event-loop` 从 `launchPersistentContext()` 独立 Chrome 方案改成 relay / CDP 方案，直接连接宿主机 `ws://127.0.0.1:18792/cdp`。
+- 保留 `launchd` 守护方式，但浏览器控制层改成复用此前已跑通的 `openclaw browser serve + Chrome 扩展 relay`。
+- 新增 intake-first 行为：学生主动来聊时，不再先发岗位介绍，学校命中后直接发送基础信息采集模板。
+- 新增系统提示过滤：`对方想发送附件简历给您`、`拒绝`、`同意`、`点击预览附件简历`、`pdf` 等文案不再参与消息分类，避免误发“后续不打扰你了”。
+- 修正了“可以发一份简历看看吗”这类主动求职消息的路由：在 `INTAKE_ONLY=true` 时，直接进入信息采集，而不是先走岗位介绍。
+
+真实踩坑：
+
+- 当前版本 `openclaw browser serve` 在初始化 Chrome 扩展 relay 时，需要能读到 `gateway.auth.token` 或 `OPENCLAW_GATEWAY_TOKEN`，否则 `18792` 起不来。
+- 本机如果默认跑的是 Node 20，`openclaw-cn` 会直接拒绝启动；实际需要 Node 22。
+- `127.0.0.1:18792` 端口监听不代表一定能给 agent 用；如果扩展还没有附加当前 BOSS 标签页，`/cdp` WebSocket 可能返回 `503`。
+
+当前结论：
+
+- 更稳的链路不是单独 Chrome，而是：
+  `launchd boss-event-loop -> ws://127.0.0.1:18792/cdp -> Browser Relay 扩展 -> 当前已登录 BOSS 标签页`
+- 这层恢复后，后台就可以持续做：
+  学校筛选 -> 自动发采集模板 -> 信息收齐后落 Excel。
+
 ### 已完成：新增 BOSS 直聘低频自动化实战教程
 
 目标：把一次真实跑通的 OpenClaw + Browser Relay + BOSS 直聘工作流整理成一篇可复现的实战教程，而不是只写概念说明。
