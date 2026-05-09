@@ -1,5 +1,29 @@
 # OpenClaw Progress
 
+## 2026-05-09
+
+### 已完成：新增 BOSS 直聘低频自动化实战教程
+
+目标：把一次真实跑通的 OpenClaw + Browser Relay + BOSS 直聘工作流整理成一篇可复现的实战教程，而不是只写概念说明。
+
+完成内容：
+
+- 新增 [boss-recruiting-practice.md](./boss-recruiting-practice.md)。
+- 记录了完整链路：Docker Gateway -> 宿主机 Browser Relay -> Chrome 扩展 -> BOSS 直聘标签页。
+- 记录了当前页未读筛选、低频打招呼、真实发送确认、信息采集问题发送、候选人回复后 Excel 落表。
+- 专门写清楚了几个关键踩坑：
+  - 学校简称和句子内别名导致的 school gate 误判
+  - 点击了外层容器但平台没有真正发送
+  - `[草稿]` 和 `送达` 不能混为一谈
+  - 候选人附件简历提示会拦住后续消息发送
+- 在 `openclaw/index.md` 里加入了这篇实战教程的入口。
+
+注意事项：
+
+- 文中避免写入真实 token、邮箱、电话等敏感信息。
+- 候选人姓名和聊天片段来自真实工作流，后续如需公开发布，建议再做一轮脱敏。
+- 这篇教程强调的是低频、可验证、可暂停的自动化，不建议把它直接扩展成高频群发。
+
 ## 2026-04-25
 
 ### 已完成：新增 Docker 部署下 Chrome Browser Relay 配置文章
@@ -51,6 +75,6 @@
 
 后续可做：
 
-- 把 `openclaw/index.md` 移入 `docs/openclaw/` 并接入 VitePress 导航。
-- 为 `boss-recruiting` 增加一个岗位配置样例，但不要包含真实公司隐私。
+- 公开发布前，再做一轮候选人姓名、聊天内容和截图素材的脱敏。
+- 为 `boss-recruiting` 增加一个脱敏后的岗位配置样例，方便读者直接照着改。
 - 如果后续需要多岗位，可以把每个岗位配置拆成独立 reference 或 workspace 文档。

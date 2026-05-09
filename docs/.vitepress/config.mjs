@@ -152,6 +152,7 @@ export default withMermaid(
             items: [
               { text: "部署与实战", link: "/openclaw/" },
               { text: "Browser Relay", link: "/openclaw/browser-relay-docker" },
+              { text: "BOSS 实战", link: "/openclaw/boss-recruiting-practice" },
               { text: "实践进度", link: "/openclaw/progress" },
             ],
           },

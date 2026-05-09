@@ -5,6 +5,7 @@ OpenClaw是一个自托管AI Gateway。可以把他理解成：各种聊天入�
 相关配置文章：
 
 - [OpenClaw Docker 部署下如何配置 Chrome Browser Relay](./browser-relay-docker.md)
+- [OpenClaw 实战：在 BOSS 直聘里做低频打招呼、信息采集和 Excel 落表](./boss-recruiting-practice.md)
 
 ## 2. 先建立正确认知：OpenClaw的几个核心概念
 
