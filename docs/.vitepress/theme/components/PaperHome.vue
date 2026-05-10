@@ -1,8 +1,50 @@
 <script setup>
+import { computed } from 'vue'
 import { useData, withBase } from 'vitepress'
 import { data as homeData } from '../home.data.mjs'
 
 const { site } = useData()
+
+const featuredRoutes = [
+  '/go/func',
+  '/openclaw/boss-recruiting-practice',
+  '/mcp/inspector',
+  '/stock/',
+]
+
+const featuredPosts = computed(() =>
+  featuredRoutes
+    .map((route) => homeData.searchItems.find((item) => item.link === route))
+    .filter(Boolean),
+)
+
+const readingPaths = [
+  {
+    title: 'Go 工程基础',
+    text: '从指针、函数、结构体、接口一路读到 goroutine 和 channel。',
+    link: '/go/',
+    label: '8 篇',
+  },
+  {
+    title: 'Agent 工具链',
+    text: '先看 MCP 协议，再看 CLI 工具边界，最后进入 OpenClaw 浏览器实战。',
+    link: '/mcp/',
+    label: 'MCP / CLI / OpenClaw',
+  },
+  {
+    title: '运维实践',
+    text: '用 Linux 命令排障，用 Hysteria2 搭网络，用 Jenkins 建自动部署链路。',
+    link: '/tutorials/',
+    label: '3 篇教程',
+  },
+]
+
+const writingQueue = [
+  'Go context 与并发退出控制',
+  'Docker Compose 排障速查',
+  'Agent 工具 schema 设计',
+  '数组、滑动窗口与前缀和',
+]
 </script>
 
 <template>
@@ -23,6 +65,11 @@ const { site } = useData()
             浏览专题
           </a>
         </div>
+
+        <div class="hero-focus">
+          <span>当前主线</span>
+          <strong>Go 基础、MCP / Agent、OpenClaw 实战、工程部署</strong>
+        </div>
       </div>
 
       <dl class="hero-metrics">
@@ -39,6 +86,29 @@ const { site } = useData()
           <dd class="metric-date">{{ homeData.stats.latestUpdate }}</dd>
         </div>
       </dl>
+    </section>
+
+    <section class="home-band home-featured">
+      <div class="section-heading section-heading-row">
+        <div>
+          <p class="section-kicker">Featured</p>
+          <h2>精选阅读</h2>
+        </div>
+        <p class="section-note">优先展示适合作为入口的长文和实战记录。</p>
+      </div>
+
+      <div class="featured-grid">
+        <a
+          v-for="post in featuredPosts"
+          :key="post.link"
+          :href="withBase(post.link)"
+          class="featured-card"
+        >
+          <span>{{ post.section }}</span>
+          <h3>{{ post.title }}</h3>
+          <p>{{ post.excerpt }}</p>
+        </a>
+      </div>
     </section>
 
     <section class="home-band">
@@ -68,6 +138,29 @@ const { site } = useData()
       </div>
     </section>
 
+    <section class="home-band">
+      <div class="section-heading section-heading-row">
+        <div>
+          <p class="section-kicker">Paths</p>
+          <h2>学习路径</h2>
+        </div>
+        <p class="section-note">把散落的文章按真实阅读目标重新串起来。</p>
+      </div>
+
+      <div class="path-list">
+        <a
+          v-for="path in readingPaths"
+          :key="path.title"
+          :href="withBase(path.link)"
+          class="path-row"
+        >
+          <span>{{ path.label }}</span>
+          <strong>{{ path.title }}</strong>
+          <p>{{ path.text }}</p>
+        </a>
+      </div>
+    </section>
+
     <section id="recent-updates" class="home-band">
       <div class="section-heading">
         <p class="section-kicker">Latest</p>
@@ -91,6 +184,20 @@ const { site } = useData()
         </a>
       </div>
     </section>
+
+    <section class="home-band home-notes">
+      <div class="section-heading section-heading-row">
+        <div>
+          <p class="section-kicker">Next</p>
+          <h2>写作计划</h2>
+        </div>
+        <p class="section-note">这些主题会继续补进对应专题，先作为公开草稿队列。</p>
+      </div>
+
+      <ul class="queue-list">
+        <li v-for="item in writingQueue" :key="item">{{ item }}</li>
+      </ul>
+    </section>
   </div>
 </template>
 
@@ -112,7 +219,10 @@ const { site } = useData()
 .hero-copy,
 .hero-metrics,
 .section-card,
-.recent-card {
+.recent-card,
+.featured-card,
+.path-row,
+.queue-list {
   border: 1px solid var(--blog-border);
   background: var(--blog-surface);
   box-shadow: var(--blog-shadow-soft);
@@ -153,6 +263,27 @@ const { site } = useData()
   flex-wrap: wrap;
   gap: 12px;
   margin-top: 30px;
+}
+
+.hero-focus {
+  display: grid;
+  gap: 8px;
+  margin-top: 30px;
+  padding-top: 22px;
+  border-top: 1px solid var(--blog-border);
+}
+
+.hero-focus span,
+.section-note {
+  color: var(--blog-ink-soft);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.hero-focus strong {
+  color: var(--blog-ink-strong);
+  font-size: 18px;
+  line-height: 1.5;
 }
 
 .home-button {
@@ -242,6 +373,12 @@ const { site } = useData()
   margin-bottom: 20px;
 }
 
+.section-heading-row {
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 420px);
+  align-items: end;
+  gap: 20px;
+}
+
 .section-heading h2 {
   margin: 0;
   font-family: var(--blog-font-display);
@@ -251,14 +388,17 @@ const { site } = useData()
 }
 
 .section-grid,
-.recent-grid {
+.recent-grid,
+.featured-grid {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 18px;
 }
 
 .section-card,
-.recent-card {
+.recent-card,
+.featured-card,
+.path-row {
   display: grid;
   gap: 14px;
   min-height: 100%;
@@ -280,8 +420,26 @@ const { site } = useData()
   grid-column: span 6;
 }
 
+.featured-card {
+  grid-column: span 3;
+  align-content: start;
+}
+
+.path-list {
+  display: grid;
+  gap: 12px;
+}
+
+.path-row {
+  grid-template-columns: 160px 220px minmax(0, 1fr);
+  align-items: center;
+  min-height: auto;
+}
+
 .section-card:hover,
-.recent-card:hover {
+.recent-card:hover,
+.featured-card:hover,
+.path-row:hover {
   transform: translateY(-2px);
   border-color: var(--blog-border-strong);
   background: var(--blog-surface-strong);
@@ -299,7 +457,9 @@ const { site } = useData()
 }
 
 .section-count,
-.recent-meta span:first-child {
+.recent-meta span:first-child,
+.featured-card > span,
+.path-row > span {
   font-size: 12px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -314,7 +474,8 @@ const { site } = useData()
 }
 
 .section-card h3,
-.recent-card h3 {
+.recent-card h3,
+.featured-card h3 {
   margin: 0;
   font-size: 26px;
   line-height: 1.18;
@@ -322,10 +483,40 @@ const { site } = useData()
 }
 
 .section-card p,
-.recent-card p {
+.recent-card p,
+.featured-card p,
+.path-row p {
   margin: 0;
   color: var(--blog-ink);
   line-height: 1.8;
+}
+
+.path-row strong {
+  color: var(--blog-ink-strong);
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+.queue-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.queue-list li {
+  min-height: 88px;
+  padding: 22px;
+  border-right: 1px solid var(--blog-border);
+  color: var(--blog-ink-strong);
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.queue-list li:last-child {
+  border-right: 0;
 }
 
 .section-latest strong {
@@ -343,12 +534,30 @@ const { site } = useData()
 @media (max-width: 1100px) {
   .home-hero,
   .section-card,
-  .recent-card {
+  .recent-card,
+  .featured-card {
     grid-template-columns: 1fr;
   }
 
-  .section-card {
+  .section-card,
+  .featured-card {
     grid-column: span 6;
+  }
+
+  .path-row {
+    grid-template-columns: 130px minmax(0, 1fr);
+  }
+
+  .path-row p {
+    grid-column: 1 / -1;
+  }
+
+  .queue-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .queue-list li:nth-child(2) {
+    border-right: 0;
   }
 }
 
@@ -364,8 +573,14 @@ const { site } = useData()
   }
 
   .section-card,
-  .recent-card {
+  .recent-card,
+  .featured-card {
     grid-column: 1 / -1;
+  }
+
+  .section-heading-row,
+  .path-row {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -377,7 +592,9 @@ const { site } = useData()
 
   .hero-copy,
   .section-card,
-  .recent-card {
+  .recent-card,
+  .featured-card,
+  .path-row {
     padding: 20px;
   }
 
@@ -397,12 +614,15 @@ const { site } = useData()
   }
 
   .section-card h3,
-  .recent-card h3 {
+  .recent-card h3,
+  .featured-card h3 {
     font-size: 21px;
   }
 
   .section-card p,
-  .recent-card p {
+  .recent-card p,
+  .featured-card p,
+  .path-row p {
     line-height: 1.72;
   }
 
@@ -414,18 +634,37 @@ const { site } = useData()
     flex: 1 1 100%;
     min-height: 42px;
   }
+
+  .queue-list {
+    grid-template-columns: 1fr;
+  }
+
+  .queue-list li,
+  .queue-list li:nth-child(2) {
+    min-height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--blog-border);
+  }
+
+  .queue-list li:last-child {
+    border-bottom: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .home-button,
   .section-card,
-  .recent-card {
+  .recent-card,
+  .featured-card,
+  .path-row {
     transition: none;
   }
 
   .home-button:hover,
   .section-card:hover,
-  .recent-card:hover {
+  .recent-card:hover,
+  .featured-card:hover,
+  .path-row:hover {
     transform: none;
   }
 }

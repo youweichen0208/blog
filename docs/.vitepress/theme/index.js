@@ -6,6 +6,8 @@ import PaperHome from './components/PaperHome.vue'
 import DevSearchBar from './components/DevSearchBar.vue'
 import DocIntro from './components/DocIntro.vue'
 
+const FIXED_RAIL_SELECTOR = '.VPSidebar, .VPDocAside .outline, .VPDocAside .VPDocAsideOutline'
+
 export default {
   extends: DefaultTheme,
   Layout() {
@@ -33,6 +35,32 @@ export default {
       if (contentRoot && !contentRoot.id) {
         contentRoot.id = 'main-content'
       }
+
+      // Fixed side rails can swallow wheel events on desktop, so proxy them to window scroll.
+      document.addEventListener(
+        'wheel',
+        (event) => {
+          if (!window.matchMedia('(min-width: 961px)').matches) {
+            return
+          }
+
+          if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
+            return
+          }
+
+          if (!event.target.closest(FIXED_RAIL_SELECTOR)) {
+            return
+          }
+
+          window.scrollBy({
+            top: event.deltaY,
+            left: 0,
+            behavior: 'auto',
+          })
+          event.preventDefault()
+        },
+        { passive: false },
+      )
 
       // Mermaid lightbox 功能
       let overlay = document.getElementById('mermaid-overlay')

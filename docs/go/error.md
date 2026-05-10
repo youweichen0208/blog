@@ -1,3 +1,13 @@
+---
+lang: zh-CN
+title: Go 错误处理（Error）完全教程
+description: 梳理 Go error 接口、错误包装、errors.Is/As、自定义错误和 panic 使用边界。
+date: 2026-05-05
+tags:
+  - Go
+  - Error
+---
+
 # Go 错误处理（Error）完全教程
 
 ## 1. error 是一个接口

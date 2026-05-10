@@ -1,3 +1,13 @@
+---
+lang: zh-CN
+title: Go 结构体（Struct）完全教程
+description: 从结构体定义、指针接收者、嵌套组合到标签和零值设计，整理 Go 数据建模方式。
+date: 2026-05-03
+tags:
+  - Go
+  - Struct
+---
+
 # Go 结构体（Struct）完全教程
 
 ## 1. 基本定义与使用

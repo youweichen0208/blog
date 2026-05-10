@@ -1,3 +1,14 @@
+---
+lang: zh-CN
+title: OpenClaw Docker 部署下如何配置 Chrome Browser Relay
+description: 记录 Docker Gateway 复用宿主机已登录 Chrome 标签页时，Browser Relay 的配置方式和踩坑。
+date: 2026-05-06
+tags:
+  - OpenClaw
+  - Docker
+  - Browser Relay
+---
+
 # OpenClaw Docker 部署下如何配置 Chrome Browser Relay
 
 这篇记录的是一个很具体的场景：OpenClaw Gateway 跑在 Docker 里，但你希望它接管宿主机 Chrome 里已经登录好的 BOSS 直聘标签页。

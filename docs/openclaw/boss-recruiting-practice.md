@@ -1,3 +1,14 @@
+---
+lang: zh-CN
+title: OpenClaw 实战：在 BOSS 直聘里做低频打招呼、信息采集和 Excel 落表
+description: 基于 OpenClaw、Browser Relay 和已登录 Chrome 标签页，整理低频招聘自动化的真实链路。
+date: 2026-05-07
+tags:
+  - OpenClaw
+  - Browser Automation
+  - Recruiting
+---
+
 # OpenClaw 实战：在 BOSS 直聘里做低频打招呼、信息采集和 Excel 落表
 
 这篇不是概念介绍，而是一篇从真实踩坑里整理出来的实战教程。目标很具体：

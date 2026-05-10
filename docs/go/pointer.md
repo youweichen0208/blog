@@ -1,3 +1,13 @@
+---
+lang: zh-CN
+title: Go 指针（Pointer）完全教程
+description: 理解 Go 指针、取地址、解引用、值传递、逃逸分析和与 C 指针的差异。
+date: 2026-05-01
+tags:
+  - Go
+  - Pointer
+---
+
 # Go 指针（Pointer）完全教程
 
 ## 1. 什么是指针？

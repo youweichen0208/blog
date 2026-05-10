@@ -1,13 +1,13 @@
 ---
 lang: zh-CN
-title: Linux高频命令
-description: Linux高频命令
+title: Linux 高频命令
+description: 记录日常排查端口、进程和网络连接时最常用的 Linux/macOS 命令。
 date: 2026-04-15
 tags:
   - Linux
 ---
 
-# Linux
+# Linux 高频命令
 
 ## 介绍
 

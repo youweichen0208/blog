@@ -1,3 +1,13 @@
+---
+lang: zh-CN
+title: Go 接口（Interface）完全教程
+description: 理解 Go 的隐式接口、空接口、类型断言、接口组合和工程边界设计。
+date: 2026-05-02
+tags:
+  - Go
+  - Interface
+---
+
 # Go 接口（Interface）完全教程
 
 ## 1. 基本概念

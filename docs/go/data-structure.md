@@ -1,3 +1,16 @@
+---
+lang: zh-CN
+title: Java 和 Go 数据结构对照
+description: 从 Java 迁移到 Go 时，理解 slice、map、struct、interface 和 nil 的常见思维差异。
+date: 2026-04-20
+tags:
+  - Go
+  - Java
+  - Data Structure
+---
+
+# Java 和 Go 数据结构对照
+
 ## 1. java 和 go 的区别
 
 **纠正一个思维惯性**：在 java 中，“一切皆对象”，所以我们习惯到处 new。在 go 中，我们更倾向于直接操作**值**。

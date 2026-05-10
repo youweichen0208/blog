@@ -1,3 +1,13 @@
+---
+lang: zh-CN
+title: Go 函数（Function）完全教程
+description: 系统整理 Go 函数、多返回值、可变参数、匿名函数、闭包、defer 和方法。
+date: 2026-05-09
+tags:
+  - Go
+  - Function
+---
+
 # Go 函数（Function）完全教程
 
 ## 1. 基本语法

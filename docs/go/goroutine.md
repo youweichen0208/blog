@@ -1,3 +1,13 @@
+---
+lang: zh-CN
+title: Go 协程（Goroutine）完全教程
+description: 理解 goroutine、调度模型、WaitGroup、互斥锁、竞态检测和并发退出控制。
+date: 2026-05-06
+tags:
+  - Go
+  - Concurrency
+---
+
 # Go 协程（Goroutine）完全教程
 
 ## 1. 什么是 Goroutine？

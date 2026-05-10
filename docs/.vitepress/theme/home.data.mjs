@@ -14,6 +14,8 @@ const sectionLabelMap = {
   mcp: 'MCP',
   openclaw: 'OpenClaw',
   posts: '博客',
+  skill: 'Skill',
+  stock: '股票',
   tutorials: '教程',
 }
 
@@ -27,6 +29,8 @@ const sectionOrder = [
   'cli',
   'tutorials',
   'openclaw',
+  'stock',
+  'skill',
 ]
 
 function stripFrontmatter(src) {
@@ -134,28 +138,42 @@ export default defineLoader({
       .filter((file) => !file.includes(`${path.sep}.vitepress${path.sep}`))
       .sort()
 
-    const pages = await Promise.all(
-      mdFiles.map(async (file) => {
-        const relativePath = path.relative(docsRoot, file)
-        const src = await fs.readFile(file, 'utf8')
-        const stat = await fs.stat(file)
-        const frontmatter = extractFrontmatter(src)
-        const title = frontmatter.title || extractTitle(src, path.basename(file, '.md'))
-        const description = frontmatter.description || extractExcerpt(src, '')
-        const link = toRoute(relativePath)
-        const sectionKey = relativePath.split(path.sep)[0]
+    const indexFiles = new Set(
+      mdFiles
+        .filter((file) => file.endsWith(`${path.sep}index.md`))
+        .map((file) => path.dirname(file)),
+    )
 
-        return {
-          relativePath,
-          link,
-          title,
-          description,
-          date: frontmatter.date || null,
-          mtimeMs: stat.mtimeMs,
-          sectionKey,
-          sectionLabel: sectionLabel(sectionKey, title),
-        }
-      }),
+    const pages = await Promise.all(
+      mdFiles
+        .filter((file) => {
+          if (!file.endsWith(`${path.sep}README.md`)) {
+            return true
+          }
+
+          return !indexFiles.has(path.dirname(file))
+        })
+        .map(async (file) => {
+          const relativePath = path.relative(docsRoot, file)
+          const src = await fs.readFile(file, 'utf8')
+          const stat = await fs.stat(file)
+          const frontmatter = extractFrontmatter(src)
+          const title = frontmatter.title || extractTitle(src, path.basename(file, '.md'))
+          const description = frontmatter.description || extractExcerpt(src, '')
+          const link = toRoute(relativePath)
+          const sectionKey = relativePath.split(path.sep)[0]
+
+          return {
+            relativePath,
+            link,
+            title,
+            description,
+            date: frontmatter.date || null,
+            mtimeMs: stat.mtimeMs,
+            sectionKey,
+            sectionLabel: sectionLabel(sectionKey, title),
+          }
+        }),
     )
 
     const sections = pages

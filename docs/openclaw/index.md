@@ -1,3 +1,16 @@
+---
+lang: zh-CN
+title: OpenClaw 部署与实战
+description: 记录 OpenClaw Gateway、Docker 部署、Browser Relay 和招聘自动化工作流。
+date: 2026-05-08
+tags:
+  - OpenClaw
+  - Agent
+  - Browser Relay
+---
+
+# OpenClaw 部署与实战
+
 ## 1. OpenClaw是什么
 
 OpenClaw是一个自托管AI Gateway。可以把他理解成：各种聊天入口，控制面板，CLI，移动端节点，统一节点，统一接到一个本地或远程运行的网关上，再由网关把消息转给AI Agent。官方文档描述的典型人物结构是: 聊天应用/插件 -> Gateway -> Agent，同时还可接CLI, Web Control UI, macOS App，移动端节点。

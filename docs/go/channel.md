@@ -1,3 +1,13 @@
+---
+lang: zh-CN
+title: Go 通道（Channel）完全教程
+description: 系统整理无缓冲/有缓冲 channel、select、关闭语义和常见并发通信模式。
+date: 2026-05-07
+tags:
+  - Go
+  - Channel
+---
+
 # Go 通道（Channel）完全教程
 
 ## 1. 什么是 Channel？

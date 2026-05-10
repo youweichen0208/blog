@@ -1,3 +1,10 @@
+---
+lang: zh-CN
+title: Agent 开发指南
+description: 记录 Agent 架构、工具调用、MCP 集成、记忆系统和工程化落地路线。
+date: 2026-05-10
+---
+
 # Agent 开发指南
 
 欢迎来到 Agent（智能代理）开发专栏。
@@ -63,4 +70,16 @@ Agent（智能代理）是能够感知环境、做出决策并采取行动以实
 
 ## 文章列表
 
-敬请期待...
+当前 Agent 相关内容分散在几个相邻专题里，可以按下面顺序阅读：
+
+- [MCP (Model Context Protocol) 完全指南](../mcp/) - 先理解模型如何连接工具和外部系统。
+- [RDS CLI 开发教程：Go + Cobra 从零开始](../cli/) - 理解为什么 CLI 很适合作为 Agent 的工具边界。
+- [Skill 实战记录](../skill/) - 记录一次 Codex + Skill + MCP 的真实工作流。
+- [OpenClaw 实战](../openclaw/boss-recruiting-practice.md) - 一个浏览器自动化和业务流程结合的 Agent 场景。
+
+## 后续写作计划
+
+- ReAct 与 Plan-and-Execute 的差异。
+- 工具 schema 设计：如何让模型稳定调用。
+- Agent 记忆：短期上下文、长期笔记和可检索知识库。
+- 评估与回放：如何判断 Agent 改动有没有变好。
