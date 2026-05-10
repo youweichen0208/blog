@@ -86,6 +86,34 @@ function extractExcerpt(src, fallback = '') {
     .trim()
 }
 
+function normalizeImagePath(value, relativePath) {
+  if (!value) {
+    return null
+  }
+
+  if (/^(?:https?:)?\/\//u.test(value) || value.startsWith('/')) {
+    return value
+  }
+
+  if (value.startsWith('../.vitepress/public/')) {
+    return `/${value.replace(/^(?:\.\.\/)+\.vitepress\/public\//u, '')}`
+  }
+
+  const sectionDir = path.posix.dirname(relativePath.split(path.sep).join('/'))
+  return `/${path.posix.normalize(path.posix.join(sectionDir, value))}`
+}
+
+function estimateReadingMinutes(src) {
+  const body = stripFrontmatter(src)
+    .replace(/```[\s\S]*?```/gu, '')
+    .replace(/<[^>]+>/gu, '')
+
+  const chineseChars = body.match(/[\u4e00-\u9fff]/gu)?.length || 0
+  const latinWords = body.match(/[A-Za-z0-9_]+/gu)?.length || 0
+  const minutes = Math.ceil((chineseChars + latinWords) / 450)
+  return Math.max(1, minutes)
+}
+
 function toRoute(relativePath) {
   const normalized = relativePath.split(path.sep).join('/')
 
@@ -162,6 +190,7 @@ export default defineLoader({
           const description = frontmatter.description || extractExcerpt(src, '')
           const link = toRoute(relativePath)
           const sectionKey = relativePath.split(path.sep)[0]
+          const image = normalizeImagePath(frontmatter.image, relativePath)
 
           return {
             relativePath,
@@ -172,6 +201,8 @@ export default defineLoader({
             mtimeMs: stat.mtimeMs,
             sectionKey,
             sectionLabel: sectionLabel(sectionKey, title),
+            image,
+            readingMinutes: estimateReadingMinutes(src),
           }
         }),
     )
@@ -241,6 +272,8 @@ export default defineLoader({
         link: page.link,
         section: page.sectionLabel,
         date: formatDateLabel(page.date),
+        image: page.image,
+        readingMinutes: page.readingMinutes,
       }))
 
     const searchItems = pages
@@ -253,6 +286,8 @@ export default defineLoader({
         section: page.sectionLabel,
         sectionKey: page.sectionKey,
         date: formatDateLabel(page.date),
+        image: page.image,
+        readingMinutes: page.readingMinutes,
       }))
 
     const totalArticles = pages

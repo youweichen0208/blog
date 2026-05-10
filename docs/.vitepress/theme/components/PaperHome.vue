@@ -1,670 +1,576 @@
 <script setup>
 import { computed } from 'vue'
-import { useData, withBase } from 'vitepress'
+import { withBase } from 'vitepress'
 import { data as homeData } from '../home.data.mjs'
 
-const { site } = useData()
-
-const featuredRoutes = [
-  '/go/func',
-  '/openclaw/boss-recruiting-practice',
-  '/mcp/inspector',
-  '/stock/',
-]
-
-const featuredPosts = computed(() =>
-  featuredRoutes
-    .map((route) => homeData.searchItems.find((item) => item.link === route))
-    .filter(Boolean),
+const posts = computed(() => homeData.searchItems.filter((item) => item.link !== '/').slice(0, 9))
+const leadPost = computed(() => posts.value[0] || null)
+const secondaryPosts = computed(() => posts.value.slice(1))
+const totalReadMinutes = computed(() =>
+  homeData.searchItems.reduce((total, item) => total + (item.readingMinutes || 0), 0),
 )
 
-const readingPaths = [
-  {
-    title: 'Go 工程基础',
-    text: '从指针、函数、结构体、接口一路读到 goroutine 和 channel。',
-    link: '/go/',
-    label: '8 篇',
-  },
-  {
-    title: 'Agent 工具链',
-    text: '先看 MCP 协议，再看 CLI 工具边界，最后进入 OpenClaw 浏览器实战。',
-    link: '/mcp/',
-    label: 'MCP / CLI / OpenClaw',
-  },
-  {
-    title: '运维实践',
-    text: '用 Linux 命令排障，用 Hysteria2 搭网络，用 Jenkins 建自动部署链路。',
-    link: '/tutorials/',
-    label: '3 篇教程',
-  },
-]
-
-const writingQueue = [
-  'Go context 与并发退出控制',
-  'Docker Compose 排障速查',
-  'Agent 工具 schema 设计',
-  '数组、滑动窗口与前缀和',
-]
+function postImage(post) {
+  return post.image ? withBase(post.image) : null
+}
 </script>
 
 <template>
-  <div class="home-shell">
-    <section class="home-hero">
-      <div class="hero-copy">
-        <p class="hero-kicker">Technical Journal</p>
-        <h1 class="hero-title">{{ site.title }}</h1>
-        <p class="hero-dek">{{ site.description }}</p>
+  <main class="popular-home">
+    <header class="popular-header">
+      <h1>Popular posts</h1>
+      <div class="popular-stats" aria-label="站点统计">
+        <span>Last 24h:</span>
+        <span class="stat-dot" aria-hidden="true"></span>
+        <strong>{{ homeData.stats.totalArticles }}</strong>
+        <span>articles</span>
+        <strong>{{ totalReadMinutes }}</strong>
+        <span>min read</span>
+      </div>
+    </header>
 
-        <div class="hero-actions">
-          <a href="#recent-updates" class="home-button home-button-primary">最近更新</a>
-          <a
-            v-if="homeData.sections[0]"
-            :href="withBase(homeData.sections[0].link)"
-            class="home-button home-button-secondary"
-          >
-            浏览专题
-          </a>
-        </div>
+    <div class="section-rule">
+      <span class="section-dot" aria-hidden="true"></span>
+      <span>New &amp; Popular</span>
+    </div>
 
-        <div class="hero-focus">
-          <span>当前主线</span>
-          <strong>Go 基础、MCP / Agent、OpenClaw 实战、工程部署</strong>
+    <a
+      v-if="leadPost"
+      :href="withBase(leadPost.link)"
+      class="lead-card"
+      :class="{ 'has-image': leadPost.image }"
+    >
+      <div class="lead-media">
+        <img v-if="postImage(leadPost)" :src="postImage(leadPost)" :alt="leadPost.title" />
+        <div v-else class="generated-cover">
+          <span>{{ leadPost.section }}</span>
+          <strong>{{ leadPost.title }}</strong>
         </div>
       </div>
 
-      <dl class="hero-metrics">
-        <div class="metric-card">
-          <dt>文章总数</dt>
-          <dd>{{ homeData.stats.totalArticles }}</dd>
+      <div class="lead-content">
+        <span class="live-pill">
+          <span aria-hidden="true"></span>
+          Featured
+        </span>
+        <h2>{{ leadPost.title }}</h2>
+        <p>{{ leadPost.excerpt }}</p>
+        <div class="post-meta">
+          <span>{{ leadPost.section }}</span>
+          <span v-if="leadPost.date">{{ leadPost.date }}</span>
+          <span>{{ leadPost.readingMinutes }} min</span>
         </div>
-        <div class="metric-card">
-          <dt>专题分类</dt>
-          <dd>{{ homeData.stats.totalSections }}</dd>
-        </div>
-        <div class="metric-card">
-          <dt>最近更新</dt>
-          <dd class="metric-date">{{ homeData.stats.latestUpdate }}</dd>
-        </div>
-      </dl>
-    </section>
-
-    <section class="home-band home-featured">
-      <div class="section-heading section-heading-row">
-        <div>
-          <p class="section-kicker">Featured</p>
-          <h2>精选阅读</h2>
-        </div>
-        <p class="section-note">优先展示适合作为入口的长文和实战记录。</p>
+        <div class="lead-action">Read article</div>
       </div>
+    </a>
 
-      <div class="featured-grid">
-        <a
-          v-for="post in featuredPosts"
-          :key="post.link"
-          :href="withBase(post.link)"
-          class="featured-card"
-        >
-          <span>{{ post.section }}</span>
-          <h3>{{ post.title }}</h3>
-          <p>{{ post.excerpt }}</p>
-        </a>
-      </div>
-    </section>
-
-    <section class="home-band">
-      <div class="section-heading">
-        <p class="section-kicker">Collections</p>
-        <h2>按主题进入</h2>
-      </div>
-
-      <div class="section-grid">
-        <a
-          v-for="section in homeData.sectionHighlights"
-          :key="section.link"
-          :href="withBase(section.link)"
-          class="section-card"
-        >
-          <div class="section-card-top">
-            <span class="section-count">{{ section.count }} 篇</span>
-            <span class="section-link">查看专题</span>
+    <div class="post-grid">
+      <a
+        v-for="post in secondaryPosts"
+        :key="post.link"
+        :href="withBase(post.link)"
+        class="post-card"
+      >
+        <div class="post-thumb">
+          <img v-if="postImage(post)" :src="postImage(post)" :alt="post.title" />
+          <div v-else class="generated-cover small">
+            <span>{{ post.section }}</span>
+            <strong>{{ post.title }}</strong>
           </div>
-          <h3>{{ section.title }}</h3>
-          <p>{{ section.description }}</p>
-          <div v-if="section.latestTitle" class="section-latest">
-            <span>最近一篇</span>
-            <strong>{{ section.latestTitle }}</strong>
-          </div>
-        </a>
-      </div>
-    </section>
-
-    <section class="home-band">
-      <div class="section-heading section-heading-row">
-        <div>
-          <p class="section-kicker">Paths</p>
-          <h2>学习路径</h2>
         </div>
-        <p class="section-note">把散落的文章按真实阅读目标重新串起来。</p>
-      </div>
 
-      <div class="path-list">
-        <a
-          v-for="path in readingPaths"
-          :key="path.title"
-          :href="withBase(path.link)"
-          class="path-row"
-        >
-          <span>{{ path.label }}</span>
-          <strong>{{ path.title }}</strong>
-          <p>{{ path.text }}</p>
-        </a>
-      </div>
-    </section>
-
-    <section id="recent-updates" class="home-band">
-      <div class="section-heading">
-        <p class="section-kicker">Latest</p>
-        <h2>最近更新</h2>
-      </div>
-
-      <div class="recent-grid">
-        <a
-          v-for="post in homeData.recentPages"
-          :key="post.link"
-          :href="withBase(post.link)"
-          class="recent-card"
-        >
-          <div class="recent-meta">
+        <div class="post-body">
+          <div class="post-meta">
             <span>{{ post.section }}</span>
             <span v-if="post.date">{{ post.date }}</span>
+            <span>{{ post.readingMinutes }} min</span>
           </div>
           <h3>{{ post.title }}</h3>
           <p>{{ post.excerpt }}</p>
-          <span class="recent-cta">阅读全文</span>
-        </a>
-      </div>
-    </section>
-
-    <section class="home-band home-notes">
-      <div class="section-heading section-heading-row">
-        <div>
-          <p class="section-kicker">Next</p>
-          <h2>写作计划</h2>
         </div>
-        <p class="section-note">这些主题会继续补进对应专题，先作为公开草稿队列。</p>
-      </div>
-
-      <ul class="queue-list">
-        <li v-for="item in writingQueue" :key="item">{{ item }}</li>
-      </ul>
-    </section>
-  </div>
+      </a>
+    </div>
+  </main>
 </template>
 
 <style scoped>
-.home-shell {
-  width: min(1320px, calc(100vw - 48px));
+.popular-home {
+  width: min(1420px, calc(100vw - 48px));
   margin: 0 auto;
-  padding: 48px 0 92px;
+  padding: 20px 0 80px;
 }
 
-.home-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(300px, 0.9fr);
-  gap: 22px;
-  align-items: stretch;
-  padding: 18px 0 42px;
-}
-
-.hero-copy,
-.hero-metrics,
-.section-card,
-.recent-card,
-.featured-card,
-.path-row,
-.queue-list {
-  border: 1px solid var(--blog-border);
-  background: var(--blog-surface);
-  box-shadow: var(--blog-shadow-soft);
-}
-
-.hero-copy {
-  padding: 36px;
-}
-
-.hero-kicker,
-.section-kicker {
-  margin: 0 0 14px;
-  font-size: 12px;
-  line-height: 1;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--blog-accent);
-}
-
-.hero-title {
-  margin: 0;
-  font-family: var(--blog-font-display);
-  font-size: clamp(46px, 6vw, 78px);
-  line-height: 0.98;
-  color: var(--blog-ink-strong);
-}
-
-.hero-dek {
-  max-width: 680px;
-  margin: 18px 0 0;
-  font-size: 18px;
-  line-height: 1.76;
-  color: var(--blog-ink);
-}
-
-.hero-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 30px;
-}
-
-.hero-focus {
-  display: grid;
-  gap: 8px;
-  margin-top: 30px;
-  padding-top: 22px;
-  border-top: 1px solid var(--blog-border);
-}
-
-.hero-focus span,
-.section-note {
-  color: var(--blog-ink-soft);
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.hero-focus strong {
-  color: var(--blog-ink-strong);
-  font-size: 18px;
-  line-height: 1.5;
-}
-
-.home-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 46px;
-  padding: 0 20px;
-  border: 1px solid var(--blog-border-strong);
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  text-decoration: none;
-  transition:
-    background-color 0.2s ease,
-    color 0.2s ease,
-    border-color 0.2s ease,
-    transform 0.2s ease;
-}
-
-.home-button:hover {
-  transform: translateY(-1px);
-}
-
-.home-button-primary {
-  background: var(--blog-ink-strong);
-  color: var(--blog-surface-strong);
-}
-
-.home-button-primary:hover {
-  background: var(--blog-accent);
-  border-color: var(--blog-accent);
-}
-
-.home-button-secondary {
-  background: transparent;
-  color: var(--blog-ink-strong);
-}
-
-.home-button-secondary:hover {
-  background: var(--blog-surface-muted);
-}
-
-.hero-metrics {
-  display: grid;
-  grid-template-columns: 1fr;
-  padding: 10px;
-}
-
-.metric-card {
-  display: grid;
-  gap: 12px;
-  padding: 24px 22px;
-  border-bottom: 1px solid var(--blog-border);
-}
-
-.metric-card:last-child {
-  border-bottom: 0;
-}
-
-.metric-card dt {
-  font-size: 12px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--blog-ink-soft);
-}
-
-.metric-card dd {
-  margin: 0;
-  font-family: var(--blog-font-display);
-  font-size: clamp(28px, 4vw, 42px);
-  line-height: 1.05;
-  color: var(--blog-ink-strong);
-}
-
-.metric-date {
-  font-size: clamp(24px, 3vw, 34px);
-}
-
-.home-band {
-  padding-top: 30px;
-}
-
-.section-heading {
-  display: grid;
-  gap: 8px;
-  margin-bottom: 20px;
-}
-
-.section-heading-row {
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 420px);
-  align-items: end;
-  gap: 20px;
-}
-
-.section-heading h2 {
-  margin: 0;
-  font-family: var(--blog-font-display);
-  font-size: clamp(30px, 4vw, 48px);
-  line-height: 1.04;
-  color: var(--blog-ink-strong);
-}
-
-.section-grid,
-.recent-grid,
-.featured-grid {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 18px;
-}
-
-.section-card,
-.recent-card,
-.featured-card,
-.path-row {
-  display: grid;
-  gap: 14px;
-  min-height: 100%;
-  padding: 26px;
-  border-radius: 14px;
-  text-decoration: none;
-  transition:
-    transform 0.2s ease,
-    border-color 0.2s ease,
-    background-color 0.2s ease,
-    box-shadow 0.2s ease;
-}
-
-.section-card {
-  grid-column: span 4;
-}
-
-.recent-card {
-  grid-column: span 6;
-}
-
-.featured-card {
-  grid-column: span 3;
-  align-content: start;
-}
-
-.path-list {
-  display: grid;
-  gap: 12px;
-}
-
-.path-row {
-  grid-template-columns: 160px 220px minmax(0, 1fr);
-  align-items: center;
-  min-height: auto;
-}
-
-.section-card:hover,
-.recent-card:hover,
-.featured-card:hover,
-.path-row:hover {
-  transform: translateY(-2px);
-  border-color: var(--blog-border-strong);
-  background: var(--blog-surface-strong);
-  box-shadow: var(--blog-shadow-strong);
-}
-
-.section-card-top,
-.recent-meta,
-.section-latest {
+.popular-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 34px;
+}
+
+.popular-header h1 {
+  margin: 0;
+  color: var(--blog-ink-strong);
+  font-size: 28px;
+  line-height: 1.1;
+  font-weight: 800;
+}
+
+.popular-stats {
+  display: flex;
+  align-items: center;
   gap: 12px;
-  flex-wrap: wrap;
-}
-
-.section-count,
-.recent-meta span:first-child,
-.featured-card > span,
-.path-row > span {
-  font-size: 12px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--blog-accent);
-}
-
-.section-link,
-.recent-meta span:last-child,
-.section-latest span {
-  font-size: 12px;
-  color: var(--blog-ink-soft);
-}
-
-.section-card h3,
-.recent-card h3,
-.featured-card h3 {
-  margin: 0;
+  color: #7b838e;
   font-size: 26px;
-  line-height: 1.18;
-  color: var(--blog-ink-strong);
+  line-height: 1;
+  white-space: nowrap;
 }
 
-.section-card p,
-.recent-card p,
-.featured-card p,
-.path-row p {
-  margin: 0;
-  color: var(--blog-ink);
-  line-height: 1.8;
+.popular-stats strong {
+  color: #6b7280;
+  font-weight: 500;
 }
 
-.path-row strong {
-  color: var(--blog-ink-strong);
-  font-size: 18px;
-  line-height: 1.35;
+.stat-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: #10b981;
 }
 
-.queue-list {
+.section-rule {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 48px;
+  color: #7b838e;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.section-rule::after {
+  content: "";
+  height: 1px;
+  background: #cfd5dc;
+}
+
+.section-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: #2563eb;
+}
+
+.lead-card {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.48fr) minmax(0, 1fr);
+  gap: 40px;
+  align-items: center;
+  min-height: 430px;
+  margin-bottom: 48px;
+  padding: 40px;
+  border: 1px solid #cfd5dc;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.88);
+  color: inherit;
+  text-decoration: none;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.lead-card:hover,
+.post-card:hover {
+  transform: translateY(-2px);
+  border-color: #aeb7c2;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.08);
+}
+
+.lead-media {
+  overflow: hidden;
+  border-radius: 18px;
+  aspect-ratio: 1.9 / 1;
+  background: #111827;
+}
+
+.lead-media img,
+.post-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.generated-cover {
+  display: grid;
+  align-content: center;
+  gap: 16px;
+  width: 100%;
+  height: 100%;
+  padding: 34px;
+  background:
+    linear-gradient(135deg, rgba(16, 185, 129, 0.28), transparent 34%),
+    linear-gradient(315deg, rgba(37, 99, 235, 0.4), transparent 42%),
+    #101827;
+  color: #ffffff;
+}
+
+.generated-cover span {
+  color: #a7f3d0;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.generated-cover strong {
+  max-width: 520px;
+  font-size: 28px;
+  line-height: 1.08;
+}
+
+.generated-cover.small {
+  gap: 10px;
+  padding: 18px;
+}
+
+.generated-cover.small span {
+  font-size: 10px;
+}
+
+.generated-cover.small strong {
+  font-size: 17px;
+  line-height: 1.15;
+}
+
+.lead-content {
+  display: grid;
+  justify-items: start;
+}
+
+.live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  margin-bottom: 22px;
+  padding: 0 20px;
+  border-radius: 999px;
+  background: #34a853;
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.live-pill span {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.lead-content h2 {
+  margin: 0 0 24px;
+  color: var(--blog-ink-strong);
+  font-size: clamp(38px, 4.4vw, 52px);
+  font-weight: 900;
+  line-height: 1.04;
+}
+
+.lead-content p {
+  display: -webkit-box;
+  max-width: 760px;
+  margin: 0 0 26px;
+  overflow: hidden;
+  color: #20242a;
+  font-size: 32px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.post-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  color: #808892;
+  font-size: 26px;
+  line-height: 1.25;
+}
+
+.post-meta span + span::before {
+  content: "·";
+  margin-right: 10px;
+  color: #808892;
+}
+
+.post-meta span:first-child {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 800;
+}
+
+.lead-action {
+  margin-top: 28px;
+  padding: 16px 28px;
+  border-radius: 12px;
+  background: #2559db;
+  color: #ffffff;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.post-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 64px;
+  border-top: 1px solid transparent;
+}
+
+.post-card {
+  display: grid;
+  grid-template-columns: minmax(150px, 256px) minmax(0, 1fr);
+  gap: 24px;
+  min-height: 220px;
+  padding: 32px 0;
+  border-top: 1px solid #cfd5dc;
+  color: inherit;
+  text-decoration: none;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.post-card:nth-child(1),
+.post-card:nth-child(2) {
+  border-top: 0;
+}
+
+.post-card:nth-child(odd) {
+  padding-right: 34px;
+  border-right: 1px solid #cfd5dc;
+}
+
+.post-card:nth-child(even) {
+  padding-left: 34px;
+}
+
+.post-thumb {
+  overflow: hidden;
+  align-self: start;
+  border-radius: 14px;
+  aspect-ratio: 1.92 / 1;
+  background: #111827;
+}
+
+.post-body {
+  min-width: 0;
+}
+
+.post-body h3 {
+  display: -webkit-box;
+  margin: 12px 0 10px;
+  overflow: hidden;
+  color: var(--blog-ink-strong);
+  font-size: 30px;
+  font-weight: 900;
+  line-height: 1.28;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.post-body p {
+  display: -webkit-box;
   margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.queue-list li {
-  min-height: 88px;
-  padding: 22px;
-  border-right: 1px solid var(--blog-border);
-  color: var(--blog-ink-strong);
-  font-weight: 700;
+  overflow: hidden;
+  color: #5f6874;
+  font-size: 18px;
   line-height: 1.55;
-}
-
-.queue-list li:last-child {
-  border-right: 0;
-}
-
-.section-latest strong {
-  color: var(--blog-ink-strong);
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.recent-cta {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--blog-ink-strong);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 @media (max-width: 1100px) {
-  .home-hero,
-  .section-card,
-  .recent-card,
-  .featured-card {
+  .popular-stats,
+  .post-meta {
+    font-size: 20px;
+  }
+
+  .lead-card {
     grid-template-columns: 1fr;
   }
 
-  .section-card,
-  .featured-card {
-    grid-column: span 6;
+  .lead-media {
+    max-width: 720px;
   }
 
-  .path-row {
-    grid-template-columns: 130px minmax(0, 1fr);
+  .post-grid {
+    grid-template-columns: 1fr;
   }
 
-  .path-row p {
-    grid-column: 1 / -1;
+  .post-card:nth-child(1),
+  .post-card:nth-child(2) {
+    border-top: 1px solid #cfd5dc;
   }
 
-  .queue-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .queue-list li:nth-child(2) {
+  .post-card:nth-child(odd),
+  .post-card:nth-child(even) {
+    padding-right: 0;
+    padding-left: 0;
     border-right: 0;
   }
 }
 
-@media (max-width: 900px) {
-  .home-shell {
-    width: min(100vw - 24px, 1320px);
-    padding-top: 40px;
-    padding-bottom: 64px;
+@media (max-width: 760px) {
+  .popular-home {
+    width: min(100vw - 24px, 1420px);
+    padding-top: 4px;
+    padding-bottom: 56px;
   }
 
-  .home-hero {
-    grid-template-columns: 1fr;
+  .popular-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 14px;
+    margin-bottom: 28px;
   }
 
-  .section-card,
-  .recent-card,
-  .featured-card {
-    grid-column: 1 / -1;
+  .popular-header h1 {
+    font-size: 24px;
   }
 
-  .section-heading-row,
-  .path-row {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 640px) {
-  .home-shell {
-    width: min(100vw - 20px, 1320px);
-    padding-top: 20px;
+  .popular-stats {
+    gap: 8px;
+    font-size: 16px;
   }
 
-  .hero-copy,
-  .section-card,
-  .recent-card,
-  .featured-card,
-  .path-row {
+  .stat-dot {
+    width: 9px;
+    height: 9px;
+  }
+
+  .section-rule {
+    gap: 10px;
+    margin-bottom: 28px;
+    font-size: 18px;
+    letter-spacing: 0.12em;
+  }
+
+  .section-dot {
+    width: 12px;
+    height: 12px;
+  }
+
+  .lead-card {
+    gap: 22px;
+    min-height: 0;
+    margin-bottom: 26px;
+    padding: 18px;
+    border-radius: 20px;
+  }
+
+  .lead-media {
+    border-radius: 14px;
+  }
+
+  .live-pill {
+    min-height: 32px;
+    margin-bottom: 16px;
+    padding: 0 13px;
+    font-size: 15px;
+  }
+
+  .live-pill span {
+    width: 10px;
+    height: 10px;
+  }
+
+  .lead-content h2 {
+    margin-bottom: 14px;
+    font-size: 32px;
+  }
+
+  .lead-content p {
+    margin-bottom: 16px;
+    font-size: 20px;
+  }
+
+  .lead-action {
+    margin-top: 18px;
+    padding: 12px 18px;
+    font-size: 16px;
+  }
+
+  .post-card {
+    grid-template-columns: 132px minmax(0, 1fr);
+    gap: 14px;
+    min-height: 0;
+    padding: 22px 0;
+  }
+
+  .post-body h3 {
+    margin-top: 8px;
+    font-size: 20px;
+  }
+
+  .post-body p {
+    display: none;
+  }
+
+  .post-meta {
+    gap: 6px;
+    font-size: 14px;
+  }
+
+  .post-meta span + span::before {
+    margin-right: 6px;
+  }
+
+  .generated-cover {
     padding: 20px;
   }
 
-  .hero-title {
-    font-size: clamp(34px, 13vw, 52px);
-    line-height: 1.02;
+  .generated-cover strong {
+    font-size: 20px;
   }
 
-  .hero-dek {
-    margin-top: 16px;
-    font-size: 16px;
-    line-height: 1.72;
+  .generated-cover.small {
+    padding: 12px;
   }
 
-  .section-heading h2 {
-    font-size: clamp(28px, 10vw, 36px);
+  .generated-cover.small strong {
+    font-size: 13px;
   }
+}
 
-  .section-card h3,
-  .recent-card h3,
-  .featured-card h3 {
-    font-size: 21px;
-  }
-
-  .section-card p,
-  .recent-card p,
-  .featured-card p,
-  .path-row p {
-    line-height: 1.72;
-  }
-
-  .hero-actions {
-    gap: 10px;
-  }
-
-  .home-button {
-    flex: 1 1 100%;
-    min-height: 42px;
-  }
-
-  .queue-list {
+@media (max-width: 460px) {
+  .post-card {
     grid-template-columns: 1fr;
   }
 
-  .queue-list li,
-  .queue-list li:nth-child(2) {
-    min-height: auto;
-    border-right: 0;
-    border-bottom: 1px solid var(--blog-border);
-  }
-
-  .queue-list li:last-child {
-    border-bottom: 0;
+  .post-thumb {
+    max-width: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .home-button,
-  .section-card,
-  .recent-card,
-  .featured-card,
-  .path-row {
+  .lead-card,
+  .post-card {
     transition: none;
   }
 
-  .home-button:hover,
-  .section-card:hover,
-  .recent-card:hover,
-  .featured-card:hover,
-  .path-row:hover {
+  .lead-card:hover,
+  .post-card:hover {
     transform: none;
   }
 }
