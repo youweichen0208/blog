@@ -12,6 +12,26 @@ tags:
 
 ## 2026-05-09
 
+### 已完成：把 student intake 路由收敛成 school gate first，并增加漏回复巡检
+
+目标：解决两类真实问题。
+
+1. 学生主动来聊时，消息里带 `Java`、`后端` 这类关键词，会先被误分流成 `tech_stack_question`，导致学校通过也不自动回复。
+2. 页面显示 `已读` 不代表真的回复过；需要单独有一个“院校达标但可能漏回”的巡检。
+
+完成内容：
+
+- 在 `INTAKE_ONLY=true` 下，把学生消息路由改成优先且只走 school gate，不再被 `java`、`go`、`python`、`后端` 这类关键词提前分流。
+- 修正了 `resume_question` 路径里清空原消息的问题，避免学校信息明明在候选人原文里却被丢掉。
+- 为 `student-recruiting-policy.json` 补了中文海外学校 alias，例如 `加州大学伯克利分校 -> University of California, Berkeley`。
+- 新增“最近 20 个院校达标会话是否已回复”巡检脚本，并加到 `boss-recruiting` 的 `npm scripts`。
+- 新增一个独立 `launchd` 定时任务，每 5 分钟刷新一次巡检结果 JSON。
+
+当前结论：
+
+- 在这套 BOSS 场景里，“已读”不能等价于“已回复”。
+- 回复巡检应采用保守策略：只有明确识别出自己发出的消息，才算 `replied`；否则宁可算 `pending_reply`。
+
 ### 已完成：把 BOSS 自动采集切到 Browser Relay 常驻守护
 
 目标：让 Docker 里的 OpenClaw Gateway 继续复用宿主机已登录的 Chrome + BOSS 标签页，不再依赖单独 Chrome profile，同时把“学校命中 -> 信息采集 -> Excel 落表”做成后台持续监听。
