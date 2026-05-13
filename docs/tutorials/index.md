@@ -15,6 +15,7 @@ date: 2026-05-10
 | --- | --- | --- |
 | 服务器基础 | [Linux 高频命令](./linux.md) | 排查端口、进程、日志和常见系统状态 |
 | 网络代理 | [基于 Hysteria2 的高性能代理服务器搭建指南](./build-vpn.md) | 用 VPS 和 Hysteria2 搭建可用代理链路 |
+| LLM API 代理 | [海外 VPS 部署多 LLM API 代理](./vps-llm-proxy.md) | 用 Nginx 反向代理搭建 OpenAI/Claude/Gemini 统一入口 |
 | 自动部署 | [Jenkins CI/CD 从入门到实战：部署项目到阿里云](./jenkins-cicd.md) | 从 Jenkins 安装到 Pipeline 部署的完整流程 |
 
 ## 实战检查清单
@@ -25,6 +26,6 @@ date: 2026-05-10
 
 ## 后续计划
 
-- 补一篇 Nginx 反向代理和 HTTPS 证书配置。
+- ✅ ~~补一篇 Nginx 反向代理和 HTTPS 证书配置~~（已完成：[LLM API 代理](./vps-llm-proxy.md)）
 - 补一篇 Docker Compose 常用排障清单。
-- 把 Linux 高频命令扩展成按“端口、磁盘、日志、进程、网络”组织的速查表。
+- 把 Linux 高频命令扩展成按”端口、磁盘、日志、进程、网络”组织的速查表。
