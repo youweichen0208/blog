@@ -4,5 +4,8 @@
   "theme": "moonstone",
   "enabledCssSnippets": [
     "vitepress-blog"
-  ]
+  ],
+  "textFontFamily": "Inter, Noto Sans SC",
+  "interfaceFontFamily": "Inter, Noto Sans SC",
+  "monospaceFontFamily": "JetBrains Mono"
 }
