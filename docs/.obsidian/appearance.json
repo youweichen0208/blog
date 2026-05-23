@@ -3,7 +3,8 @@
   "accentColor": "",
   "theme": "moonstone",
   "enabledCssSnippets": [
-    "vitepress-blog"
+    "vitepress-blog",
+    "fix-properties-left"
   ],
   "textFontFamily": "Inter, Noto Sans SC",
   "interfaceFontFamily": "Inter, Noto Sans SC",

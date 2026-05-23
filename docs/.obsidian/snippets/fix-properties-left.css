@@ -1,0 +1,43 @@
+/* Align Obsidian Properties with the note body instead of centering them. */
+.markdown-preview-view.is-readable-line-width .markdown-preview-sizer,
+.markdown-preview-view .markdown-preview-sizer,
+.markdown-source-view.mod-cm6.is-readable-line-width .cm-contentContainer,
+.markdown-source-view.mod-cm6.is-readable-line-width .cm-content,
+.markdown-source-view.mod-cm6 .cm-contentContainer,
+.markdown-source-view.mod-cm6 .cm-content {
+  margin-left: 0 !important;
+  margin-right: auto !important;
+}
+
+.markdown-preview-view .mod-header,
+.markdown-source-view.mod-cm6 .inline-title {
+  margin-left: 0 !important;
+  margin-right: auto !important;
+  text-align: left !important;
+}
+
+.workspace-leaf-content[data-type="markdown"] .metadata-container,
+.markdown-source-view.mod-cm6 .metadata-container,
+.markdown-source-view .metadata-container,
+.markdown-preview-view .metadata-container,
+.markdown-reading-view .metadata-container {
+  margin-inline: 0 auto !important;
+  max-width: min(100%, var(--file-line-width)) !important;
+  width: min(100%, var(--file-line-width)) !important;
+}
+
+.workspace-leaf-content[data-type="markdown"] .metadata-properties,
+.markdown-source-view.mod-cm6 .metadata-properties,
+.markdown-source-view .metadata-properties,
+.markdown-preview-view .metadata-properties,
+.markdown-reading-view .metadata-properties {
+  margin-inline: 0 auto !important;
+  max-width: 100% !important;
+}
+
+/* Some themes center the whole inline-title/properties header. */
+.workspace-leaf-content[data-type="markdown"] .inline-title,
+.workspace-leaf-content[data-type="markdown"] .metadata-container {
+  align-self: flex-start !important;
+  text-align: left !important;
+}
