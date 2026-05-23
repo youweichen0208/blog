@@ -147,12 +147,12 @@ IMG_1234.png                           →  2024-01-13-image-01.png
 
 3. **创建目标目录（如果不存在）**
    ```bash
-   mkdir -p docs/.vuepress/public/images/posts/$(date +%Y/%m)
+   mkdir -p docs/.vitepress/public/images/posts/$(date +%Y/%m)
    ```
 
 4. **移动图片到博客目录**
    ```bash
-   mv ~/Downloads/2024-01-13-*.png docs/.vuepress/public/images/posts/2024/01/
+   mv ~/Downloads/2024-01-13-*.png docs/.vitepress/public/images/posts/2024/01/
    ```
 
 5. **在文章中引用**
@@ -191,9 +191,9 @@ IMG_1234.png                           →  2024-01-13-image-01.png
 blog-img() {
     cd ~/projects/blog
     ./scripts/rename-images.sh interactive ~/Downloads
-    mkdir -p docs/.vuepress/public/images/posts/$(date +%Y/%m)
-    mv ~/Downloads/$(date +%Y-%m-%d)-*.{png,jpg} docs/.vuepress/public/images/posts/$(date +%Y/%m)/ 2>/dev/null
-    echo "图片已移动到: docs/.vuepress/public/images/posts/$(date +%Y/%m)/"
+    mkdir -p docs/.vitepress/public/images/posts/$(date +%Y/%m)
+    mv ~/Downloads/$(date +%Y-%m-%d)-*.{png,jpg} docs/.vitepress/public/images/posts/$(date +%Y/%m)/ 2>/dev/null
+    echo "图片已移动到: docs/.vitepress/public/images/posts/$(date +%Y/%m)/"
 }
 ```
 

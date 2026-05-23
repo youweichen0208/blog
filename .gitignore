@@ -4,6 +4,7 @@ docs/.vuepress/.temp
 docs/.vuepress/dist
 docs/.vitepress/cache
 docs/.vitepress/dist
-docs/.obsidian/
+docs/.obsidian/workspace.json
+docs/.obsidian/workspace-mobile.json
 .DS_Store
 *.log

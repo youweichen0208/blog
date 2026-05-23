@@ -1,0 +1,6 @@
+{
+  "attachmentFolderPath": ".vitepress/public/images/posts/inbox",
+  "newLinkFormat": "relative",
+  "useMarkdownLinks": true,
+  "alwaysUpdateLinks": true
+}

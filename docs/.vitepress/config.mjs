@@ -104,6 +104,7 @@ export default withMermaid(
               { text: "Jenkins CI/CD", link: "/tutorials/jenkins-cicd" },
               { text: "Linux 命令", link: "/tutorials/linux" },
               { text: "Obsidian GitHub 同步", link: "/tutorials/obsidian-github-sync" },
+              { text: "博客内容与附件规则", link: "/tutorials/blog-content-rules" },
             ],
           },
         ],
