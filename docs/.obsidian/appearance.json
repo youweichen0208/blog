@@ -1,1 +1,8 @@
-{}
+{
+  "cssTheme": "Minimal",
+  "accentColor": "",
+  "theme": "moonstone",
+  "enabledCssSnippets": [
+    "vitepress-blog"
+  ]
+}
