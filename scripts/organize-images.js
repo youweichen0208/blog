@@ -48,6 +48,23 @@ function ensureDir(dir) {
   }
 }
 
+/**
+ * 计算从 md 文件到图片的相对路径
+ * VitePress 需要相对路径，不能用绝对路径 /images/posts/...
+ * @param {string} mdPath - markdown 文件路径（如 docs/tutorials/linux.md）
+ * @param {string} year - 年份
+ * @param {string} month - 月份
+ * @param {string} filename - 图片文件名
+ */
+function getRelativeImagePath(mdPath, year, month, filename) {
+  // 从 md 文件所在目录回到 docs 再到图片
+  const mdDir = path.dirname(mdPath);
+  const depth = mdDir.replace(/^docs\/?/, "").split("/").filter(Boolean).length;
+  const prefix = Array(depth).fill("..").join("/");
+  const imagePath = `.vitepress/public/images/posts/${year}/${month}/${filename}`;
+  return prefix ? `${prefix}/${imagePath}` : imagePath;
+}
+
 // 从文件名提取可能的描述
 function extractDescription(filename) {
   // 去除扩展名
@@ -130,11 +147,14 @@ async function findMarkdownFiles() {
 }
 
 // 更新 markdown 文件中的图片链接
-function updateMarkdownLinks(mdPath, linkUpdates) {
+function updateMarkdownLinks(mdPath, oldLinkPatterns, year, month, newFilename) {
   let content = fs.readFileSync(mdPath, "utf-8");
   let modified = false;
 
-  for (const { oldLink, newLink } of linkUpdates) {
+  // 计算当前 md 文件需要的相对路径
+  const relativeLink = getRelativeImagePath(mdPath, year, month, newFilename);
+
+  for (const oldLink of oldLinkPatterns) {
     // 匹配各种可能的图片链接格式
     // ![alt](path)
     // ![](path)
@@ -154,10 +174,10 @@ function updateMarkdownLinks(mdPath, linkUpdates) {
           if (match.startsWith("![")) {
             const altMatch = match.match(/!\[([^\]]*)\]/);
             const alt = altMatch ? altMatch[1] : "";
-            return `![${alt}](${newLink})`;
+            return `![${alt}](${relativeLink})`;
           }
           // Wiki 链接转换为 Markdown 链接
-          return `![](${newLink})`;
+          return `![](${relativeLink})`;
         });
       }
     }
@@ -199,12 +219,11 @@ async function main() {
   console.log("");
 
   // 准备移动和链接更新
-  const linkUpdates = [];
+  const imageUpdates = []; // 存储每个图片的信息
 
   for (const img of images) {
     const newFilename = generateNewFilename(img.filename, { full });
     const newPath = path.join(targetDir, newFilename);
-    const newLink = `/images/posts/${year}/${month}/${newFilename}`;
 
     // 计算旧的链接路径（相对于 docs 目录）
     const relativePath = img.path.replace(/^docs\//, "");
@@ -220,7 +239,6 @@ async function main() {
     console.log(`处理: ${img.filename}`);
     console.log(`  新名称: ${newFilename}`);
     console.log(`  新路径: ${newPath}`);
-    console.log(`  新链接: ${newLink}`);
 
     if (!DRY_RUN) {
       // 移动文件
@@ -230,10 +248,13 @@ async function main() {
       }
     }
 
-    // 记录链接更新
-    for (const oldPattern of oldLinkPatterns) {
-      linkUpdates.push({ oldLink: oldPattern, newLink });
-    }
+    // 记录图片更新信息
+    imageUpdates.push({
+      oldLinkPatterns,
+      year,
+      month,
+      newFilename,
+    });
   }
 
   console.log("");
@@ -244,7 +265,13 @@ async function main() {
   let updatedCount = 0;
 
   for (const mdFile of mdFiles) {
-    if (updateMarkdownLinks(mdFile, linkUpdates)) {
+    let fileModified = false;
+    for (const update of imageUpdates) {
+      if (updateMarkdownLinks(mdFile, update.oldLinkPatterns, update.year, update.month, update.newFilename)) {
+        fileModified = true;
+      }
+    }
+    if (fileModified) {
       updatedCount++;
     }
   }
