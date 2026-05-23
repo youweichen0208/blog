@@ -17,6 +17,7 @@ date: 2026-05-10
 | 网络代理 | [基于 Hysteria2 的高性能代理服务器搭建指南](./build-vpn.md) | 用 VPS 和 Hysteria2 搭建可用代理链路 |
 | LLM API 代理 | [海外 VPS 部署多 LLM API 代理](./vps-llm-proxy.md) | 用 Nginx 反向代理搭建 OpenAI/Claude/Gemini 统一入口 |
 | 自动部署 | [Jenkins CI/CD 从入门到实战：部署项目到阿里云](./jenkins-cicd.md) | 从 Jenkins 安装到 Pipeline 部署的完整流程 |
+| 博客同步 | [Obsidian + GitHub 多端同步博客方案](./obsidian-github-sync.md) | 让电脑、手机 Obsidian 和 GitHub Pages 共享同一批 Markdown |
 
 ## 实战检查清单
 
@@ -27,5 +28,6 @@ date: 2026-05-10
 ## 后续计划
 
 - ✅ ~~补一篇 Nginx 反向代理和 HTTPS 证书配置~~（已完成：[LLM API 代理](./vps-llm-proxy.md)）
+- ✅ ~~补一篇 Obsidian + GitHub 多端同步方案~~（已完成：[Obsidian + GitHub 多端同步博客方案](./obsidian-github-sync.md)）
 - 补一篇 Docker Compose 常用排障清单。
 - 把 Linux 高频命令扩展成按”端口、磁盘、日志、进程、网络”组织的速查表。

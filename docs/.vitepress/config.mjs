@@ -103,6 +103,7 @@ export default withMermaid(
               { text: "VPN 搭建", link: "/tutorials/build-vpn" },
               { text: "Jenkins CI/CD", link: "/tutorials/jenkins-cicd" },
               { text: "Linux 命令", link: "/tutorials/linux" },
+              { text: "Obsidian GitHub 同步", link: "/tutorials/obsidian-github-sync" },
             ],
           },
         ],
