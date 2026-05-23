@@ -211,27 +211,6 @@ body {
   border-radius: 0 0 14px 14px;
 }
 
-.markdown-preview-view .expressive-code {
-  margin: 28px 0;
-  --shiki-code-block-border-color: var(--blog-code-border);
-  --shiki-code-block-border-radius: 14px;
-  --shiki-code-block-border-width: 1px;
-  --shiki-code-background: var(--blog-code-bg);
-  --shiki-code-normal: var(--blog-code-text);
-  --shiki-gutter-border-width: 1px;
-}
-
-.markdown-preview-view .expressive-code pre {
-  margin: 0;
-  box-shadow: none;
-}
-
-.markdown-preview-view .expressive-code .frame,
-.markdown-preview-view .expressive-code pre {
-  border-radius: 14px;
-  box-shadow: var(--blog-shadow-code);
-}
-
 .markdown-preview-view blockquote,
 .markdown-source-view.mod-cm6 .HyperMD-quote {
   margin: 28px 0;
