@@ -85,7 +85,7 @@ v2rayN 是一个终端**管理工具**。我可以把它想象成一个“万能
 
 访问 RackNerd 官网，选择 KVM VPS 产品线：
 
-![RackNerd KVM 选择](/images/posts/2026/01/2026-01-13-racknerd-kvm-selection.png)
+![RackNerd KVM 选择](../images/posts/2026/01/2026-01-13-racknerd-kvm-selection.png)
 
 **推荐配置**：
 
@@ -99,7 +99,7 @@ v2rayN 是一个终端**管理工具**。我可以把它想象成一个“万能
 
 配置页面：https://my.racknerd.com/cart.php?a=confproduct&i=0
 
-![RackNerd 配置](/images/posts/2026/01/2026-01-13-racknerd-config.png)
+![RackNerd 配置](../images/posts/2026/01/2026-01-13-racknerd-config.png)
 
 **关键配置项**：
 
@@ -248,7 +248,7 @@ ping <server-ip>
 
 通过 ssh 进入购买的圣何塞节点
 step 1：在终端输入命令：`sudo nano /etc/hysteria/config.yaml`
-![Hysteria2 服务器配置](/images/posts/2026/01/2026-01-13-hysteria2-server-config.png)
+![Hysteria2 服务器配置](../images/posts/2026/01/2026-01-13-hysteria2-server-config.png)
 并将端口改为 443
 
 ### Step 2: 安装 ufw
@@ -296,9 +296,9 @@ sudo ufw allow 443/udp
 打开 v2rayN 界面：
 
 1. 将**Port**栏改为`443`。
-   ![v2rayN 端口配置](/images/posts/2026/01/2026-01-13-v2rayn-port-config.png)
+   ![v2rayN 端口配置](../images/posts/2026/01/2026-01-13-v2rayn-port-config.png)
 2. 同步优化带宽（关键）：为了尝试进一步降低延迟，在`Max bandwidth`处尝试更保守的设置：
-   ![v2rayN 带宽配置](/images/posts/2026/01/2026-01-13-v2rayn-bandwidth-config.png)
+   ![v2rayN 带宽配置](../images/posts/2026/01/2026-01-13-v2rayn-bandwidth-config.png)
 
 - Down: `100`
 - Up: `20`
