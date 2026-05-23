@@ -200,9 +200,22 @@ exit
 |字段|填写内容|
 |---|---|
 |Name|`🔴 DO 新加坡`|
-|Command|选 "Custom Shell"|
-|命令|`/opt/homebrew/bin/mosh do`|
-|Working Directory|"Reuse previous session's directory"|
+|Command|**保持默认 `Login Shell`**（不改）|
+|**Send text at start**|`mosh do` ⭐ 关键|
+|Working Directory|"Home directory"|
+
+> ⚠️ **重要：不要用 Custom Shell 填 mosh 命令**
+> 
+> Custom Shell 字段把整行当作**一个可执行文件路径**，不支持空格和参数。如果填 `/opt/homebrew/bin/mosh do`，iTerm2 会把整串当成一个叫 `mosh do` 的文件去找，必然失败。
+> 
+> **正确做法**：Command 保持 `Login Shell`（默认），在 **Send text at start** 输入框里填 `mosh do`。这个字段模拟键盘输入，支持空格和任意命令。
+> 
+> **额外好处**：连接失败时会留在本地 shell 不闪退，可以看到完整报错方便调试。
+> 
+> **进阶写法：**
+> 
+> - `mosh do; exit` —— 断开后自动关闭窗口
+> - `mosh do || ssh do` —— mosh 失败时自动回退到 SSH
 
 #### Colors 子标签
 
@@ -243,15 +256,26 @@ exit
 |🟢 阿里云 SG|深绿|`mosh aliyun`|开发|
 |🟡 搬瓦工|深黄|`ssh bwh`|代理|
 
-### 绑定快捷键（神操作）
+### 绑定全局快捷键（神操作）
 
-设置 → **Keys** → **Key Bindings** → 左下角 `+`：
+> ⚠️ **注意**：是 iTerm2 设置**顶部那排大图标里的 Keys**，不是 Profile 内部的 Keys 子标签。两个 Keys 完全不同：
+> 
+> - **顶部 Keys**：全局快捷键，任何场景下生效（**这次要配的**）
+> - **Profile → Keys 子标签**：只在该 Profile 内生效的键位映射
+
+**操作步骤：**
+
+1. 设置 → 顶部 **Keys** 大图标 → **Key Bindings** 子标签
+2. 左下角点 `+`
+3. 在弹出窗口里：
 
 |字段|填写|
 |---|---|
-|Keyboard Shortcut|`Cmd+Ctrl+1`|
+|Keyboard Shortcut|点输入框，按 `Cmd+Ctrl+1`|
 |Action|**New Window with Profile**|
-|Profile|🔴 DO 新加坡|
+|Profile|选 🔴 DO 新加坡|
+
+4. 点 OK
 
 依此类推：
 
@@ -259,15 +283,18 @@ exit
 - `Cmd+Ctrl+2` → 阿里云
 - `Cmd+Ctrl+3` → 搬瓦工
 
-之后**全局任何位置按快捷键，立刻打开对应服务器**。
+之后**全局任何位置按快捷键，立刻打开对应服务器**（哪怕在浏览器、VSCode 里）。
 
-### 使用 Profile 的 3 种方式
+### 打开 Profile 的 4 种方式
 
-|方式|操作|
-|---|---|
-|快捷键|`Cmd+Ctrl+数字`|
-|新标签下拉|`Cmd+T` 旁的小箭头|
-|菜单|iTerm2 菜单栏 → Profiles|
+> ❌ **常见误区**：`Cmd+T` 旁边的小箭头下拉**不是**选 Profile 的入口，那是历史标签列表。
+
+|方式|操作|适合|
+|---|---|---|
+|**菜单栏**|iTerm2 顶部 → Profiles → 点 Profile 名|偶尔用|
+|**Profile 选择器**|`Cmd+O` 弹出搜索框，输入名字过滤|日常推荐|
+|**侧边栏 Toolbelt**|`Cmd+B` 调出工具栏 → 勾选 Profiles → 双击|常驻显示|
+|**全局快捷键**|自定义 `Cmd+Ctrl+1/2/3`，任何地方按下|⭐ 最爽|
 
 ### Hotkey 呼出式终端（强烈推荐）
 
@@ -519,6 +546,38 @@ brew install --cask font-jetbrains-mono-nerd-font
 
 # Profile → Text → Font 选 "JetBrainsMono Nerd Font"
 ```
+
+### Profile 常见问题
+
+**Q1: Custom Shell 输入框里打空格会跳到下一个字段？**
+
+这是 iTerm2 设计如此——Custom Shell 把整行当成一个**可执行文件路径**，不接受参数。所以 `mosh do` 这种带空格的命令不能填这里。
+
+**解决**：Command 改回 `Login Shell`（默认），把 `mosh do` 填到下面的 **Send text at start** 输入框。
+
+**Q2: `Cmd+T` 旁边的下拉箭头里没有我新建的 Profile？**
+
+那个箭头是**最近打开过的标签历史**，不是 Profile 入口。打开 Profile 用：
+
+- 菜单栏 → Profiles → 点名字
+- `Cmd+O` 弹出 Profile 选择器
+- 自定义全局快捷键 `Cmd+Ctrl+1`
+
+**Q3: 打开 Profile 后窗口一闪而过看不到错误？**
+
+通常是因为 Command 填了 `mosh do` 这种命令，连接失败时窗口立刻关闭。
+
+**解决**：用 `Send text at start` 而不是 `Custom Shell`，这样失败时会留在本地 shell，能看到完整报错。
+
+**Q4: Profile 启动后报 `Could not resolve hostname do`？**
+
+`~/.ssh/config` 里没有 `do` 这个别名。先配 SSH config，再用 Profile。
+
+**调试步骤**：
+
+1. 在普通终端跑 `mosh do`，确认能连上
+2. 跑通后再去配 Profile
+3. Profile 只是把 `mosh do` 这个命令自动化执行
 
 ---
 
