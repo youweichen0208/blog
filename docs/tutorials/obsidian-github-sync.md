@@ -94,20 +94,20 @@ git push -u origin main
 1. 打开 Obsidian。
 2. 打开 Vault：选择 `blog/docs`。
 3. 进入 Settings。
-4. 关闭 Restricted mode。
-5. 打开 Community plugins。
+4. 打开 Community plugins。
+5. 关闭 Restricted mode。
 6. 搜索并安装 `Obsidian Git`。
 7. 启用插件。
 
 推荐配置：
 
-| 配置项 | 建议值 | 说明 |
-| --- | --- | --- |
-| Auto pull interval | `10` 到 `30` 分钟 | 自动拉取 GitHub 最新内容 |
-| Auto backup interval | `10` 到 `30` 分钟 | 自动 commit 和 push |
-| Commit message | `vault backup: {{date}}` | 自动提交信息 |
-| Pull updates on startup | 开启 | 打开 Obsidian 时先同步 |
-| Push on backup | 开启 | 自动备份后推送到 GitHub |
+| 配置项                                     | 建议值                      | 说明                                       |
+| --------------------------------------- | ------------------------ | ---------------------------------------- |
+| Auto pull interval (minutes)            | `10` 到 `30` 分钟           | 自动拉取 GitHub 最新内容                         |
+| Auto commit-and-sync interval (minutes) | `10` 到 `30` 分钟           | 自动 commit 并 push（原 Auto backup interval） |
+| Commit message on auto commit-and-sync  | `vault backup: {{date}}` | 自动提交信息，建议加 `{{date}}` 占位符带时间戳            |
+| Pull updates on startup                 | 开启                       | 打开 Obsidian 时先同步                         |
+| Push on commit-and-sync                 | 开启                       | 自动备份后推送到 GitHub（原 Push on backup）        |
 
 手动命令也要会用：
 
