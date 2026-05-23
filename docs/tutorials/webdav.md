@@ -1,2011 +1,656 @@
-# 自建云服务器 + WebDAV 实现 Obsidian 多端同步教程
+# 自建 WebDAV 实现 Obsidian 多端同步教程
 
-  
+## 适用场景
 
-适用场景：  
-
-- 你已经有一台云服务器
-
-- 想让本地电脑上的 Obsidian 笔记同步到手机端 Obsidian
-
+- 已有云服务器，想让 Obsidian 笔记在多设备间同步
 - 不想使用 Obsidian 官方 Sync
+- 想用自建服务实现私有云盘同步效果
 
-- 想用自建服务实现类似“私有云盘同步”的效果
-
-  
-
-本教程推荐方案：
-
-  
-
-```text
-
-云服务器 Docker 部署 WebDAV
-
-电脑端 Obsidian 安装 Remotely Save 插件
-
-手机端 Obsidian 安装 Remotely Save 插件
-
-电脑和手机都通过 WebDAV 同步同一个 Vault
+## 推荐方案
 
 ```
-
-  
+云服务器 Docker 部署 WebDAV
+    ↓
+电脑/手机 Obsidian 安装 Remotely Save 插件
+    ↓
+所有设备通过 WebDAV 同步同一个 Vault
+```
 
 ---
-
-  
 
 ## 1. 整体架构
 
-  
-
-最终结构如下：
-
-  
-
-```text
-
-Mac / Windows 本地 Obsidian Vault
-
-↓ 上传 / 下载
-
-云服务器 WebDAV 目录
-
-↑ 上传 / 下载
-
-iPhone / Android Obsidian Vault
-
+```
+Mac/Windows 本地 Obsidian Vault
+        ↓ 上传/下载
+    云服务器 WebDAV
+        ↑ 上传/下载
+iPhone/Android Obsidian Vault
 ```
 
-  
-
-WebDAV 可以理解成一个支持网络读写的文件目录。
-
-  
-
-Obsidian 本身仍然读写本地文件，真正负责把文件上传到服务器、从服务器下载到本地的是 Obsidian 插件 Remotely Save。
-
-  
+WebDAV 是一个支持网络读写的文件目录服务。Obsidian 本身读写本地文件，Remotely Save 插件负责将文件同步到服务器。
 
 ---
 
-  
-
-## 2. 为什么推荐 WebDAV，而不是直接 Syncthing？
-
-  
-
-如果你是 Android 手机，Syncthing 也很好用。
-
-  
-
-但是如果你是 iPhone，Syncthing 的体验没有 Android 原生，通常要借助第三方 iOS 客户端，比如 Möbius Sync。
-
-  
-
-WebDAV + Remotely Save 的优点是：
-
-  
+## 2. 为什么推荐 WebDAV
 
 - iPhone / Android / Mac / Windows 都能用
-
-- 不需要让手机系统直接暴露复杂的同步目录
-
-- 服务器只需要部署一个很轻量的 WebDAV 服务
-
+- 服务器只需部署轻量的 WebDAV 服务
 - 维护成本比 Nextcloud 低
-
-- 比 Syncthing 更像“中心云盘同步”
-
-  
-
-所以本教程默认使用：
-
-  
-
-```text
-
-Docker WebDAV + Obsidian Remotely Save
-
-```
-
-  
+- 比 Syncthing 更像"中心云盘同步"（iPhone 上 Syncthing 体验不如 Android 原生）
 
 ---
 
-  
+## 3. 服务器部署
 
-## 3. 服务器目录应该放哪里？
-
-  
-
-推荐放在：
-
-  
-
-```bash
-
-/opt/obsidian-webdav
-
-```
-
-  
-
-原因：
-
-  
-
-```text
-
-/opt 适合放自己额外部署的服务或应用
-
-/home 适合放用户自己的普通文件
-
-/var/lib 适合放系统服务长期数据
-
-```
-
-  
-
-个人云服务器部署 Docker 项目时，用 `/opt/项目名` 会比较清晰。
-
-  
-
-最终目录结构：
-
-  
-
-```text
-
-/opt/obsidian-webdav/
-
-├── docker-compose.yml
-
-└── data/
-
-```
-
-  
-
-其中：
-
-  
-
-```text
-
-/opt/obsidian-webdav/data/
-
-```
-
-  
-
-就是 WebDAV 里真正存放 Obsidian 笔记数据的目录。
-
-  
-
----
-
-  
-
-## 4. 前置条件
-
-  
-
-服务器需要具备：
-
-  
+### 3.1 前置条件
 
 - Ubuntu / Debian / CentOS 等 Linux 系统
-
-- 已安装 Docker
-
-- 已安装 Docker Compose
-
+- 已安装 Docker 和 Docker Compose
 - 云服务器安全组已放行需要的端口
-
-- 最好有一个域名，用于配置 HTTPS
-
-  
 
 检查 Docker：
 
-  
-
 ```bash
-
 docker --version
-
 docker compose version
-
 ```
 
-  
-
-如果没有 Docker，需要先安装 Docker。
-
-  
-
-Ubuntu 常见安装方式：
-
-  
+安装 Docker（Ubuntu）：
 
 ```bash
-
 curl -fsSL https://get.docker.com | bash
-
-```
-
-  
-
-安装完成后可以把当前用户加入 docker 组：
-
-  
-
-```bash
-
 sudo usermod -aG docker $USER
-
+# 重新登录服务器
 ```
 
-  
-
-然后重新登录服务器。
-
-  
-
-如果你不想处理权限，也可以所有 Docker 命令都加 `sudo`。
-
-  
-
----
-
-  
-
-## 5. 创建 WebDAV 项目目录
-
-  
-
-进入服务器，执行：
-
-  
+### 3.2 创建项目目录
 
 ```bash
-
 sudo mkdir -p /opt/obsidian-webdav/data
-
-cd /opt/obsidian-webdav
-
-```
-
-  
-
-如果你希望当前用户可以直接编辑这个目录，可以执行：
-
-  
-
-```bash
-
 sudo chown -R $USER:$USER /opt/obsidian-webdav
-
+cd /opt/obsidian-webdav
 ```
 
-  
+目录结构：
 
----
+```
+/opt/obsidian-webdav/
+├── docker-compose.yml
+└── data/          # WebDAV 数据目录
+```
 
-  
-
-## 6. 创建 docker-compose.yml
-
-  
-
-在 `/opt/obsidian-webdav` 下创建配置文件：
-
-  
+### 3.3 创建 Docker Compose 配置
 
 ```bash
-
 nano docker-compose.yml
-
 ```
 
-  
-
-写入下面内容：
-
-  
+写入以下内容：
 
 ```yaml
-
 services:
-
-webdav:
-
-image: bytemark/webdav
-
-container_name: obsidian-webdav
-
-restart: unless-stopped
-
-ports:
-
-- "8080:80"
-
-environment:
-
-AUTH_TYPE: Basic
-
-USERNAME: obsidian
-
-PASSWORD: "请换成你的强密码"
-
-volumes:
-
-- ./data:/var/lib/dav
-
+  webdav:
+    image: bytemark/webdav
+    container_name: obsidian-webdav
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      AUTH_TYPE: Basic
+      USERNAME: obsidian
+      PASSWORD: "请换成你的强密码"  # 至少16位，包含大小写字母、数字、符号
+    volumes:
+      - ./data:/var/lib/dav
 ```
 
-  
-
-保存退出。
-
-  
-
-如果你用的是 nano：
-
-  
-
-```text
-
-Ctrl + O 保存
-
-Enter 确认
-
-Ctrl + X 退出
-
-```
-
-  
-
-注意修改：
-
-  
-
-```yaml
-
-PASSWORD: "请换成你的强密码"
-
-```
-
-  
-
-建议密码至少 16 位，包含大小写字母、数字和符号。
-
-  
-
----
-
-  
-
-## 7. 启动 WebDAV 服务
-
-  
-
-在 `/opt/obsidian-webdav` 目录执行：
-
-  
+### 3.4 启动服务
 
 ```bash
-
 docker compose up -d
-
-```
-
-  
-
-查看状态：
-
-  
-
-```bash
-
 docker compose ps
-
-```
-
-  
-
-查看日志：
-
-  
-
-```bash
-
 docker logs -f obsidian-webdav
-
 ```
 
-  
-
-如果容器正常运行，说明 WebDAV 服务已经启动。
-
-  
-
----
-
-  
-
-## 8. 本地测试 WebDAV
-
-  
-
-先用 curl 测试：
-
-  
+### 3.5 测试 WebDAV
 
 ```bash
-
+# 测试连接
 curl -u obsidian:你的密码 http://服务器IP:8080/
 
-```
-
-  
-
-如果能看到返回内容，说明 WebDAV 可以访问。
-
-  
-
-也可以测试上传一个文件：
-
-  
-
-```bash
-
+# 测试上传
 echo "hello obsidian webdav" > test.md
-
-  
-
 curl -u obsidian:你的密码 -T test.md http://服务器IP:8080/test.md
 
-```
-
-  
-
-然后测试读取：
-
-  
-
-```bash
-
+# 测试读取
 curl -u obsidian:你的密码 http://服务器IP:8080/test.md
-
 ```
-
-  
-
-如果能看到：
-
-  
-
-```text
-
-hello obsidian webdav
-
-```
-
-  
-
-说明上传和读取都正常。
-
-  
 
 ---
 
-  
+## 4. 反向代理配置
 
-## 9. 云服务器安全组放行端口
+### 4.1 有域名方案（推荐）
 
-  
+配置 HTTPS，安全且无浏览器警告。
 
-如果你临时用 IP + 8080 访问，需要在云服务器安全组放行：
+#### 4.1.1 配置域名解析
 
-  
-
-```text
-
-TCP 8080
+添加 DNS A 记录：
 
 ```
-
-  
-
-但是不建议长期裸露 8080。
-
-  
-
-正式使用建议：
-
-  
-
-```text
-
-外部访问 443 HTTPS
-
-Nginx 反向代理到本机 8080
-
-```
-
-  
-
-也就是：
-
-  
-
-```text
-
-https://dav.yourdomain.com
-
-↓
-
-Nginx
-
-↓
-
-http://127.0.0.1:8080
-
-```
-
-  
-
----
-
-  
-
-## 10. 配置域名解析
-
-  
-
-假设你有域名：
-
-  
-
-```text
-
-yourdomain.com
-
-```
-
-  
-
-可以添加一条 DNS 记录：
-
-  
-
-```text
-
 类型：A
-
 主机记录：dav
-
 记录值：你的服务器公网 IP
-
 ```
 
-  
-
-最终访问地址：
-
-  
-
-```text
-
-dav.yourdomain.com
-
-```
-
-  
-
-等待 DNS 生效后，在本地测试：
-
-  
+验证解析：
 
 ```bash
-
 ping dav.yourdomain.com
-
 ```
 
-  
-
-如果能解析到你的服务器 IP，说明域名解析正常。
-
-  
-
----
-
-  
-
-## 11. 安装 Nginx
-
-  
-
-Ubuntu / Debian：
-
-  
+#### 4.1.2 安装 Nginx
 
 ```bash
-
 sudo apt update
-
 sudo apt install -y nginx
-
-```
-
-  
-
-启动并设置开机自启：
-
-  
-
-```bash
-
 sudo systemctl enable nginx
-
 sudo systemctl start nginx
-
 ```
 
-  
-
-检查状态：
-
-  
-
-```bash
-
-sudo systemctl status nginx
-
-```
-
-  
-
----
-
-  
-
-## 12. 配置 Nginx 反向代理 WebDAV
-
-  
+#### 4.1.3 配置反向代理
 
 创建配置文件：
 
-  
-
 ```bash
-
 sudo nano /etc/nginx/sites-available/obsidian-webdav
-
 ```
-
-  
 
 写入：
 
-  
-
 ```nginx
-
 server {
+    listen 80;
+    server_name dav.yourdomain.com;
 
-listen 80;
+    client_max_body_size 200M;
 
-server_name dav.yourdomain.com;
-
-  
-
-client_max_body_size 200M;
-
-  
-
-location / {
-
-proxy_pass http://127.0.0.1:8080;
-
-  
-
-proxy_set_header Host $host;
-
-proxy_set_header X-Real-IP $remote_addr;
-
-proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-
-proxy_set_header X-Forwarded-Proto $scheme;
-
-  
-
-proxy_request_buffering off;
-
-proxy_buffering off;
-
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_request_buffering off;
+        proxy_buffering off;
+    }
 }
-
-}
-
 ```
-
-  
-
-把：
-
-  
-
-```text
-
-dav.yourdomain.com
-
-```
-
-  
-
-改成你自己的域名。
-
-  
 
 启用配置：
 
-  
-
 ```bash
-
-sudo ln -s /etc/nginx/sites-available/obsidian-webdav /etc/nginx/sites-enabled/obsidian-webdav
-
-```
-
-  
-
-测试 Nginx 配置：
-
-  
-
-```bash
-
+sudo ln -s /etc/nginx/sites-available/obsidian-webdav /etc/nginx/sites-enabled/
 sudo nginx -t
-
-```
-
-  
-
-重载 Nginx：
-
-  
-
-```bash
-
 sudo systemctl reload nginx
-
 ```
 
-  
-
-现在可以测试：
-
-  
+#### 4.1.4 配置 HTTPS 证书
 
 ```bash
-
-curl -u obsidian:你的密码 http://dav.yourdomain.com/
-
-```
-
-  
-
----
-
-  
-
-## 13. 配置 HTTPS 证书
-
-  
-
-安装 Certbot：
-
-  
-
-```bash
-
 sudo apt install -y certbot python3-certbot-nginx
-
-```
-
-  
-
-申请证书：
-
-  
-
-```bash
-
 sudo certbot --nginx -d dav.yourdomain.com
-
+# 根据提示选择自动跳转 HTTPS
 ```
 
-  
-
-根据提示选择自动跳转 HTTPS。
-
-  
-
-完成后测试：
-
-  
+测试：
 
 ```bash
-
 curl -u obsidian:你的密码 https://dav.yourdomain.com/
-
 ```
 
-  
+#### 4.1.5 限制 Docker 端口
 
-如果正常返回，说明 HTTPS 已经配置成功。
-
-  
-
----
-
-  
-
-## 14. 调整 Docker 端口暴露方式
-
-  
-
-配置好 Nginx 后，建议不要让 8080 暴露到公网。
-
-  
-
-可以把 `docker-compose.yml` 改成：
-
-  
+配置好 Nginx 后，修改 `docker-compose.yml`，让 WebDAV 只监听本机：
 
 ```yaml
-
-services:
-
-webdav:
-
-image: bytemark/webdav
-
-container_name: obsidian-webdav
-
-restart: unless-stopped
-
 ports:
-
-- "127.0.0.1:8080:80"
-
-environment:
-
-AUTH_TYPE: Basic
-
-USERNAME: obsidian
-
-PASSWORD: "请换成你的强密码"
-
-volumes:
-
-- ./data:/var/lib/dav
-
+  - "127.0.0.1:8080:80"  # 只允许本机访问
 ```
 
-  
-
-关键区别：
-
-  
-
-```yaml
-
-ports:
-
-- "127.0.0.1:8080:80"
-
-```
-
-  
-
-这表示 WebDAV 只允许服务器本机访问 8080，再由 Nginx 统一对外提供 HTTPS。
-
-  
-
-重新启动：
-
-  
+重启服务：
 
 ```bash
-
-cd /opt/obsidian-webdav
-
 docker compose down
-
 docker compose up -d
-
 ```
 
-  
+### 4.2 无域名方案
 
----
+在拿到域名之前，有以下几种临时方案：
 
-  
+#### 方案一：IP + 端口直接访问（最简单）
 
-## 15. 电脑端 Obsidian 配置 Remotely Save
+**优点**：零配置，立即可用
+**缺点**：无 HTTPS，密码明文传输，不安全
 
-  
+直接使用 `http://服务器IP:8080` 访问。
 
-打开电脑上的 Obsidian。
+> ⚠️ 警告：HTTP 明文传输密码，仅建议临时测试使用，不建议长期使用。
 
-  
+**安全建议**：
+- 使用临时的强密码
+- 正式使用域名后立即更换密码
+- 云服务器安全组限制 8080 端口只允许你的 IP 访问
 
-进入：
-
-  
-
-```text
-
-Settings
-
-→ Community plugins
-
-→ Turn on community plugins
-
-→ Browse
-
-→ 搜索 Remotely Save
-
-→ Install
-
-→ Enable
+限制 IP 访问方法（在云服务器控制台的安全组规则中设置）：
 
 ```
-
-  
-
-然后进入 Remotely Save 设置。
-
-  
-
-选择远程服务：
-
-  
-
-```text
-
-Remote Service: WebDAV
-
+协议：TCP
+端口：8080
+来源：你的IP地址（如 1.2.3.4/32）
 ```
 
-  
+#### 方案二：自签名证书（推荐临时使用）
 
-填写：
+**优点**：有 HTTPS 加密，相对安全
+**缺点**：浏览器会警告"不安全"，需要手动信任证书
 
-  
+##### 创建自签名证书
 
-```text
+在服务器上执行：
 
-Server Address: https://dav.yourdomain.com/
+```bash
+# 创建证书目录
+sudo mkdir -p /etc/nginx/ssl
 
+# 生成自签名证书（有效期365天）
+sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout /etc/nginx/ssl/webdav.key \
+  -out /etc/nginx/ssl/webdav.crt \
+  -subj "/CN=你的服务器IP" \
+  -addext "subjectAltName=IP:你的服务器IP"
+```
+
+##### 配置 Nginx 使用自签名证书
+
+创建配置：
+
+```bash
+sudo nano /etc/nginx/sites-available/obsidian-webdav-ssl
+```
+
+写入：
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name 你的服务器IP;
+
+    ssl_certificate /etc/nginx/ssl/webdav.crt;
+    ssl_certificate_key /etc/nginx/ssl/webdav.key;
+
+    client_max_body_size 200M;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_request_buffering off;
+        proxy_buffering off;
+    }
+}
+```
+
+启用配置：
+
+```bash
+sudo ln -s /etc/nginx/sites-available/obsidian-webdav-ssl /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+开放安全组 443 端口后访问：
+
+```
+https://服务器IP/
+```
+
+浏览器会显示"您的连接不是私密连接"，点击"高级" → "继续访问"即可。
+
+##### 在 Obsidian 中使用
+
+Remotely Save 配置：
+
+```
+Server Address: https://服务器IP/
 Username: obsidian
-
 Password: 你的密码
-
 ```
 
-  
+> 💡 提示：拿到正式域名后，使用 Certbot 申请 Let's Encrypt 证书替换自签名证书，浏览器警告就会消失。
 
-然后点击插件里的测试连接或同步按钮。
+#### 方案三：使用本地 hosts 模拟域名（仅测试用）
 
-  
+**适用场景**：只在特定设备上临时使用
+**优点**：可以用自签名证书绑定域名
+**缺点**：每台设备都需要修改 hosts
 
-第一次建议用一个测试 Vault，不要直接操作你的正式笔记库。
+##### 在服务器生成证书时使用假域名
 
-  
+```bash
+sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout /etc/nginx/ssl/webdav.key \
+  -out /etc/nginx/ssl/webdav.crt \
+  -subj "/CN=webdav.local" \
+  -addext "subjectAltName=DNS:webdav.local"
+```
+
+Nginx 配置中的 `server_name` 改为 `webdav.local`。
+
+##### 在客户端设备上修改 hosts
+
+**macOS/Linux**：编辑 `/etc/hosts`
+
+**Windows**：编辑 `C:\Windows\System32\drivers\etc\hosts`
+
+添加：
+
+```
+服务器IP  webdav.local
+```
+
+然后访问 `https://webdav.local/`
+
+#### 方案对比
+
+| 方案 | 安全性 | 复杂度 | 推荐场景 |
+|------|--------|--------|----------|
+| IP + 端口直连 | 低（明文传输） | 低 | 临时测试，几分钟内完成 |
+| 自签名证书 | 中（加密传输） | 中 | 无域名期间临时使用 |
+| hosts 模拟域名 | 中 | 高 | 不推荐，仅特殊场景 |
+
+**推荐路径**：
+
+```
+临时测试 → IP直连（几分钟）
+    ↓
+无域名期间 → 自签名证书（安全）
+    ↓
+有域名后 → Let's Encrypt 正式证书
+```
 
 ---
 
-  
+## 5. Obsidian 客户端配置
 
-## 16. 手机端 Obsidian 配置 Remotely Save
-
-  
-
-手机端 Obsidian 也安装 Remotely Save 插件。
-
-  
-
-进入：
-
-  
-
-```text
-
-Settings
-
-→ Community plugins
-
-→ Browse
-
-→ Remotely Save
-
-→ Install
-
-→ Enable
+### 5.1 安装 Remotely Save 插件
 
 ```
+Settings → Community plugins → Turn on community plugins
+→ Browse → 搜索 "Remotely Save" → Install → Enable
+```
 
-  
+### 5.2 配置 WebDAV 连接
 
-然后同样配置：
+在 Remotely Save 设置中：
 
-  
-
-```text
-
+```
 Remote Service: WebDAV
-
-Server Address: https://dav.yourdomain.com/
-
+Server Address: https://dav.yourdomain.com/   # 或 https://服务器IP/（无域名时）
 Username: obsidian
-
 Password: 你的密码
-
 ```
 
-  
+> ⚠️ 注意地址末尾的 `/`
 
-手机端第一次建议：
+### 5.3 首次同步建议
 
-  
-
-1. 新建一个空 Vault
-
-2. 安装 Remotely Save
-
-3. 配置 WebDAV
-
-4. 执行同步
-
-5. 确认服务器上的文件能下载到手机
-
-  
+1. 新建一个测试 Vault
+2. 配置 WebDAV
+3. 测试同步功能
+4. 确认正常后再迁移正式笔记库
 
 ---
 
-  
+## 6. 使用建议
 
-## 17. 推荐同步习惯
+### 6.1 同步习惯
 
-  
+- 打开 Obsidian 后先同步
+- 写完笔记后再同步
+- 不要在多个设备同时编辑同一个文件（尤其是日记类文件）
 
-为了减少冲突，建议养成这个习惯：
+### 6.2 .obsidian 目录处理
 
-  
+`.obsidian/` 包含插件配置、主题、快捷键等。建议：
 
-```text
+- ✅ 同步插件配置
+- ❌ 不同步 `workspace.json` 和 `workspace-mobile.json`（桌面端和手机端布局不同）
+- ❌ 不同步 `.trash`
 
-打开 Obsidian 后先同步
+在 Remotely Save 中配置忽略规则。
 
-写完笔记后再同步
+### 6.3 附件目录
 
-不要在电脑和手机上同时编辑同一个文件
-
-```
-
-  
-
-尤其是日记类文件，例如：
-
-  
-
-```text
-
-2026-05-23.md
+建议统一存放附件：
 
 ```
-
-  
-
-如果电脑和手机同时编辑，很容易出现冲突文件。
-
-  
-
----
-
-  
-
-## 18. 是否同步 .obsidian 目录？
-
-  
-
-Obsidian 的配置目录是：
-
-  
-
-```text
-
-.obsidian/
-
-```
-
-  
-
-里面包含：
-
-  
-
-- 插件配置
-
-- 主题配置
-
-- 快捷键配置
-
-- 工作区布局
-
-- 手机端布局配置
-
-  
-
-是否同步它要看你的需求。
-
-  
-
-新手建议：
-
-  
-
-```text
-
-可以同步插件配置
-
-但谨慎同步 workspace 相关文件
-
-```
-
-  
-
-建议排除：
-
-  
-
-```text
-
-.obsidian/workspace.json
-
-.obsidian/workspace-mobile.json
-
-.trash
-
-```
-
-  
-
-原因：
-
-  
-
-- workspace 文件主要记录当前打开了哪些标签页、窗口布局
-
-- 桌面端和手机端布局不同
-
-- 多端同步 workspace 容易造成界面混乱
-
-  
-
----
-
-  
-
-## 19. 附件目录建议
-
-  
-
-建议把 Obsidian 附件统一放在：
-
-  
-
-```text
-
-attachments/
-
-```
-
-  
-
-在 Obsidian 里设置：
-
-  
-
-```text
-
-Settings
-
-→ Files and links
-
+Settings → Files and links
 → Default location for new attachments
-
+→ In the folder specified below
+→ attachments
 ```
-
-  
-
-可以设置成：
-
-  
-
-```text
-
-In the folder specified below
-
-```
-
-  
-
-然后指定：
-
-  
-
-```text
-
-attachments
-
-```
-
-  
-
-这样图片、PDF、截图不会散落在各个目录里，更方便同步和备份。
-
-  
 
 ---
 
-  
+## 7. 运维指南
 
-## 20. 自动同步设置建议
-
-  
-
-Remotely Save 支持自动同步，但需要注意：
-
-  
-
-```text
-
-自动同步只有在 Obsidian 打开时才会运行
-
-Obsidian 在后台时，插件通常无法继续执行同步
-
-```
-
-  
-
-建议配置：
-
-  
-
-```text
-
-启动 Obsidian 后自动同步：开启
-
-每隔几分钟自动同步：可以设为 5 ~ 10 分钟
-
-关闭 Obsidian 前手动同步：建议养成习惯
-
-```
-
-  
-
-如果你的笔记很重要，不要完全依赖自动同步。
-
-  
-
----
-
-  
-
-## 21. 服务器数据备份
-
-  
-
-你的 WebDAV 数据目录是：
-
-  
+### 7.1 常用命令
 
 ```bash
-
-/opt/obsidian-webdav/data
-
-```
-
-  
-
-建议定期备份。
-
-  
-
-手动备份：
-
-  
-
-```bash
-
 cd /opt/obsidian-webdav
 
+docker compose up -d       # 启动
+docker compose down        # 停止
+docker compose restart     # 重启
+docker compose ps          # 查看状态
+docker logs -f obsidian-webdav  # 查看日志
+docker compose pull && docker compose up -d  # 更新镜像
+```
+
+### 7.2 数据备份
+
+```bash
+cd /opt/obsidian-webdav
 tar -czf obsidian-webdav-backup-$(date +%F).tar.gz data
-
 ```
 
-  
+备份文件：`obsidian-webdav-backup-2026-05-23.tar.gz`
 
-备份文件类似：
-
-  
-
-```text
-
-obsidian-webdav-backup-2026-05-23.tar.gz
-
-```
-
-  
-
-可以复制到其他地方：
-
-  
+复制到其他服务器：
 
 ```bash
-
-scp obsidian-webdav-backup-2026-05-23.tar.gz user@另一台服务器:/backup/
-
+scp obsidian-webdav-backup-*.tar.gz user@backup-server:/backup/
 ```
 
-  
+### 7.3 Git 版本备份（可选）
 
----
-
-  
-
-## 22. 使用 Git 做额外保险
-
-  
-
-如果你熟悉 Git，也可以在本地 Vault 里额外使用 Git 备份。
-
-  
-
-例如：
-
-  
+WebDAV 负责同步，Git 负责版本历史：
 
 ```bash
-
 cd 你的ObsidianVault目录
-
 git init
-
 git add .
-
-git commit -m "init obsidian vault"
-
+git commit -m "init vault"
 ```
 
-  
-
-以后定期：
-
-  
+定期提交：
 
 ```bash
-
-git add .
-
-git commit -m "update notes"
-
+git add . && git commit -m "update notes"
 ```
-
-  
-
-注意：Git 不是同步工具，而是版本备份工具。
-
-  
-
-推荐组合：
-
-  
-
-```text
-
-WebDAV 负责多端同步
-
-Git 负责历史版本备份
-
-```
-
-  
 
 ---
 
-  
+## 8. 故障排查
 
-## 23. 常用运维命令
+### 8.1 无法连接
 
-  
+检查清单：
 
-进入项目目录：
-
-  
-
-```bash
-
-cd /opt/obsidian-webdav
-
-```
-
-  
-
-启动：
-
-  
-
-```bash
-
-docker compose up -d
-
-```
-
-  
-
-停止：
-
-  
-
-```bash
-
-docker compose down
-
-```
-
-  
-
-重启：
-
-  
-
-```bash
-
-docker compose restart
-
-```
-
-  
-
-查看状态：
-
-  
-
-```bash
-
-docker compose ps
-
-```
-
-  
-
-查看日志：
-
-  
-
-```bash
-
-docker logs -f obsidian-webdav
-
-```
-
-  
-
-更新镜像：
-
-  
-
-```bash
-
-docker compose pull
-
-docker compose up -d
-
-```
-
-  
-
----
-
-  
-
-## 24. 常见问题排查
-
-  
-
-### 24.1 手机端无法连接
-
-  
-
-检查以下内容：
-
-  
-
-```text
-
-1. 域名是否能正常解析
-
-2. HTTPS 证书是否正常
-
+1. 域名解析是否正常
+2. HTTPS 证书是否有效
 3. 账号密码是否正确
+4. Nginx 是否运行：`sudo systemctl status nginx`
+5. Docker 容器是否运行：`docker compose ps`
+6. 安全组是否放行 80/443（或 8080）
 
-4. Nginx 是否正常运行
-
-5. Docker 容器是否正常运行
-
-6. 云服务器安全组是否放行 80 / 443
-
-```
-
-  
-
-命令：
-
-  
-
-```bash
-
-docker compose ps
-
-sudo systemctl status nginx
-
-curl -u obsidian:你的密码 https://dav.yourdomain.com/
-
-```
-
-  
-
----
-
-  
-
-### 24.2 电脑能同步，手机不能同步
-
-  
+### 8.2 电脑能同步，手机不能
 
 可能原因：
 
-  
+- 手机端插件版本旧
+- 手机端未开启社区插件
+- WebDAV 地址末尾斜杠问题
+- 手机网络无法访问服务器
+- HTTPS 证书问题（自签名证书需要在手机浏览器先访问一次并信任）
 
-```text
+### 8.3 出现冲突文件
 
-1. 手机端插件版本较旧
+原因：两个设备同时修改同一文件
 
-2. 手机端 Obsidian 没有正确开启社区插件
+处理：
 
-3. WebDAV 地址末尾斜杠问题
+1. 找到冲突文件（通常有 `conflict` 标记）
+2. 手动比较合并内容
+3. 删除冲突文件
+4. 以后养成先同步再编辑的习惯
 
-4. 手机网络无法访问服务器
-
-5. HTTPS 证书链有问题
-
-```
-
-  
-
-可以尝试把地址写成：
-
-  
-
-```text
-
-https://dav.yourdomain.com/
-
-```
-
-  
-
-注意最后的 `/`。
-
-  
-
----
-
-  
-
-### 24.3 出现冲突文件
-
-  
-
-通常是因为两个设备同时修改了同一个文件。
-
-  
-
-处理方式：
-
-  
-
-```text
-
-1. 找到冲突文件
-
-2. 手动比较内容
-
-3. 合并正确内容
-
-4. 删除多余冲突文件
-
-5. 以后写之前先同步，写完之后再同步
-
-```
-
-  
-
----
-
-  
-
-### 24.4 图片没有同步
-
-  
+### 8.4 图片没有同步
 
 检查：
 
-  
+- 图片是否在 Vault 目录内
+- 附件目录是否被排除
+- 单文件是否超过 Nginx 限制（默认 200M）
 
-```text
-
-1. 图片是否在 Vault 目录内
-
-2. 附件目录是否被排除
-
-3. Remotely Save 是否设置了忽略大文件
-
-4. 单个文件大小是否超过 Nginx 限制
-
-```
-
-  
-
-如果图片较大，可以调整 Nginx：
-
-  
+调整限制：
 
 ```nginx
-
 client_max_body_size 500M;
-
 ```
 
-  
-
-然后重载：
-
-  
+重载 Nginx：
 
 ```bash
-
-sudo nginx -t
-
-sudo systemctl reload nginx
-
+sudo nginx -t && sudo systemctl reload nginx
 ```
 
-  
+### 8.5 自签名证书相关
+
+**浏览器显示不安全**：正常现象，点击"高级"→"继续访问"
+
+**手机端无法连接自签名证书**：
+1. 先在手机浏览器访问 `https://服务器IP/`
+2. 点击"继续"信任证书
+3. 再在 Obsidian 中配置
 
 ---
 
-  
+## 9. 安全建议
 
-### 24.5 8080 端口无法访问
+- ✅ 使用 HTTPS（正式域名用 Let's Encrypt，临时用自签名）
+- ✅ 使用强密码（至少 16 位）
+- ✅ Docker 端口只绑定 127.0.0.1
+- ✅ 安全组只开放必要端口（22, 80, 443）
+- ✅ 定期备份 `/opt/obsidian-webdav/data`
+- ❌ 不要把密码提交到公开仓库
 
-  
+---
 
-如果你已经把 Docker 改成：
+## 10. 配置速查
 
-  
+### 推荐的 docker-compose.yml
 
 ```yaml
-
-ports:
-
-- "127.0.0.1:8080:80"
-
-```
-
-  
-
-那么公网访问：
-
-  
-
-```text
-
-http://服务器IP:8080
-
-```
-
-  
-
-会失败，这是正常的。
-
-  
-
-这代表 8080 只允许服务器本机访问。
-
-  
-
-你应该访问：
-
-  
-
-```text
-
-https://dav.yourdomain.com/
-
-```
-
-  
-
----
-
-  
-
-## 25. 安全建议
-
-  
-
-建议做到：
-
-  
-
-```text
-
-1. 使用 HTTPS
-
-2. 使用强密码
-
-3. Docker 的 8080 只绑定 127.0.0.1
-
-4. 云服务器安全组只开放 22、80、443
-
-5. 不要把 WebDAV 密码写到公开仓库
-
-6. 定期备份 /opt/obsidian-webdav/data
-
-```
-
-  
-
-如果 SSH 只自己用，也建议修改默认端口或限制来源 IP。
-
-  
-
----
-
-  
-
-## 26. 最终推荐配置
-
-  
-
-服务器路径：
-
-  
-
-```text
-
-/opt/obsidian-webdav
-
-```
-
-  
-
-数据目录：
-
-  
-
-```text
-
-/opt/obsidian-webdav/data
-
-```
-
-  
-
-WebDAV 内部端口：
-
-  
-
-```text
-
-127.0.0.1:8080
-
-```
-
-  
-
-公网访问地址：
-
-  
-
-```text
-
-https://dav.yourdomain.com/
-
-```
-
-  
-
-Obsidian 插件：
-
-  
-
-```text
-
-Remotely Save
-
-```
-
-  
-
-同步习惯：
-
-  
-
-```text
-
-打开先同步
-
-写完再同步
-
-不要多端同时改同一个文件
-
-```
-
-  
-
----
-
-  
-
-## 27. 完整 docker-compose.yml 推荐版
-
-  
-
-```yaml
-
 services:
-
-webdav:
-
-image: bytemark/webdav
-
-container_name: obsidian-webdav
-
-restart: unless-stopped
-
-ports:
-
-- "127.0.0.1:8080:80"
-
-environment:
-
-AUTH_TYPE: Basic
-
-USERNAME: obsidian
-
-PASSWORD: "请换成你的强密码"
-
-volumes:
-
-- ./data:/var/lib/dav
-
+  webdav:
+    image: bytemark/webdav
+    container_name: obsidian-webdav
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:80"
+    environment:
+      AUTH_TYPE: Basic
+      USERNAME: obsidian
+      PASSWORD: "请换成你的强密码"
+    volumes:
+      - ./data:/var/lib/dav
 ```
 
-  
-
----
-
-  
-
-## 28. 完整 Nginx 配置推荐版
-
-  
+### 推荐的 Nginx 配置（有域名）
 
 ```nginx
-
 server {
+    listen 80;
+    server_name dav.yourdomain.com;
+    client_max_body_size 200M;
 
-listen 80;
-
-server_name dav.yourdomain.com;
-
-  
-
-client_max_body_size 200M;
-
-  
-
-location / {
-
-proxy_pass http://127.0.0.1:8080;
-
-  
-
-proxy_set_header Host $host;
-
-proxy_set_header X-Real-IP $remote_addr;
-
-proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-
-proxy_set_header X-Forwarded-Proto $scheme;
-
-  
-
-proxy_request_buffering off;
-
-proxy_buffering off;
-
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_request_buffering off;
+        proxy_buffering off;
+    }
 }
-
-}
-
 ```
 
-  
+申请证书后 Certbot 会自动修改为 HTTPS 配置。
 
-申请 HTTPS 后，Certbot 会自动帮你改成 443 配置。
+### 推荐的 Nginx 配置（无域名，自签名证书）
 
-  
+```nginx
+server {
+    listen 443 ssl;
+    server_name 你的服务器IP;
+
+    ssl_certificate /etc/nginx/ssl/webdav.crt;
+    ssl_certificate_key /etc/nginx/ssl/webdav.key;
+
+    client_max_body_size 200M;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_request_buffering off;
+        proxy_buffering off;
+    }
+}
+```
 
 ---
 
-  
+## 11. 参考资料
 
-## 29. 参考资料
-
-  
-
-- Remotely Save GitHub: https://github.com/remotely-save/remotely-save
-
-- Obsidian Forum - Remotely Save: https://forum.obsidian.md/t/new-plugin-remotely-save/28446
-
-- bytemark/webdav Docker Image: https://hub.docker.com/r/bytemark/webdav/
-
-- dgraziotin nginx-webdav-nononsense: https://github.com/dgraziotin/docker-nginx-webdav-nononsense
-
-- Obsidian Help - Sync notes: https://obsidian.md/help/sync-notes
-
-  
+- [Remotely Save GitHub](https://github.com/remotely-save/remotely-save)
+- [Obsidian Forum - Remotely Save](https://forum.obsidian.md/t/new-plugin-remotely-save/28446)
+- [bytemark/webdav Docker Image](https://hub.docker.com/r/bytemark/webdav/)
+- [Obsidian Help - Sync notes](https://obsidian.md/help/sync-notes)
 
 ---
 
-  
+## 一句话总结
 
-## 30. 一句话总结
+低成本自建 Obsidian 同步：**云服务器 Docker WebDAV + HTTPS + Remotely Save**
 
-  
-
-如果你想低成本、自建、跨电脑和手机同步 Obsidian，最稳妥的方案是：
-
-  
-
-```text
-
-云服务器 Docker WebDAV + HTTPS + Obsidian Remotely Save
-
-```
-
-  
-
-先用测试 Vault 跑通，再迁移正式笔记库。
+先用测试 Vault 验证，再迁移正式笔记库。
