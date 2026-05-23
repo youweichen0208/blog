@@ -511,11 +511,25 @@ git add . && git commit -m "update notes"
 
 ### 8.2 电脑能同步，手机不能
 
-可能原因：
+**第一步：确认手机和电脑用的是同一个"同步源"**
+
+这是最常见的问题。Remotely Save 在每台设备上都要单独配置一次，配置必须完全一致：
+
+手机端打开 Obsidian → 设置 → Remotely Save，确认：
+
+| 配置项 | 检查要点 |
+|--------|----------|
+| **Remote service** | 电脑选的什么（WebDAV / S3 / Dropbox 等），手机必须完全一样 |
+| **Server address** | URL 一个字都不能差，包括末尾有没有 `/` |
+| **Username / Password** | 完全一致 |
+| **Remote base directory** | 如果电脑端填了子目录名，手机也要填完全一样的（这个很容易漏！） |
+
+> ⚠️ 特别注意：如果电脑端 base directory 留空，手机端也必须留空；如果电脑填了 `my-vault`，手机也要填 `my-vault`，不能写成 `MyVault` 或 `my_vault`。
+
+**其他可能原因：**
 
 - 手机端插件版本旧
 - 手机端未开启社区插件
-- WebDAV 地址末尾斜杠问题
 - 手机网络无法访问服务器
 - HTTPS 证书问题（自签名证书需要在手机浏览器先访问一次并信任）
 
