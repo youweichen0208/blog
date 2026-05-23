@@ -6,5 +6,6 @@ docs/.vitepress/cache
 docs/.vitepress/dist
 docs/.obsidian/workspace.json
 docs/.obsidian/workspace-mobile.json
+docs/.obsidian/plugins/
 .DS_Store
 *.log
