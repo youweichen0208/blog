@@ -865,8 +865,8 @@ def validate_path(path):
 
 现在你已经掌握了 Claude Desktop 的 MCP 配置，接下来可以：
 
-1. **[Inspector 调试](./inspector.md)**：验证 MCP 服务连接和工具调用
-2. **[本地 stdio 实战](./local-stdio.md)**：把本地 MCP 服务接入 Claude
+1. **[Inspector 调试](inspector.md)**：验证 MCP 服务连接和工具调用
+2. **[本地 stdio 实战](local-stdio.md)**：把本地 MCP 服务接入 Claude
 3. 探索[官方服务器示例](https://github.com/modelcontextprotocol/servers)
 
 ---

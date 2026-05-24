@@ -28,7 +28,7 @@ lsof -i [协议]@[主机]:[端口]
 2. 当有两个同样的进程在一个端口 混淆，如何解决
 
 step 1: lsof -i :18789
-![lsof 命令输出](../images/posts/2026/05/2026-05-23-screenshot.png)
+![lsof 命令输出](../.vitepress/public/images/posts/2026/05/2026-05-24-screenshot.png)
 
 这个目前混淆进程就是node 18653
 
