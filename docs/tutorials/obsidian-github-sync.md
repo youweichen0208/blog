@@ -283,61 +283,6 @@ docs/.obsidian/workspace.json
 docs/.obsidian/workspace-mobile.json
 ```
 
-## 第六步：附件和图片规则
-
-为了让 Obsidian 和 VitePress 都能稳定识别图片，建议统一附件路径。
-
-推荐方式：
-
-```text
-docs/.vitepress/public/images/posts/YYYY/MM/
-```
-
-Markdown 里引用：
-
-```markdown
-![图片说明](/images/posts/2026/05/example.png)
-```
-
-这样：
-
-- VitePress 构建后可以正常访问图片。
-- Obsidian 里也能保存 Markdown 引用。
-- 图片路径不会因为文章移动而失效。
-
-如果更重视 Obsidian 体验，也可以把附件放在文章同目录，但 VitePress 迁移和公共路径管理会稍微麻烦。
-
-## 第七步：冲突处理规则
-
-发生冲突时，先不要继续写作。按顺序处理：
-
-1. 在当前设备执行 Pull。
-2. 打开冲突文件，搜索：
-
-```text
-<<<<<<<
-=======
->>>>>>>
-```
-
-3. 保留正确内容，删除冲突标记。
-4. 重新提交：
-
-```bash
-git add .
-git commit -m "fix: resolve sync conflict"
-git push
-```
-
-常见冲突来源：
-
-| 文件 | 原因 | 建议 |
-| --- | --- | --- |
-| Markdown 文章 | 两台设备同时编辑 | 一次只在一台设备编辑同一篇 |
-| `.obsidian/workspace.json` | 设备布局不同 | 加入 `.gitignore` |
-| 图片附件 | 两台设备生成同名图片 | 图片文件名加日期和主题 |
-| `package-lock.json` | 多设备安装依赖 | 手机端不要运行 npm install |
-
 ## 日常使用清单
 
 电脑端：
