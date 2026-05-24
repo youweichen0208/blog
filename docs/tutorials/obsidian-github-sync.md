@@ -9,17 +9,18 @@ date: 2026-05-23
 
 这套方案的目标是让同一批 Markdown 同时服务于三个场景：
 
-- 电脑端 Obsidian：主要写作环境。
-- 手机端 Obsidian：查看、少量编辑、同步同一个 Vault。
-- GitHub Pages：把博客内容发布成网页。
+- 电脑端 Obsidian：主要写作环境，通过 Git 与 GitHub 同步。
+- 手机端 Obsidian：通过 WebDAV 同步原始内容，查看和少量编辑。
+- GitHub Pages：网页发布，通过 GitHub Actions 自动构建。
 
-核心原则：**GitHub 仓库作为唯一真源**。电脑和手机都从 GitHub 拉取最新内容，编辑后再推回 GitHub；GitHub Pages 只负责把仓库内容构建成网页。
+核心原则：**GitHub 仓库作为唯一真源**。电脑端通过 Git 与 GitHub 同步，GitHub Actions 同时部署到 GitHub Pages（网页发布）和 WebDAV（手机端同步原始内容）。
 
 ```mermaid
 flowchart TD
-  A[电脑 Obsidian<br/>blog/docs Vault] <-->|pull / commit / push| B[(GitHub 仓库)]
-  C[手机 Obsidian<br/>本地 Vault] <-->|pull / commit / push| B
-  B -->|GitHub Actions 构建| D[GitHub Pages 网页]
+  A["电脑 Obsidian (blog/docs)"] <-->|pull / commit / push| B[(GitHub 仓库)]
+  B -->|GitHub Actions 构建| C[GitHub Pages 网页]
+  B -->|GitHub Actions 同步| D[WebDAV 服务]
+  D <-->|Remotely Save 同步| E[手机 Obsidian]
 ```
 
 ## 推荐目录设计
@@ -60,30 +61,14 @@ blog/
 
 ## 第一步：准备 GitHub 仓库
 
-在电脑端完成：
+为什么用 GitHub 仓库作为真源？
 
-```bash
-git status
-git remote -v
-```
+- **版本控制**：每次修改都有记录，可以回溯历史版本。
+- **多端同步**：电脑和手机都从同一个仓库拉取和推送，避免文件丢失或版本混乱。
+- **自动发布**：配合 GitHub Actions，推送后自动构建并同步到 WebDAV。
+- **免费稳定**：公开仓库免费，GitHub 服务稳定可靠。
 
-如果还没有绑定 GitHub 仓库：
-
-```bash
-git remote add origin git@github.com:<你的用户名>/<仓库名>.git
-git branch -M main
-git push -u origin main
-```
-
-如果你使用 HTTPS，也可以：
-
-```bash
-git remote add origin https://github.com/<你的用户名>/<仓库名>.git
-git branch -M main
-git push -u origin main
-```
-
-建议优先使用 SSH，因为电脑和手机端 Git 工具都更适合长期保存 SSH key。
+在电脑端完成 GitHub 仓库初始化和推送即可。
 
 ## 第二步：配置电脑端 Obsidian
 
@@ -120,82 +105,56 @@ git push -u origin main
 
 ## 第三步：配置手机端 Obsidian
 
-手机端有两条路线：iPhone 用 Working Copy 更稳，Android 可以用 Obsidian Git 或 Termux。
+手机端推荐使用 `Remotely Save` 插件配合 WebDAV 进行同步。
 
-### iPhone：Working Copy + Obsidian
+### Remotely Save + WebDAV
 
-推荐组合：
-
-```text
-GitHub 仓库
-↕
-Working Copy
-↕
-Obsidian Mobile
-```
+如果 Obsidian Git 插件在手机端遇到权限、认证或路径问题，可以使用 `Remotely Save` 插件配合 WebDAV 进行同步。
 
 操作步骤：
 
-1. 在 App Store 安装 `Working Copy`。
-2. 在 Working Copy 里登录 GitHub。
-3. Clone 你的 `blog` 仓库。
-4. 在 Obsidian Mobile 里创建或打开本地 Vault，选择 Working Copy 中的 `blog/docs` 目录。
-5. 写作前在 Working Copy 里 Pull。
-6. 写作后在 Working Copy 里 Commit。
-7. Commit 后 Push 到 GitHub。
+1. 准备一个 WebDAV 服务（如 NAS 自带 WebDAV、坚果云、Nextcloud 等）。
+2. 在手机 Obsidian 打开 `blog/docs` Vault。
+3. 进入 Settings → Community plugins → 搜索安装 `Remotely Save`。
+4. 启用插件后进入设置页面。
+5. 选择远程类型为 **WebDAV**，配置：
+   - 服务器地址（如 `https://dav.jianguoyun.com/dav/`）
+   - 用户名
+   - 密码
+6. 点击检查连接，确认配置正确。
+7. 开启自动同步间隔（建议 10-30 分钟）。
 
-iPhone 上的关键点：
+常用 WebDAV 服务：
 
-- Obsidian 负责编辑文件。
-- Working Copy 负责 Git 同步。
-- 不要绕过 Working Copy 直接依赖 GitHub Pages，因为 GitHub Pages 不是文件同步工具。
+| 服务 | 说明 |
+| --- | --- |
+| 坚果云 | 国内服务，免费额度足够个人使用 |
+| Nextcloud | 自建私有云，需要自己部署 |
+| NAS WebDAV | 群晖、威联通等 NAS 自带 |
 
-### Android：Obsidian Git 或 Termux
+Remotely Save 的优点：
 
-Android 有两种常见方式。
+- 不依赖 Git 命令行，纯 API 调用。
+- 支持增量同步，只传输变更文件。
+- 支持端到端加密。
 
-方式 A：Obsidian Git 插件
+注意事项：
 
-1. 在 Android Obsidian 打开 `blog/docs` Vault。
-2. 安装并启用 `Obsidian Git`。
-3. 配置 GitHub 认证。
-4. 使用 Pull、Commit、Push 同步。
+- 电脑端也需要安装 Remotely Save 并配置相同的 WebDAV 服务。
+- 与 Git 方案互斥，二选一即可。
 
-方式 B：Termux + Git
+## 第四步：配置 GitHub Actions 自动发布
 
-1. 安装 Termux。
-2. 安装 Git：
+GitHub Actions 在每次推送到 main 分支时同时完成两件事：
+1. 构建并部署到 GitHub Pages（网页发布）
+2. 同步原始内容到 WebDAV（手机端同步）
 
-```bash
-pkg update
-pkg install git openssh
-```
+### 创建 Workflow 文件
 
-3. 配置 Git 身份：
-
-```bash
-git config --global user.name "你的名字"
-git config --global user.email "你的邮箱"
-```
-
-4. Clone 仓库到手机本地目录。
-5. 用 Obsidian 打开仓库里的 `docs` 目录。
-6. 在 Termux 里执行 pull、commit、push。
-
-Android 如果能稳定使用 Obsidian Git 插件，优先用方式 A；如果插件受系统权限、认证或文件路径限制，再换 Termux。
-
-## 第四步：配置 GitHub Pages 发布
-
-这个项目使用 VitePress，构建命令是：
-
-```bash
-npm run docs:build
-```
-
-GitHub Pages 推荐使用 GitHub Actions 自动发布。仓库需要有类似这个 workflow：
+在仓库根目录创建 `.github/workflows/deploy.yml`：
 
 ```yaml
-name: Deploy VitePress site to Pages
+name: Deploy VitePress to GitHub Pages and WebDAV
 
 on:
   push:
@@ -217,6 +176,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -224,10 +185,13 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
+      - name: Build with VitePress
         run: npm run docs:build
 
       - name: Upload artifact
@@ -235,46 +199,66 @@ jobs:
         with:
           path: docs/.vitepress/dist
 
-  deploy:
+  deploy-pages:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     needs: build
     runs-on: ubuntu-latest
+    name: Deploy to GitHub Pages
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  sync-webdav:
+    needs: build
+    runs-on: ubuntu-latest
+    name: Sync to WebDAV
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install rclone
+        run: curl https://rclone.org/install.sh | sudo bash
+
+      - name: Configure rclone
+        run: |
+          rclone config create mywebdav webdav \
+            url="${{ secrets.WEBDAV_URL }}" \
+            vendor=other \
+            user="${{ secrets.WEBDAV_USER }}" \
+            pass=$(rclone obscure "${{ secrets.WEBDAV_PASS }}")
+
+      - name: Sync docs to WebDAV
+        run: rclone sync docs mywebdav:/blog --progress
 ```
 
-GitHub 仓库设置：
+### 配置 Secrets
 
-1. 进入 Settings。
-2. 进入 Pages。
-3. Source 选择 `GitHub Actions`。
-4. 推送到 `main` 后，Actions 会自动构建并发布。
+在 GitHub 仓库设置中添加 WebDAV 凭据：
 
-当前 `docs/.vitepress/config.mjs` 里配置了：
+1. 进入 Settings → Secrets and variables → Actions。
+2. 添加以下 secrets：
+   - `WEBDAV_URL`：WebDAV 服务地址（如 `https://dav.jianguoyun.com/dav/`）
+   - `WEBDAV_USER`：WebDAV 用户名
+   - `WEBDAV_PASS`：WebDAV 密码
 
-```js
-base: "/blog/",
-```
+### 配置 GitHub Pages
 
-如果仓库名不是 `blog`，需要把它改成你的仓库名。例如仓库是 `notes`，就改成：
+1. 进入 Settings → Pages。
+2. Source 选择 `GitHub Actions`。
+3. 推送到 `main` 后，Actions 会自动构建并发布。
 
-```js
-base: "/notes/",
-```
+推送代码后，GitHub Actions 会自动：
+- 构建并部署到 GitHub Pages（网页访问）
+- 同步 `docs` 目录到 WebDAV（手机端通过 Remotely Save 获取原始内容）
 
-如果仓库是 `<用户名>.github.io`，通常改成：
+## 第五步：同步 Obsidian 配置
 
-```js
-base: "/",
-```
-
-## 第五步：处理 Obsidian 配置同步
-
-`.obsidian` 可以同步，但建议只同步必要配置。
+`.obsidian` 配置必须提交到 GitHub，才能通过 WebDAV 同步到手机端。否则手机端 Obsidian 会缺少电脑端的界面配置、插件设置等。
 
 建议提交：
 
@@ -283,6 +267,7 @@ base: "/",
 - `.obsidian/core-plugins.json`
 - `.obsidian/community-plugins.json`
 - `.obsidian/plugins/obsidian-git/`
+- `.obsidian/plugins/remotely-save/`
 
 建议谨慎提交：
 
@@ -365,36 +350,25 @@ git push
 
 手机端：
 
-1. 打开 Working Copy、Obsidian Git 或 Termux。
-2. 先 Pull。
-3. 打开 Obsidian Mobile 编辑。
-4. 回到 Git 工具 Commit。
-5. Push 到 GitHub。
+1. 打开 Obsidian。
+2. 等待 Remotely Save 自动同步，或手动触发同步。
+3. 查看或编辑文章。
+4. 再次同步确认成功。
 
-网页端：
+自动发布：
 
 1. GitHub 收到 Push。
 2. GitHub Actions 自动构建。
-3. GitHub Pages 更新网页。
+3. 构建产物部署到 GitHub Pages（网页访问）。
+4. 原始内容同步到 WebDAV（手机端获取）。
 
 ## 推荐最终方案
 
-免费优先：
-
 ```text
-电脑：Obsidian + Obsidian Git
-手机 iPhone：Obsidian Mobile + Working Copy
-手机 Android：Obsidian Mobile + Obsidian Git 或 Termux
-发布：GitHub Actions + GitHub Pages
+电脑：Obsidian + Obsidian Git（与 GitHub 同步）
+手机：Obsidian + Remotely Save（与 WebDAV 同步原始内容）
+网页：GitHub Pages（GitHub Actions 自动构建发布）
 真源：GitHub 仓库 main 分支
 ```
 
-省心优先：
-
-```text
-Obsidian Sync 负责电脑和手机同步
-GitHub 负责代码仓库和网页发布
-GitHub Pages 负责博客访问
-```
-
-如果使用免费方案，最重要的习惯是：**换设备前先 Push，开始写作前先 Pull**。
+最重要的习惯：**电脑端换设备前先 Push，开始写作前先 Pull**。

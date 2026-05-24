@@ -1,34 +1,27 @@
-name: Deploy VitePress to GitHub Pages
+name: Deploy VitePress to GitHub Pages and WebDAV
 
 on:
-  # 在推送到 main 分支时触发
   push:
-    branches:
-      - main
-
-  # 允许手动触发
+    branches: [main]
   workflow_dispatch:
 
-# 设置 GITHUB_TOKEN 的权限
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# 只允许一个并发部署
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
-  # 构建任务
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # 获取所有历史记录，用于生成最后更新时间
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -50,15 +43,38 @@ jobs:
         with:
           path: docs/.vitepress/dist
 
-  # 部署任务
-  deploy:
+  deploy-pages:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     needs: build
     runs-on: ubuntu-latest
-    name: Deploy
+    name: Deploy to GitHub Pages
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  sync-webdav:
+    needs: build
+    runs-on: ubuntu-latest
+    name: Sync to WebDAV
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install rclone
+        run: curl https://rclone.org/install.sh | sudo bash
+
+      - name: Configure rclone
+        run: |
+          rclone config create mywebdav webdav \
+            url="${{ secrets.WEBDAV_URL }}" \
+            vendor=other \
+            user="${{ secrets.WEBDAV_USER }}" \
+            pass=$(rclone obscure "${{ secrets.WEBDAV_PASS }}")
+
+      - name: Sync docs to WebDAV
+        run: rclone sync docs mywebdav:/blog --progress
