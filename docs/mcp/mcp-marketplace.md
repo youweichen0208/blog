@@ -67,17 +67,9 @@ Chrome DevTools MCP 让 Claude Code 可以通过 MCP 协议操作 Chrome 浏览�
 
 Claude 可以通过 Chrome DevTools MCP 自动操作浏览器，完成点击、填写、导航等操作：
 
-![](../images/posts/inbox/Pasted%20image%2020260524115554.png)
+![Claude 使用 Chrome DevTools MCP](/images/posts/2026/05/2026-05-24-screenshot.png)
 
 上图展示了 Claude 使用 Chrome DevTools MCP 自动打开网页并进行操作的过程。
-
-![](../images/posts/inbox/Pasted%20image%2020260524115530.png)
-
-上图展示了 MCP 连接成功后，Claude 可以实时获取页面状态并执行操作。
-
-![](../images/posts/inbox/Pasted%20image%2020260524115927.png)
-
-上图展示了 Chrome DevTools MCP 提供的工具列表，包括页面导航、点击、截图、脚本执行等功能。
 ---
 
 ## Playwright MCP
