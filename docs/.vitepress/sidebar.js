@@ -196,10 +196,31 @@ function generateSidebar() {
       },
     ],
 
+    "/linux/": [
+      {
+        text: "Linux 实用指南",
+        items: getSidebarItems("/linux", { sortBy: "date" }),
+      },
+    ],
+
     "/agent/": [
       {
         text: "Agent 开发",
         items: getSidebarItems("/agent"),
+      },
+    ],
+
+    "/dns-proxy/": [
+      {
+        text: "DNS 与代理",
+        items: getSidebarItems("/dns-proxy", {
+          sortBy: "order",
+          order: {
+            "nginx-reverse-proxy": 1,
+            "ssl-certificate": 2,
+            "deploy-dns-nginx": 3,
+          },
+        }),
       },
     ],
 

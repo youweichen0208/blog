@@ -45,6 +45,7 @@ export default withMermaid(
         { text: "Go", link: "/go/" },
         { text: "数据结构", link: "/data-structures/" },
         { text: "OpenClaw", link: "/openclaw/" },
+        { text: "Linux", link: "/linux/" },
         {
           text: "AI 开发",
           items: [
@@ -53,6 +54,7 @@ export default withMermaid(
             { text: "AIOps", link: "/aiops/" },
             { text: "Agent", link: "/agent/" },
             { text: "Skill", link: "/skill/" },
+            { text: "DNS 与代理", link: "/dns-proxy/" },
           ],
         },
         { text: "教程", link: "/tutorials/" },

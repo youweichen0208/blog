@@ -13,7 +13,7 @@ date: 2026-05-10
 
 | 场景 | 文章 | 适合解决的问题 |
 | --- | --- | --- |
-| 服务器基础 | [Linux 高频命令](./linux.md) | 排查端口、进程、日志和常见系统状态 |
+| 服务器基础 | [Linux 实用指南](../linux/) | 进程管理、端口排查、磁盘与系统运维 |
 | 网络代理 | [基于 Hysteria2 的高性能代理服务器搭建指南](./build-vpn.md) | 用 VPS 和 Hysteria2 搭建可用代理链路 |
 | LLM API 代理 | [海外 VPS 部署多 LLM API 代理](./vps-llm-proxy.md) | 用 Nginx 反向代理搭建 OpenAI/Claude/Gemini 统一入口 |
 | 自动部署 | [Jenkins CI/CD 从入门到实战：部署项目到阿里云](./jenkins-cicd.md) | 从 Jenkins 安装到 Pipeline 部署的完整流程 |
@@ -22,13 +22,13 @@ date: 2026-05-10
 
 ## 实战检查清单
 
-- 每篇教程尽量保留“环境信息、关键命令、验证方式、常见错误”四个部分。
+- 每篇教程尽量保留"环境信息、关键命令、验证方式、常见错误"四个部分。
 - 命令类文章优先写可复制的最小路径，再补原理和延伸阅读。
 - 运维类文章需要明确危险操作，例如防火墙、端口暴露、`kill -9`、证书和密钥权限。
 
 ## 后续计划
 
-- ✅ ~~补一篇 Nginx 反向代理和 HTTPS 证书配置~~（已完成：[LLM API 代理](./vps-llm-proxy.md)）
+- ✅ ~~补一篇 Nginx 反向代理和 HTTPS 证书配置~~（已完成：[LLM API 代理](./vps-llm-proxy.md)，专题见 [DNS 与代理](../dns-proxy/)）
 - ✅ ~~补一篇 Obsidian + GitHub 多端同步方案~~（已完成：[Obsidian + GitHub 多端同步博客方案](./obsidian-github-sync.md)）
+- ✅ ~~Linux 高频命令扩展~~（已迁移至 [Linux 实用指南](../linux/)，按场景组织）
 - 补一篇 Docker Compose 常用排障清单。
-- 把 Linux 高频命令扩展成按”端口、磁盘、日志、进程、网络”组织的速查表。
