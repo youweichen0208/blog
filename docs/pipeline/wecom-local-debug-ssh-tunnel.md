@@ -76,16 +76,33 @@ LOG_LEVEL=debug
 
 ## Step 2：建立 SSH 反向隧道
 
+**在你的本地电脑（Mac）上执行**这条命令（不是 SSH 登录服务器后执行）：
+
 ```bash
 ssh -R 18080:localhost:8080 root@<云服务器IP> -N
 ```
+
+**这条命令做了什么？**
+
+```
+本地电脑                        云服务器
+bot-wecom :8080  ←SSH隧道→  :18080
+```
+
+之后在云服务器上 `curl http://127.0.0.1:18080`，请求会被穿透 SSH 隧道到达你本机的 8080 端口。
 
 参数说明：
 
 | 参数 | 含义 |
 | --- | --- |
-| `-R 18080:localhost:8080` | 云服务器的 18080 端口 → 你本地的 8080 |
-| `-N` | 只建隧道，不打开远程 shell |
+| `-R 18080:localhost:8080` | Remote 端口转发：云服务器的 18080 → 你本地的 8080 |
+| `-N` | 只建隧道，不打开远程 shell（不执行任何命令） |
+
+命令执行后会前台运行、占着这个终端，调试完成 `Ctrl+C` 断开。如果想让它在后台运行：
+
+```bash
+ssh -R 18080:localhost:8080 root@<云服务器IP> -N -f  # -f 后台运行
+```
 
 开一个新终端窗口验证隧道是否通了：
 
@@ -343,6 +360,50 @@ certbot renew --dry-run
 ```
 
 如果用 nip.io 域名，certbot 可能不支持自动续期，手动 re-issue 即可。
+
+### Q: 云服务器上 8080 被 Docker 容器占用怎么办？
+
+在隧道用 18080 端口可以避开这个问题，但如果 Nginx 配置直接指向被占用的端口，需要先排查谁在用：
+
+```bash
+# 查看 8080 被谁占着
+ss -tlnp | grep 8080
+
+# 如果是 docker-proxy，找出对应容器
+docker ps --format "table {{.Names}}\t{{.Image}}\t{{.Ports}}" | grep 8080
+```
+
+两种处理方式：
+
+1. **停掉不需要的容器**：`docker stop <容器名>`
+2. **换端口**：SSH 隧道改用 `19080`，Nginx 配置改成 `proxy_pass http://127.0.0.1:19080`
+
+### Q: 回调验证失败，怎么系统排查？
+
+按以下顺序逐层排查，定位问题在哪一层：
+
+```bash
+# 第 1 层：DNS 是否生效
+dig your-domain.com +short
+
+# 第 2 层：HTTPS 能通吗（从外网测试）
+curl -v https://your-domain.com/wecom/callback?msg_signature=test
+
+# 第 3 层：Nginx 转发是否到达隧道端口（在云服务器上）
+curl http://127.0.0.1:18080/wecom/callback?msg_signature=test
+
+# 第 4 层：本地 bot 是否存活（在本机）
+curl http://localhost:8080/wecom/callback?msg_signature=test
+```
+
+| 测试结果 | 说明 |
+| --- | --- |
+| 第 1 层失败 | DNS 未生效，检查域名解析配置或实名认证 |
+| 第 2 层失败 | Nginx 未运行、SSL 证书问题或防火墙拦截 443 |
+| 第 3 层失败 | SSH 隧道断开了，或隧道端口被占用 |
+| 第 4 层失败 | 本地 bot 没有启动 |
+
+> 如果隧道端口 18080 返回 401 Unauthorized 且 HTML 格式为 Apache 风格，说明 18080 上有**其他服务**在监听，不是你的 bot——换端口即可。
 
 ### Q: 不想暴露 443 端口 / 没有域名
 
