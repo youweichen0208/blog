@@ -224,6 +224,13 @@ function generateSidebar() {
       },
     ],
 
+    "/pipeline/": [
+      {
+        text: "流水线与 CI/CD",
+        items: getSidebarItems("/pipeline", { sortBy: "date" }),
+      },
+    ],
+
     "/skill/": [
       {
         text: "Skill",
