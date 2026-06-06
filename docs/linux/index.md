@@ -20,7 +20,7 @@ tags:
 | 进程与端口 | lsof、ps、kill、top、netstat | ✅ 已写 |
 | 网络诊断 | curl、ping、dig、ss、traceroute | 🔄 进行中 |
 | 磁盘与文件 | df、du、find、chmod、chown | 📝 计划中 |
-| 服务与日志 | systemctl、journalctl、crontab | 📝 计划中 |
+| 服务与日志 | systemctl、journalctl、crontab | ✅ 已写 |
 | 用户与权限 | useradd、sudo、passwd、umask | 📝 计划中 |
 
 ## 当前内容
@@ -47,12 +47,11 @@ tags:
 - chmod / chown：权限修改与所有权
 - tar / gzip：压缩与解压
 
-### 服务与日志（计划中）
+### 服务与日志
+
+- [systemd 与 systemctl 实战](./systemd-systemctl.md) - 服务启停、开机自启、journalctl 日志与自定义 .service 文件
 
 计划覆盖：
-- systemctl：服务启动、停止、开机自启
-- journalctl：系统日志查询与过滤
-- crontab：定时任务配置
 - ufw：防火墙基础操作
 
 ## 使用建议
