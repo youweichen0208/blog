@@ -87,7 +87,17 @@ certbot renew --dry-run
 
 ## 3. nginx 反向代理配置
 
-创建站点配置文件 `/etc/nginx/sites-available/youwei-agent`：
+使用编辑器创建站点配置文件 `/etc/nginx/sites-available/youwei-agent`（这是一个文件，不是文件夹）：
+
+```bash
+# 用 nano 新建（适合新手，Ctrl+O 保存，Ctrl+X 退出）
+nano /etc/nginx/sites-available/youwei-agent
+
+# 或用 vim（i 进入插入模式，Esc → :wq 保存退出）
+vim /etc/nginx/sites-available/youwei-agent
+```
+
+填入以下内容：
 
 ```nginx
 server {
@@ -123,6 +133,47 @@ server {
     return 301 https://$host$request_uri;
 }
 ```
+
+这份配置由两个 `server` 块组成，各自职责如下：
+
+### 第一个 server 块：处理 HTTPS 请求（443 端口）
+
+```nginx
+server {
+    listen 443 ssl;                                    # 监听 HTTPS 端口（443）
+    server_name youwei-agent.com www.youwei-agent.com; # 匹配哪个域名的请求
+
+    # ssl_certificate / ssl_certificate_key 由 certbot 自动填入，
+    # 告诉 Nginx 用哪个证书和私钥做 TLS 握手
+```
+
+`location` 是路由规则，Nginx 按请求路径分配给不同后端：
+
+| 客户端请求 | location 匹配 | 转发到 |
+|---|---|---|
+| `https://youwei-agent.com/wecom/callback` | `/wecom/` | `127.0.0.1:8080`（bot-wecom） |
+| `https://youwei-agent.com/` 或其他路径 | `/` | `127.0.0.1:8090`（web-ui） |
+
+`proxy_set_header` 把客户端的真实信息透传给后端，否则后端拿不到真实 IP 和域名：
+
+| Header | 作用 |
+|---|---|
+| `Host $host` | 告诉后端请求来自哪个域名 |
+| `X-Real-IP $remote_addr` | 客户端真实 IP（否则后端只看到 127.0.0.1） |
+| `X-Forwarded-For` | 多级代理时追踪完整链路 |
+| `X-Forwarded-Proto $scheme` | 客户端用的是 http 还是 https |
+
+### 第二个 server 块：HTTP 强制跳转 HTTPS（80 端口）
+
+```nginx
+server {
+    listen 80;
+    server_name youwei-agent.com www.youwei-agent.com;
+    return 301 https://$host$request_uri;  # 所有 HTTP 请求 301 跳转到 HTTPS
+}
+```
+
+用户输入 `http://youwei-agent.com/xxx` 时，浏览器被强制跳转到 `https://youwei-agent.com/xxx`，确保所有流量都走加密通道。
 
 启用站点并重载 nginx：
 
