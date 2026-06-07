@@ -274,6 +274,21 @@ services:
 - 添加 **Deployment branches**：只允许 `main` 触发
 - 设置 **Wait timer**：强制等待一段时间
 
+> **⚠️ Environment Secrets vs Repository Secrets：最容易踩的坑**
+>
+> 如果你的 `deploy` job 加了 `environment: production`，它**只能访问 Environment 级别的 Secrets**，不能访问 Repository 级别的 Secrets。
+>
+> GitHub 把 Secrets 分两层：
+>
+> | 层级 | 位置 | deploy job 是否能访问 |
+> | --- | --- | --- |
+> | Repository secrets | Settings → Secrets and variables → **Actions** | ❌ 不能（如果 job 有 environment） |
+> | Environment secrets | Settings → Environments → **production** → Environment secrets | ✅ 能 |
+>
+> **推荐做法**：把所有生产 Secret 都配在 **production Environment** 下（Settings → Environments → production → Environment secrets），Repository 级别只放公共的非敏感配置（如 `AGENT_MODEL`）。
+>
+> 详见 [部署 Web 到 DO 的踩坑 FAQ](./deploy-web-to-do.md#qgithub-environment-secrets-vs-repository-secrets-不生效)。
+
 ## 6. 触发与验证
 
 ### 6.1 自动触发

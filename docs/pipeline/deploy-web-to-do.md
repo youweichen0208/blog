@@ -468,6 +468,113 @@ docker compose -f docker-compose.prod.yml up -d
 
 或在 GitHub Actions 页面找到上一次成功的 workflow run，点 **Re-run all jobs**。
 
+### Q：GitHub Environment Secrets vs Repository Secrets 不生效
+
+这是最容易踩的坑。如果你的 `deploy` job 加了 `environment: production`，它**只能访问 Environment 级别的 Secrets**，不能访问 Repository 级别的。
+
+**排查：**
+
+1. Settings → Environments → production → **Environment secrets**：看关键 Secrets 是否在这里
+2. Settings → Secrets and variables → **Actions → Repository secrets**：看是否误配在这里
+
+**修复：**把 `DASHSCOPE_API_KEY`、`TAVILY_API_KEY`、`DO_SSH_KEY`、`DO_HOST` 等都配在 **production** Environment 下，删掉 Repository 级的副本（避免混淆）。
+
+**踩坑案例**：
+- `deploy.yml` 里有 `environment: production`，但 `DASHSCOPE_API_KEY` 只在 Repository 级配了
+- CI 跑通但部署到 DO 后 `.env` 里所有 Key 是空值
+- 容器启动 panic: `missing required env DASHSCOPE_API_KEY`
+
+### Q：手动改了 .env 后重启容器，新值没生效
+
+`docker compose restart` **不会**重新读取 `.env`。必须：
+
+```bash
+cd /opt/youwei-trading-agent
+docker compose -f docker-compose.prod.yml up -d --force-recreate web
+```
+
+`--force-recreate` 会销毁旧容器并新建，确保环境变量重新加载。
+
+**踩坑案例**：
+
+```bash
+# 修改 .env 后
+docker compose restart web
+# → 容器还是用旧 env，依然 panic
+```
+
+### Q：docker compose 警告 "IMAGE_REPO variable is not set"
+
+`docker-compose.prod.yml` 里用了 `${IMAGE_REPO}/web:latest`，但 `IMAGE_REPO` 不是 `.env` 里的变量，而是 CI 在 SSH session 里 `export` 的。
+
+**手动操作时**（比如 SSH 排查问题、手动重启），必须自己 export：
+
+```bash
+cd /opt/youwei-trading-agent
+export IMAGE_REPO=ghcr.io/<你的github用户名>/<仓库名>
+export IMAGE_REPO=$(echo $IMAGE_REPO | tr '[:upper:]' '[:lower:]')
+docker compose -f docker-compose.prod.yml up -d
+```
+
+否则 compose 会把 `${IMAGE_REPO}/web:latest` 解析成 `/web:latest`，拉取或启动都会失败。
+
+### Q：容器反复 restart，日志说 env 缺失
+
+```
+panic: missing required env DASHSCOPE_API_KEY
+```
+
+**原因**：`.env` 文件在 DO 上被覆盖成空值，或根本没写。
+
+**紧急排查**：
+
+```bash
+cat /opt/youwei-trading-agent/.env | grep -E "DASHSCOPE|TAVILY" | head -2
+# 期望：看到真实的 KEY 值
+# 如果看到 DASHSCOPE_API_KEY=（空）→ 说明 CI 覆盖成了空值
+```
+
+**临时修复**：手动写入正确的 `.env`（参考本文第 5 节），然后 `--force-recreate`。
+
+**永久修复**：确认 GitHub Environment Secrets 配对了所有必要值，CI 下次部署时才会写入正确的 `.env`。
+
+### Q：GitHub Actions SSH key 报 "error in libcrypto" / "Permission denied (publickey)"
+
+SSH key 的格式不对。`shimataro/ssh-key-action@v2` action 在 Ubuntu runner 上需要传统 **PEM 格式**的密钥。
+
+**ed25519 vs RSA：**
+
+| 生成命令 | 默认格式 | 是否兼容 |
+| --- | --- | --- |
+| `ssh-keygen -t ed25519` | OpenSSH 新格式 | ⚠️ 部分 runner 报错 |
+| `ssh-keygen -t rsa -b 4096 -m PEM` | 传统 PEM | ✅ 最安全 |
+
+**修复**：
+
+```bash
+# 生成兼容格式的密钥
+ssh-keygen -t rsa -b 4096 -m PEM -C "ci-do-deploy" -f ~/.ssh/do_deploy_key_rsa -N ""
+```
+
+把生成的 `do_deploy_key_rsa`（私钥）复制到 GitHub Secret `DO_SSH_KEY`。
+
+### Q：SSH 拉镜像时连接断开
+
+`ssh: connection closed by peer` 或 `client_loop: send disconnect: Broken pipe`。
+
+**原因**：SSH 长时间无活动（拉镜像慢的话几分钟），被中间设备断掉。
+
+**修复**：deploy.yml 里加 SSH 保活参数：
+
+```sh
+ssh -o StrictHostKeyChecking=accept-new \
+    -o ServerAliveInterval=60 \
+    -o ServerAliveCountMax=10 \
+    root@${HOST} ...
+```
+
+每 60 秒发一个心跳包，10 次失败才断开 = 连接保持 10 分钟。
+
 ## 9. 总结
 
 | 层级 | 组件 | 职责 |
@@ -478,12 +585,13 @@ docker compose -f docker-compose.prod.yml up -d
 | CI | GitHub Actions | 镜像构建 + 部署 |
 | 镜像 | GHCR | 私有容器仓库 |
 
-**这个项目的三篇部署文章：**
+**这个项目的部署文章：**
 
 | 文章 | 部署目标 | 内容 |
 | --- | --- | --- |
 | [GitHub Actions + GHCR + SSH](./github-actions-ghcr-deploy.md) | 通用 CI/CD | 基础流水线模式 |
 | 本文 | DigitalOcean | React+Go 容器 + Nginx HTTPS |
 | [AKShare 部署到阿里云 ECS](./deploy-akshare-to-ecs.md) | 阿里云 ECS | A 股数据源 + 双环境并行 |
+| [阿里云邮件验证码配置](./setup-aliyun-email.md) | 阿里云 DirectMail | 让验证码真正发到邮箱 |
 
 push to `main`，剩下的全自动。
