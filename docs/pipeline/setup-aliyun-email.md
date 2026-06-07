@@ -377,8 +377,10 @@ docker compose -f docker-compose.prod.yml logs --tail=50 web | grep -E "ERROR|em
 
 | 日志关键字 | 错误含义 | 修复方法 |
 |-----------|---------|----------|
+| `Forbidden` + `not authorized to operate` | RAM 子账号缺少邮件推送权限 | 见下方「3e. RAM 权限不足」 |
 | `InvalidAccessKeyId` | AccessKey ID 写错了 | 检查 RAM AccessKey ID，注意首字符不是空格 |
 | `InvalidAccessKeySecret` | AccessKey Secret 写错了 | 检查 Secret，注意只显示一次不要复制错 |
+| `MissingReplyToAddress` | 代码参数漏了 `ReplyToAddress` | 检查代码 `aliyun.go` 的 `params` 包含 `"ReplyToAddress": "true"` |
 | `InvalidDomainName` | 发信域名 DNS 验证没通过 | 回阿里云控制台点「验证配置」，4 条 DNS 全绿才行 |
 | `InvalidAddress` | 发信地址 `noreply@...` 没创建或格式错 | 检查阿里云「发信地址」页面是否创建了 |
 | `QuotaExhausted` | 当日发信额度达到上限（默认 500 封） | RAM 控制台提高配额，或换个 RAM 子账号 |
@@ -411,6 +413,60 @@ docker compose -f docker-compose.prod.yml logs --tail=50 web | grep -A 5 "aliyun
 
 如果确认进了垃圾箱，说明 DKIM / SPF / DMARC 配置有问题，收件方邮件服务器不信任你的发信域名。重新检查 DNS 4 条记录。
 
+**3e. RAM 权限不足（Forbidden 错误）**
+
+完整错误信息类似：
+
+```json
+{
+  "Code": "Forbidden",
+  "Message": "The user is not authorized to operate on the specified resource.",
+  "AccessDeniedDetail": {
+    "AuthPrincipalType": "SubUser",
+    "AuthPrincipalOwnerId": "13686690xxxxxx"
+  }
+}
+```
+
+**根因**：RAM 子账号 `directmail-sender` 没有 `AliyunDMFullAccess` 权限，或者根本没授权到 DirectMail API。
+
+**修复步骤**：
+
+1. 打开 RAM 控制台：https://ram.console.aliyun.com/users
+2. 找到 `directmail-sender`（或者你给子账号起的名字）→ 点进去 → **权限管理** 标签页
+3. 点 **新增授权** → 搜索 `AliyunDMFullAccess` → 勾选 → 确定
+
+如果权限已经加了还是报错，排查这几点：
+
+| 检查项 | 说明 |
+|--------|------|
+| AccessKey ID/Secret 是不是配错的子账号？ | RAM 控制台 → 子账号 → **AccessKey 管理**，确认 AccessKey ID 前缀（如 `LTAI5t...`）和你用的一致 |
+| 权限是不是还没生效？ | RAM 权限变更是**即时生效**的，不需要等。但可以 `docker compose -f docker-compose.prod.yml restart web` 试一下（注意要用 `--force-recreate` 才能真正重新加载环境变量） |
+| 是不是授权到了错误的子账号？ | 确认你授权的子账号就是生成 AccessKey 的那个。RAM 控制台 → 子账号列表，每个子账号的 AccessKey 单独管理 |
+
+如果还是不行，最后手段：**删除旧的 AccessKey，重新创建**：
+
+1. RAM 控制台 → 子账号 → **AccessKey 管理** → 删除旧 AccessKey
+2. **创建 AccessKey** → 复制新的 ID 和 Secret（只显示一次）
+3. 更新 DO 的 `.env` + GitHub Environment Secrets（`ALIYUN_ACCESS_KEY_ID` 和 `ALIYUN_ACCESS_KEY_SECRET`）
+4. 在 DO 上执行：
+   ```bash
+   cd /opt/youwei-trading-agent
+   export IMAGE_REPO=ghcr.io/<你的github>/<仓库名>
+   docker compose -f docker-compose.prod.yml up -d --force-recreate web
+   ```
+
+**为什么会漏授权？**
+
+RAM 子账号创建时**默认没有任何权限**，必须手动添加授权。阿里云的授权方式有两种，容易搞混：
+
+| 方式 | 在哪里操作 | 区别 |
+|------|-----------|------|
+| 子账号详情页 → **权限管理** | 给指定子账号加权限 | ✅ 推荐，明确 |
+| 权限策略 → **用户授权** | 从权限侧找用户 | 同上，入口不同而已 |
+
+两种方式等价，任选一种即可。关键是授权后必须能看到子账号的权限列表里有 `AliyunDMFullAccess`。
+
 ## 8. 总结
 
 | 步骤 | 耗时 |
@@ -433,6 +489,7 @@ docker compose -f docker-compose.prod.yml logs --tail=50 web | grep -A 5 "aliyun
 | 收到 550 错误 | SPF / DKIM / DMARC 必须全部验证通过 |
 | 邮件进垃圾箱 | DNS 4 条记录全配 + 收件方加白名单或检查 Promotion 文件夹 |
 | `InvalidAccessKeyId` | RAM AccessKey ID/Secret 只显示一次，复制错了只能删了重新生成 |
+| `Forbidden` / `not authorized` | RAM 子账号**默认没有任何权限**，必须手动去 RAM 控制台给 `directmail-sender` 添加 `AliyunDMFullAccess` 授权 |
 
 配好之后的维护基本为零——DirectMail 的 DNS 和证书都不需要续期，每月免费 2000 封邮件对 MVP 绰绰有余。
 
