@@ -190,94 +190,226 @@ DNS 通常 1-2 分钟生效。4 条全绿 ✅ 才算成功。
 
 ## 4. 创建 RAM 子账号 + AccessKey
 
-访问 [RAM 控制台](https://ram.console.aliyun.com/) → **用户** → **创建用户**：
+访问 [RAM 控制台](https://ram.console.aliyun.com/) → **用户** → **创建用户**。
 
-- 登录名称：`directmail-sender`
-- 勾选「**OpenAPI 调用访问**」（即编程访问）
-- 不勾选「控制台访问」
+### 4.1 基本信息
 
-授权：
-- 用户列表 → 找到 `directmail-sender` → **添加权限**
-- 搜索 `AliyunDMFullAccess`（邮件推送管理权限）
-- 勾选并确认
+| 字段 | 填什么 |
+| --- | --- |
+| 登录名称 | `directmail-sender` |
+| 显示名称 | `邮件推送服务`（可选） |
+| 标签 | 不用绑 |
+| MFA / 安全手机 / 安全邮箱 | 不用填 |
 
-生成 AccessKey：
-- 回到用户列表 → 点 `directmail-sender` → **AccessKey** 标签页
-- **创建 AccessKey** → 下载或复制
-  - `AccessKey ID`：形如 `LTAI5txxxxxxxxx`
-  - `AccessKey Secret`：形如 `YjKxxxxxxxxxxxxx`（只显示一次，务必保存）
+### 4.2 访问配置
+
+阿里云 2025 年起改了界面措辞，两个选项二选一（建议只勾一种）：
+
+| 选项 | 是否勾选 | 说明 |
+| --- | --- | --- |
+| **使用控制台访问** | ❌ 不勾 | 这个是让人登录网页的，子账号不需要 |
+| **使用永久 AccessKey 访问** | ✅ 勾选 | 这个就是以前叫「OpenAPI 调用访问」的选项，用于程序调 API |
+
+> 旧文档里写的「勾选 OpenAPI 调用访问」= 现在的「使用永久 AccessKey 访问」，是同一个东西改了个名字。
+
+点 **添加用户**，会自动弹出 AccessKey 对：
+
+- `AccessKey ID`：形如 `LTAI5txxxxxxxxx`
+- `AccessKey Secret`：形如 `YjKxxxxxxxxxxxxx`
+
+⚠️ **只显示一次，务必立即保存**。关了窗口就再也看不到了，只能删了重新生成。
+
+### 4.3 授权
+
+回到用户列表 → 找到 `directmail-sender` → **添加权限**：
+
+1. 搜索 `AliyunDMFullAccess`
+2. 勾选并确认
+
+这个权限只能调用邮件推送相关的 API，不能动你的 ECS、OSS 等其他资源。
 
 > **安全第一**：用 RAM 子账号而不是主账号的 AccessKey。主账号的 AccessKey 一旦泄露等于交出整个阿里云账号。
 
 ## 5. 写入 DO 的 .env
 
-把三个值添加到 DO 的 `/opt/youwei-trading-agent/.env`：
+把四个值添加到 DO 的 `/opt/youwei-trading-agent/.env`：
 
 ```bash
-# 接在现有行后面追加
+# 在 DO 上执行
+cat >> /opt/youwei-trading-agent/.env << 'EOF'
 ALIYUN_ACCESS_KEY_ID=LTAI5txxxxxxxxx
 ALIYUN_ACCESS_KEY_SECRET=YjKxxxxxxxxxxxxx
-EMAIL_FROM_ADDRESS=noreply@youwei-agent.com
+EMAIL_FROM_ADDRESS=noreply@yourdomain.com
+EMAIL_FROM_NAME="Your Project Name"
+EOF
 ```
 
-**⚠️ 注意**：CI 部署会重新覆盖 `.env`，所以必须同步在 GitHub Environment Secrets 中也加上这三个：
+**⚠️ 注意：必须同步配置 GitHub Environment Secrets**
 
-| GitHub Secret | 值 |
-| --- | --- |
+只写 DO 的 `.env` 不够——CI 下次部署时会把 `.env` 重新覆盖，导致邮件配置丢失！必须把这 4 个值加到 GitHub：
+
+**GitHub repo → Settings → Environments → production → Environment secrets**，添加：
+
+| Secret Name | Value |
+|-------------|-------|
 | `ALIYUN_ACCESS_KEY_ID` | RAM AccessKey ID |
 | `ALIYUN_ACCESS_KEY_SECRET` | RAM AccessKey Secret |
-| `EMAIL_FROM_ADDRESS` | `noreply@youwei-agent.com` |
+| `EMAIL_FROM_ADDRESS` | `noreply@yourdomain.com` |
+| `EMAIL_FROM_NAME` | 发件人显示名称（如 `Youwei Agent`） |
 
-然后在项目的 `.github/workflows/deploy.yml` 的 `Prepare .env` step 中也加上这三行，让 CI 下次部署时自动写入。（具体见[部署 Web 到 DO](./deploy-web-to-do.md#5-github-actions-部署流程)。）
+> ⚠️ **必须配在 Environment (production) 下的 Secrets**，不是 Repository Secrets。因为 `deploy.yml` 的 `deploy` job 带了 `environment: production`，只能访问 Environment 级别的 Secrets。配错了位置（放在 Repository Secrets），CI 部署时这些值会是空的。
+
+**还需要更新 `.github/workflows/deploy.yml`**
+
+在 `deploy.yml` 的 `Prepare .env locally` 步骤（约第 128 行）的 `.env` 模板末尾，加上这 4 行：
+
+```yaml
+          # deploy.yml: Prepare .env locally 的 cat > .env 部分
+          # ... 前面的配置 ...
+          WECOM_CORP_ID=${{ secrets.WECOM_CORP_ID }}
+          WECOM_AGENT_ID=${{ secrets.WECOM_AGENT_ID }}
+          WECOM_SECRET=${{ secrets.WECOM_SECRET }}
+          # ↓↓↓ 邮件配置，新增 ↓↓↓
+          ALIYUN_ACCESS_KEY_ID=${{ secrets.ALIYUN_ACCESS_KEY_ID }}
+          ALIYUN_ACCESS_KEY_SECRET=${{ secrets.ALIYUN_ACCESS_KEY_SECRET }}
+          EMAIL_FROM_ADDRESS=${{ secrets.EMAIL_FROM_ADDRESS }}
+          EMAIL_FROM_NAME=${{ secrets.EMAIL_FROM_NAME }}
+          ENVEOF
+```
+
+否则即使 GitHub Secrets 配了，CI 部署时 `.env` 里还是没有邮件配置，容器启动会报错或者回退到 `ConsoleSender`（只打日志不发邮件）。
+
+更新后正常走 Git 流程提交：
+
+```bash
+git add .github/workflows/deploy.yml
+git commit -m "feat(deploy): add email config to .env template"
+git push origin main
+```
+
+CI 会自动部署，这次部署会把邮件配置写进 DO 的 `.env`。
 
 ## 6. 重新部署 web 容器
 
-修改 `.env` 后，`docker compose restart` **不会**重新加载环境变量（这是常见的坑）。必须用 `up -d --force-recreate`：
+**⚠️ 修改 `.env` 之后，`docker compose restart` 不会重新加载环境变量！这是最常见的坑。**
+
+正确姿势：
 
 ```bash
 cd /opt/youwei-trading-agent
+
+# 如果你手动操作，先 export IMAGE_REPO 避免 compose 警告
+export IMAGE_REPO=ghcr.io/<你的github用户名>/<仓库名>
+export IMAGE_REPO=$(echo $IMAGE_REPO | tr '[:upper:]' '[:lower:]')
+
 docker compose -f docker-compose.prod.yml up -d --force-recreate web
 ```
 
-验证启动日志确认走的是阿里云 sender：
+> **为什么 `restart` 不行**：`restart` 只是重启容器进程，不会重新读取宿主机上的 `.env`。`--force-recreate` 才会销毁旧容器，新建一个新容器，重新注入环境变量。
+>
+> **`IMAGE_REPO variable is not set` 警告**：如果你没 `export IMAGE_REPO`，compose 会把镜像解析成 `/web:latest`，拉取时直接失败。CI 里不需要 `export`，因为 GitHub Actions runner 在 SSH session 里 export 了。
+
+验证启动日志，确认走阿里云 sender：
 
 ```bash
 docker compose -f docker-compose.prod.yml logs --tail=20 web | grep email_sender
 ```
 
-期望看到：
+**期望看到**（配置成功）：
 
 ```
-{"level":"INFO","msg":"email_sender_aliyun","from":"noreply@youwei-agent.com"}
+{"level":"INFO","msg":"email_sender_aliyun","from":"noreply@yourdomain.com"}
 ```
 
-如果还是看到 `email_sender_console`，说明环境变量没生效，检查第 5 步是否用 `force-recreate`。
+**❌ 错误情况**：
+
+```
+{"level":"INFO","msg":"email_sender_console","hint":"set ALIYUN_ACCESS_KEY_ID + ..."}
+```
+
+这个表示环境变量没生效，回到了 ConsoleSender（只打日志不发邮件）。检查：
+1. `.env` 里是不是真的有 `ALIYUN_ACCESS_KEY_ID` 这行
+2. 是不是用了 `--force-recreate` 而不是 `restart`
+3. `docker compose exec web env | grep ALIYUN` 看容器内环境变量是不是空的
 
 ## 7. 端到端测试
 
-打开 `https://你的域名` → 邮箱验证码登录 → 输入邮箱 → 点「发送验证码」。
-
-预期：
-
-1. 浏览器显示"验证码已发送"
-2. 邮箱里（含垃圾箱）收到一封标题为「您的验证码」的邮件
-3. 输入邮件里的 6 位验证码 → 登录成功
-
-如果没收到邮件，查看容器日志：
+**Step 1：验证 DNS 全部生效**（可选但推荐）
 
 ```bash
+# 任意能解析 DNS 的机器上
+dig yourdomain.com TXT +short | grep -i spf
+dig mx01.dm.aliyun.com._domainkey.yourdomain.com TXT +short
+dig _dmarc.yourdomain.com TXT +short
+dig yourdomain.com MX +short
+```
+
+或者回到阿里云邮件推送控制台 → **发信域名** → 4 条记录全绿 ✅。
+
+**Step 2：发起验证码请求**
+
+打开 `https://你的域名` → 邮箱验证码登录 → 输入你常用的邮箱（QQ / 163 / Gmail 都行）→ 点「发送验证码」。
+
+**预期结果**：
+
+1. 浏览器显示「验证码已发送」
+2. 邮箱里（含垃圾箱 / 订阅邮件 folder）收到一封标题为「您的验证码：xxxxxx」的邮件
+3. 输入邮件里的 6 位验证码 → 登录成功
+
+**Step 3：如果没收到邮件，排查**
+
+**3a. 先确认发送是否调用了阿里云**
+
+```bash
+# 在 DO 上执行
 docker compose -f docker-compose.prod.yml logs --tail=30 web | grep -i email
 ```
 
-**常见错误**：
+应该能看到 `email_code_sent` 或 `aliyun_email_failed`。如果只有 `email_code_sent` 没看到 `aliyun_email_failed`，说明阿里云 API 调用成功了，问题在收件方那边（被过滤了）。
 
-| 日志内容 | 原因 | 修复 |
-| --- | --- | --- |
-| `aliyun_email_failed` + `InvalidAccessKeyId` | AccessKey ID 错误 | 检查 RAM AccessKey ID |
-| `InvalidApi` | API 调用格式错误 | 极少出现，联系代码 |
-| `InvalidDomainName` | 发信域名 DNS 没通过验证 | 回阿里云控制台点「验证配置」 |
-| `QuotaExhausted` | 当日发信额度用尽 | RAM 控制台调高配额 |
-| 无 `email_code_sent` 日志 | 根本没走到发送函数 | 重启容器确认走 AliyunSender |
+**3b. 看有没有报错**
+
+```bash
+docker compose -f docker-compose.prod.yml logs --tail=50 web | grep -E "ERROR|email"
+```
+
+**常见错误对照表**：
+
+| 日志关键字 | 错误含义 | 修复方法 |
+|-----------|---------|----------|
+| `InvalidAccessKeyId` | AccessKey ID 写错了 | 检查 RAM AccessKey ID，注意首字符不是空格 |
+| `InvalidAccessKeySecret` | AccessKey Secret 写错了 | 检查 Secret，注意只显示一次不要复制错 |
+| `InvalidDomainName` | 发信域名 DNS 验证没通过 | 回阿里云控制台点「验证配置」，4 条 DNS 全绿才行 |
+| `InvalidAddress` | 发信地址 `noreply@...` 没创建或格式错 | 检查阿里云「发信地址」页面是否创建了 |
+| `QuotaExhausted` | 当日发信额度达到上限（默认 500 封） | RAM 控制台提高配额，或换个 RAM 子账号 |
+| `InvalidFromAddress` | 收件方邮箱拒绝接收 | 可能是邮箱域名黑名单，换一个邮箱收件人试试 |
+| 没有任何 email 日志 | 请求根本没走到邮件发送函数 | 检查登录接口，可能是前端或路由配置问题 |
+
+**3c. 邮件显示被拒收（550 错误）**
+
+某些邮箱（特别是 163 / QQ）对阿里云直发邮件比较严格，可能直接返回 `550 SPF check failed` 或 `550 Sender address rejected`。
+
+排查：
+
+```bash
+# 看完整错误
+docker compose -f docker-compose.prod.yml logs --tail=50 web | grep -A 5 "aliyun_email_failed"
+```
+
+常见原因：
+- **SPF 记录配错**：检查你的域名 SPF 是不是 `include:spf1.dm.aliyun.com -all`
+- **DMARC 设为 reject**：阿里云给的默认是 `p=none`，如果你自己改成了 `p=reject`，会拒收未通过 SPF/DKIM 的邮件
+- **发信域名 DNS 验证失败**：回到阿里云控制台点「验证配置」
+
+**3d. 完全没收到，但 API 返回成功**
+
+这是最常见的「假成功」情况，邮件被收件方静默丢弃到垃圾箱 / 订阅邮件 / 广告邮件文件夹。让用户检查：
+
+- **Gmail**：垃圾箱 + 促销（Promotions） + 社交（Social）标签
+- **QQ 邮箱**：垃圾箱
+- **163 邮箱**：广告邮件
+
+如果确认进了垃圾箱，说明 DKIM / SPF / DMARC 配置有问题，收件方邮件服务器不信任你的发信域名。重新检查 DNS 4 条记录。
 
 ## 8. 总结
 
@@ -287,8 +419,20 @@ docker compose -f docker-compose.prod.yml logs --tail=30 web | grep -i email
 | 配发信域名 + DNS + 验证 | 10 分钟（含 DNS 传播） |
 | 创发信地址 | 1 分钟 |
 | 创 RAM 子账号 + AccessKey | 3 分钟 |
-| 写 .env + 重启容器 | 2 分钟 |
-| **总计** | **~15 分钟** |
+| 写 DO .env + `--force-recreate` 重启 | 2 分钟 |
+| **配 GitHub Environment Secrets + 改 deploy.yml** | 3 分钟 |
+| CI 部署验证 | 2 分钟 |
+| **总计** | **~20 分钟** |
+
+**踩坑清单**（来自实战）：
+
+| 坑 | 解决 |
+| --- | --- |
+| `.env` 改完没生效 | `restart` 不会重新加载 `.env`，必须 `--force-recreate` |
+| CI 部署后邮件配置丢失 | GitHub Secrets 配在 Environment (production) 下，且 deploy.yml 的 `.env` 模板里加上了邮件变量 |
+| 收到 550 错误 | SPF / DKIM / DMARC 必须全部验证通过 |
+| 邮件进垃圾箱 | DNS 4 条记录全配 + 收件方加白名单或检查 Promotion 文件夹 |
+| `InvalidAccessKeyId` | RAM AccessKey ID/Secret 只显示一次，复制错了只能删了重新生成 |
 
 配好之后的维护基本为零——DirectMail 的 DNS 和证书都不需要续期，每月免费 2000 封邮件对 MVP 绰绰有余。
 
