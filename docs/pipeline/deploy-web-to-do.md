@@ -158,6 +158,27 @@ services:
 - `WEB_HTTP_ADDR` 显式声明容器监听端口，和 Nginx `proxy_pass` 对齐
 - `/data:/data` 挂载确保 SQLite 文件持久化在宿主机 `./data/`
 
+### Dockerfile.web 与 docker-compose 的分工
+
+|  | Dockerfile.web | docker-compose.prod.yml |
+| --- | --- | --- |
+| 职责 | 定义如何**构建**镜像 | 定义如何**运行**容器 |
+| 关注点 | 编译环境、依赖安装、产物拷贝 | 端口映射、环境变量、数据卷 |
+| 执行位置 | GitHub Actions CI runner | DigitalOcean 服务器 |
+| 执行时机 | `docker build` 阶段 | `docker compose up` 阶段 |
+
+类比：`Dockerfile` 是食谱（决定菜怎么炒），`docker-compose` 是点单（决定用哪个盘子、配什么饮料、放哪桌）。
+
+流程中的对应关系：
+
+```text
+Dockerfile.web → docker build → 推镜像到 GHCR
+                                         ↓
+docker-compose.prod.yml → docker pull + up → 容器运行在 DO
+```
+
+在这个项目里，CI 的 `build` job 用 Dockerfile 打镜像推到 GHCR，`deploy` job 通过 SSH 在 DO 上用 compose 拉取并启动。两者协作完成从源码到运行的完整链路。
+
 ## 5. GitHub Actions 部署流程
 
 CI 流水线分三步，详见项目 `.github/workflows/deploy.yml`。这里挑关键的 `deploy` job 讲：
