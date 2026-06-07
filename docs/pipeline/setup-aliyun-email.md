@@ -378,6 +378,10 @@ docker compose -f docker-compose.prod.yml logs --tail=50 web | grep -E "ERROR|em
 | 日志关键字 | 错误含义 | 修复方法 |
 |-----------|---------|----------|
 | `Forbidden` + `not authorized to operate` | RAM 子账号缺少邮件推送权限 | 见下方「3e. RAM 权限不足」 |
+| `InvalidMailAddress.NotFound` | 发信地址未在控制台创建，或地域不匹配 | 见下方「3f. 发信地址 NotFound」 |
+| `InvalidAccessKeyId.Inactive` / `Specified access key is disabled` | AccessKey 已被删除或禁用，但 `.env` 里还是旧值 | 见下方「3h. AccessKey 已失效」 |
+| `dial tcp: lookup dm.cn-hangzhou.aliyuncs.com: server misbehaving` | 用了错误的 API endpoint（地域专用域名无法解析） | 见下方「3i. API Endpoint 地域问题」 |
+| `too frequent, try again in 60 seconds` | 触发频率限制（同一用户 60 秒内重复请求） | 等 60 秒再试，或换不同邮箱测试 |
 | `InvalidAccessKeyId` | AccessKey ID 写错了 | 检查 RAM AccessKey ID，注意首字符不是空格 |
 | `InvalidAccessKeySecret` | AccessKey Secret 写错了 | 检查 Secret，注意只显示一次不要复制错 |
 | `MissingReplyToAddress` | 代码参数漏了 `ReplyToAddress` | 检查代码 `aliyun.go` 的 `params` 包含 `"ReplyToAddress": "true"` |
@@ -467,6 +471,135 @@ RAM 子账号创建时**默认没有任何权限**，必须手动添加授权。
 
 两种方式等价，任选一种即可。关键是授权后必须能看到子账号的权限列表里有 `AliyunDMFullAccess`。
 
+**最常见的坑：权限名字搞混**
+
+阿里云 2025 年后的控制台里，**两个看起来很像但完全不同的权限**：
+
+| 权限名 | 服务 | 用途 |
+|--------|------|------|
+| `AliyunDMFullAccess` | DirectMail（邮件推送） | ✅ 发邮件用这个 |
+| `AliyunDMSFullAccess` | Data Management Service（数据管理服务） | ❌ 管数据库的，不是邮件 |
+
+控制台搜索框输入 `dm` 会同时列出这两个，选错了就会报 `Forbidden`。点进权限详情确认「备注」是「管理邮件推送的权限」。
+
+**如果搜不到 `AliyunDMFullAccess` 系统策略**
+
+2025 年后阿里云重命名了一些系统策略，可能找不到 `AliyunDMFullAccess`。解决方案：**创建自定义策略**。
+
+1. RAM 控制台 → 左侧 **权限管理** → **权限策略** → **创建权限策略**
+2. 策略名称：`DirectMailFullAccess`（自定义名字）
+3. 策略内容选 **脚本编辑**，粘贴：
+   ```json
+   {
+     "Version": "1",
+     "Statement": [
+       {
+         "Effect": "Allow",
+         "Action": "dm:*",
+         "Resource": "*"
+       }
+     ]
+   }
+   ```
+4. 保存后回子账号 → **新增授权** → 策略类型选 **自定义策略** → 搜 `DirectMailFullAccess` → 勾选
+
+**3f. 发信地址 NotFound**
+
+完整错误：
+
+```
+Code: InvalidMailAddress.NotFound
+Message: The specified mail address is not found.
+```
+
+**两种可能**：
+
+**(1) 发信地址真的没创建**
+
+打开 DirectMail 控制台 → **发信地址**，确认列表里有 `noreply@youwei-agent.com`。
+
+如果没有，点 **新建发信地址**：
+- 发信地址：`noreply@youwei-agent.com`
+- **发信类型：触发邮件**（不能选「批量邮件」，否则会触发不同的限制）
+- 回信地址：留空
+
+**(2) 地域不匹配**
+
+DirectMail API 默认访问杭州（`dm.aliyuncs.com`），如果你的发信地址在**其他地域**（如上海/北京）创建，杭州的端点就查不到。
+
+**排查**：控制台左上角看当前选的地域，如果是非杭州，切换过去看是否有发信地址。
+
+**修复（推荐）**：在杭州地域新建 `noreply@youwei-agent.com`（不要改代码，直接把地址迁移到杭州最省事）。
+
+**3g. 频率限制触发**
+
+```
+too frequent, try again in 60 seconds
+```
+
+这是应用层的反刷接口保护（60 秒内同一邮箱只能请求一次验证码）。**不是阿里云的问题**，是你应用代码的限制。
+
+解决：等 60 秒再点发送，或换一个邮箱测试。
+
+**3h. AccessKey 已失效（Inactive）**
+
+完整错误：
+
+```
+Code: InvalidAccessKeyId.Inactive
+Message: Specified access key is disabled.
+```
+
+**根因**：旧的 AccessKey 在 RAM 控制台已删除或禁用，但 `.env` 里还是旧值。
+
+**常见场景**：
+- 你在 RAM 控制台「禁用」了旧 AccessKey → 应用调不通
+- CI 部署时 GitHub Secrets 已是新值，但 DO 的 `.env` 上次手动改过 → 不一致
+
+**修复**：
+
+```bash
+# 在 DO 上执行
+cd /opt/youwei-trading-agent
+
+# 检查当前 .env 里的 AccessKey ID
+grep ALIYUN_ACCESS_KEY_ID .env
+
+# 如果不是最新的，更新它（替换为你的真实值）
+sed -i 's/^ALIYUN_ACCESS_KEY_ID=.*/ALIYUN_ACCESS_KEY_ID=<你的新ID>/' .env
+sed -i 's/^ALIYUN_ACCESS_KEY_SECRET=.*/ALIYUN_ACCESS_KEY_SECRET=<你的新Secret>/' .env
+
+# 重新加载（必须 force-recreate）
+export IMAGE_REPO=ghcr.io/<你的github>/<仓库名>
+docker compose -f docker-compose.prod.yml up -d --force-recreate web
+```
+
+**3i. API Endpoint 地域问题**
+
+完整错误：
+
+```
+dial tcp: lookup dm.cn-hangzhou.aliyuncs.com on 127.0.0.11:53: server misbehaving
+```
+
+**根因**：阿里云邮件 API 没有地域专用的 endpoint（`dm.cn-hangzhou.aliyuncs.com` 不能解析）。
+
+**正确做法**：
+
+```go
+// ✅ 用通用端点 + RegionId 参数
+gateway: "https://dm.aliyuncs.com"
+params: map[string]string{
+    "RegionId": "cn-hangzhou",
+    // 其他参数
+}
+
+// ❌ 错误用法（无法解析）
+gateway: "https://dm.cn-hangzhou.aliyuncs.com"
+```
+
+`dm.aliyuncs.com` 是唯一有效的端点，配合 `RegionId=cn-hangzhou` 参数指定地域。
+
 ## 8. 总结
 
 | 步骤 | 耗时 |
@@ -490,6 +623,11 @@ RAM 子账号创建时**默认没有任何权限**，必须手动添加授权。
 | 邮件进垃圾箱 | DNS 4 条记录全配 + 收件方加白名单或检查 Promotion 文件夹 |
 | `InvalidAccessKeyId` | RAM AccessKey ID/Secret 只显示一次，复制错了只能删了重新生成 |
 | `Forbidden` / `not authorized` | RAM 子账号**默认没有任何权限**，必须手动去 RAM 控制台给 `directmail-sender` 添加 `AliyunDMFullAccess` 授权 |
+| `Forbidden` 但权限已加 | 加错了权限：`AliyunDMSFullAccess`（数据管理）和 `AliyunDMFullAccess`（邮件推送）是两个不同的产品 |
+| `InvalidMailAddress.NotFound` | 发信地址 `noreply@...` 未在 DirectMail 控制台创建，或地域不匹配（控制台是杭州，代码用的是海外端点） |
+| `InvalidAccessKeyId.Inactive` | 旧的 AccessKey 已删除/禁用，但 `.env` 里还是旧值 → 更新 .env + `--force-recreate` |
+| `dial tcp: lookup dm.cn-hangzhou.aliyuncs.com: server misbehaving` | API endpoint 用错了：不要用 `dm.cn-hangzhou.aliyuncs.com`，用 `dm.aliyuncs.com` + 参数 `RegionId=cn-hangzhou` |
+| `too frequent, try again in 60 seconds` | 同一用户 60 秒内重复请求 → 等 60 秒再试 |
 
 配好之后的维护基本为零——DirectMail 的 DNS 和证书都不需要续期，每月免费 2000 封邮件对 MVP 绰绰有余。
 
