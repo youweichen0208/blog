@@ -141,26 +141,37 @@ ssh -i ecs_deploy_key root@<ecs-public-ip> hostname
 
 ## 3. 安全组配置
 
+阿里云 ECS 的安全组是**入方向防火墙**——控制外面谁能连到 ECS。根据上面的架构，有两个调用方需要连进 ECS：
+
+```text
+调用方                        → ECS（阿里云）端口       用途
+
+GitHub Actions runner (公网)  → :22  (SSH)             CI 登录 ECS 执行部署
+DO Droplet web 容器 (公网)    → :8888 (HTTP)           调用 AKShare 拿 A 股行情
+```
+
 进入 ECS 控制台 → 实例详情 → 安全组 → 入方向规则，添加：
 
-| 协议 | 端口 | 授权对象 | 说明 |
-| --- | --- | --- | --- |
-| TCP | 22 | GitHub Actions runner IP 段 | CI SSH 部署用 |
-| TCP | 8888 | `<DO 公网 IP>/32` | DO web 调用 AKShare |
+| 协议  | 端口   | 授权对象                                             | 说明                  |
+| --- | ---- | ------------------------------------------------ | ------------------- |
+| TCP | 22   | GitHub Actions runner IP 段（或 `0.0.0.0/0`，仅限部署期间） | CI SSH 部署用          |
+| TCP | 8888 | `<DO Droplet 公网 IP>/32`                          | DO web 容器调用 AKShare |
 
-> **不建议把 8888 开放给 `0.0.0.0/0`**。AKShare 没有鉴权，暴露到公网等于把 A 股 API 开放给所有人白嫖。
+> **为什么 8888 要收紧源 IP？** AKShare 没有鉴权，任何人访问到就白嫖 A 股接口。如果授权对象填 `0.0.0.0/0`（即全网开放），等于把爬虫代理暴露给整个互联网。`/32` 表示只允许那一台 DO Droplet 访问。
+>
+> **获取 DO 的公网 IP**：在你的 DO Droplet 上执行 `curl -s ifconfig.me`。
 
-验证安全组生效：
+> **为什么 22 端口也可以收紧？** [GitHub 官方会公开 runner 的 IP 段](https://api.github.com/meta)，填到这里可以避免全网扫描到 SSH。如果嫌麻烦也可以暂时留 `0.0.0.0/0`，生产环境再收紧。
+
+验证 22 端口安全组生效：
 
 ```bash
-# 在 DO Droplet 上执行
-curl -m 5 http://<ecs-public-ip>:8888/health
-# 期望：{"status":"ok"}
-
-# 在其他机器上执行（应该超时或被拒绝）
-curl -m 5 http://<ecs-public-ip>:8888/health
-# 期望：Connection refused 或 timeout
+# 从本地 Mac 执行
+ssh -i ecs_deploy_key root@<ecs-public-ip> hostname
+# 期望：返回 ECS 主机名，无需输入密码
 ```
+
+> **8888 端口的验证在容器部署之后再做**，见第 7.2 / 7.3 节。安全组配好了但 ECS 上还没有 AKShare 容器监听 8888，curl 会得到 `Connection refused`，这是正常的。
 
 ## 4. 修改 docker-compose.prod.yml
 
@@ -222,16 +233,16 @@ services:
       - name: Install SSH key
         uses: shimataro/ssh-key-action@v2
         with:
-          key: ${{ secrets.ECS_SSH_KEY }}
+          key: ${{ secrets.AK_SHARE_ECS_SSH_KEY }}
           known_hosts: 'placeholder'
 
       - name: Deploy AKShare to ECS
         env:
-          ECS_HOST: ${{ secrets.ECS_HOST }}
+          AK_SHARE_ECS_HOST: ${{ secrets.AK_SHARE_ECS_HOST }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IMAGE_REPO: ghcr.io/${{ github.repository }}
         run: |
-          ssh -o StrictHostKeyChecking=accept-new root@${ECS_HOST} \
+          ssh -o StrictHostKeyChecking=accept-new root@${AK_SHARE_ECS_HOST} \
             bash -s <<DEPLOY_EOF
           set -euo pipefail
           IMAGE_REPO="\$(echo '${IMAGE_REPO}' | tr '[:upper:]' '[:lower:]')"
@@ -274,10 +285,10 @@ test → build (web + akshare 镜像 → GHCR)
 
 在 GitHub repo → Settings → Secrets and variables → Actions 中**新增**：
 
-| Secret | 值 | 说明 |
-| --- | --- | --- |
-| `ECS_SSH_KEY` | `ecs_deploy_key` 私钥完整内容 | CI 部署 ECS 用 |
-| `ECS_HOST` | ECS 公网 IP | CI 部署 ECS 用 |
+| Secret                    | 值                       | 说明                         |
+| ------------------------- | ----------------------- | ---------------------------- |
+| `AK_SHARE_ECS_SSH_KEY` | `ecs_deploy_key` 私钥完整内容 | CI 部署 AKShare ECS 用          |
+| `AK_SHARE_ECS_HOST`    | ECS 公网 IP               | AKShare 所在 ECS 的公网 IP          |
 
 **更新**已有的 Secret：
 
