@@ -47,33 +47,133 @@ return email.NewAliyunSender(...)
 
 左侧菜单 → **发信域名** → 右上角 **新建域名** → 填你的域名（如 `youwei-agent.com`）。
 
-阿里云会列出需要配置的 DNS 记录，每条都有具体值要复制到你的域名服务商（Cloudflare / 阿里云 DNS / 腾讯云 DNS）：
+阿里云会列出需要配置的 DNS 记录，每条都有具体值要复制到你的域名服务商。
 
-### 2.1 必需的 DNS 记录
+### 2.1 为什么需要配置这些 DNS 记录？
 
-| 类型 | 主机记录（Name） | 记录值 | 用途 |
-| --- | --- | --- | --- |
-| TXT | `@` | `v=spf1 include:spf.dm.aliyun.com -all` | SPF 反伪造 |
-| TXT | `_dxxx._domainkey` | 阿里云给的公钥 | DKIM 签名 |
-| CNAME | `xxx.dm` | `xxx.dm.aliyun.com` | 邮件追踪 |
-| MX | `xxx.dm` | `xxx.dm.aliyun.com` | 退信处理 |
+直接发邮件（SMTP 裸发）在 2005 年之前可以，现在不行。现代邮件系统（Gmail、Outlook、QQ 邮箱、网易邮箱）都有三层反垃圾机制：
 
-把 `xxx` 替换为阿里云给你的具体字符串。
+| 机制 | 解决的问题 | 不配会怎样 |
+| --- | --- | --- |
+| **SPF** | 「这个 IP 有权用 mydomain.com 发邮件吗？」——白名单 | 收件方直接拒收，或丢进垃圾箱 |
+| **DKIM** | 「这封邮件真的是 mydomain.com 发的吗？」——密码学校验 | 无法证明不是伪造的，信任分下降 |
+| **DMARC** | 「SPF/DKIM 校验失败时怎么处理？」——策略声明 | 缺少明确策略，某些收件方会更严格 |
+| **MX** | 「退信发回哪里？」——收信配置 | 阿里云无法处理退信回调，域名验证通不过 |
 
-### 2.2 验证 DNS
+**简单理解**：SPF = 身份证，DKIM = 签名，DMARC = 出事后怎么办，MX = 退信地址。
 
-每条记录配好后，在阿里云对应条目右侧点 **验证配置**。全部通过即显示绿色 ✅。
+不配这 4 条记录，邮件：
+1. 阿里云 DirectMail 域名验证通不过，**API 调不动**
+2. 就算勉强发出去，80% 进垃圾箱
+3. Gmail / Outlook 可能直接返回 `550 SPF check failed`
 
-DNS 传播可能需要几分钟到几小时。如果验证失败，等 5 分钟再点一次。
+### 2.2 阿里云会给你 4 条记录要添加
 
-常见 DNS 配置方式：
+新建域名后，阿里云控制台会展示以下 4 条配置（具体值会因你的域名生成而不同）：
 
-**Cloudflare：**
-- 主机记录里 `@` 表示根域名，`_dxxx._domainkey` 直接复制
-- 记得把对应记录的 **Proxy status** 设为 **DNS only**（灰色云朵），不能让 Cloudflare 代理邮件流量
+#### (1) DKIM 验证
 
-**阿里云 DNS：**
+```
+类型：TXT
+主机记录：aliyun-cn-hangzhou._domainkey
+记录值：v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3...（一串 RSA 公钥）
+```
+
+**工作原理**：阿里云发邮件时用这把密钥的**私钥**签名，收件方通过 DNS 查这把**公钥**来校验签名是不是真的。证明「这封邮件确实是阿里云代表 youwei-agent.com 发的，没被中间人篡改」。
+
+#### (2) SPF 验证
+
+```
+类型：TXT
+主机记录：@（表示根域名 youwei-agent.com 本身）
+记录值：v=spf1 include:spf1.dm.aliyun.com -all
+```
+
+**工作原理**：收件方（如 QQ 邮箱）收到一封自称 `noreply@youwei-agent.com` 的邮件时，会查这条记录：「`include:spf1.dm.aliyun.com` 里列的 IP 段有没有这个发件 IP？」有 → 通过；没有 → `-all` 表示拒绝。
+
+⚠️ **如果你的域名已经有一条 SPF TXT 记录**（比如 `v=spf1 include:spf.dashscope.aliyuncs.com -all`），**不要新建**，把 `include:spf1.dm.aliyun.com` 合并到现有那条里：
+
+```
+v=spf1 include:spf.dashscope.aliyuncs.com include:spf1.dm.aliyun.com -all
+```
+
+一条域名只能有一条 SPF，多了会互相冲突导致全部失效。
+
+#### (3) DMARC 验证
+
+```
+类型：TXT
+主机记录：_dmarc
+记录值：v=DMARC1; p=none; rua=mailto:dmarc_report@service.aliyun.com
+```
+
+**工作原理**：「p=none」表示 SPF/DKIM 失败时**只记录不处理**（先观察），阿里云会每天给你发 DMARC 报告邮件到 `dmarc_report@service.aliyun.com`，说明有多少邮件伪造了你的域名。
+
+如果以后伪造率太高，可以改成 `p=quarantine`（丢垃圾箱）或 `p=reject`（直接拒绝）。MVP 阶段用 `p=none` 更安全。
+
+#### (4) MX 记录（收信配置）
+
+```
+类型：MX
+主机记录：@
+记录值：mx01.dm.aliyun.com
+MX 优先级：10
+```
+
+**工作原理**：阿里云发邮件时，会有少部分邮件「退信」——比如收件方邮箱不存在、超容量。退信会被阿里云的收信服务器（`mx01.dm.aliyun.com`）接收，用于统计发信成功率。
+
+这条记录**必须加**，否则阿里云控制台域名状态一直显示「MX 验证中」，整个配置流程走不完。
+
+### 2.3 在阿里云 DNS 控制台添加记录（具体操作）
+
+查一下你的域名 DNS 在哪里管理：
+
+```bash
+# 终端执行，看 NS 记录
+dig yourdomain.com NS +short
+```
+
+- `dns*.hichina.com` → **阿里云（万网）**
+- `*.cloudflare.com` → **Cloudflare**
+- `dns*.aliyun.com` → **阿里云 DNS**
+- `*.namecheap.com` → **Namecheap**
+
+下面以**阿里云（万网）DNS** 为例，其他平台类似：
+
+**步骤 1**：浏览器打开 https://dns.console.aliyun.com/ 并登录
+
+**步骤 2**：找到 `youwei-agent.com` → 点 **解析设置**
+
+**步骤 3**：点右上角 **添加记录**，依次加 4 条：
+
+| # | 记录类型 | 主机记录 | 记录值 | MX 优先级 | TTL |
+|---|---------|---------|--------|---------|-----|
+| 1 | TXT | `aliyun-cn-hangzhou._domainkey` | `v=DKIM1; k=rsa; p=MIGfMA0...`（从阿里云邮件推送控制台整段复制） | 留空 | 10 分钟 |
+| 2 | TXT | `@` | `v=spf1 include:spf1.dm.aliyun.com -all` | 留空 | 10 分钟 |
+| 3 | TXT | `_dmarc` | `v=DMARC1; p=none; rua=mailto:dmarc_report@service.aliyun.com` | 留空 | 10 分钟 |
+| 4 | MX | `@` | `mx01.dm.aliyun.com` | `10` | 10 分钟 |
+
+**步骤 4**：4 条都加完之后，回到阿里云邮件推送控制台 → **发信域名** → 点每条记录右侧的 **验证配置** 按钮。
+
+DNS 通常 1-2 分钟生效。4 条全绿 ✅ 才算成功。
+
+### 2.4 常见 DNS 平台差异
+
+**Cloudflare**：
+- `@` 表示根域名，照填
+- 记得把 MX、TXT 记录的 **Proxy status** 设为 **DNS only**（灰色云朵），不能让 Cloudflare 的 HTTP 代理干扰邮件流量
+- CNAME 类的邮件追踪记录，也要设为 DNS only
+
+**阿里云 DNS（万网）**：
 - 主机记录直接填阿里云给的字符串，不用改
+- `@` 在下拉菜单里选「@」
+
+**腾讯云 / DNSPod**：
+- 同上，主机记录直接填
+
+**Namecheap / GoDaddy**：
+- 主机记录填 `@` 或留空表示根域名
+- 部分平台 TXT 记录不支持太长，如果 DKIM 公钥超长可以拆成两条（阿里云的通常不会）
 
 ## 3. 创建发信地址
 
