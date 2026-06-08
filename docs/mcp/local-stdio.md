@@ -13,7 +13,7 @@ npm run build
 
 ## 如何登录docker上的mysql
 
-![Docker MySQL 登录](/images/posts/2026/05/2026-05-24-docker-mysql.png)
+![Docker MySQL 登录](../.vitepress/public/images/posts/2026/06/2026-06-09-docker-mysql.png)
 
 ```bash
 docker exec -it taurus-mcp-mysql mysql -uroot -proot
@@ -63,7 +63,7 @@ claude mcp list
 
 ### 问题1:缺少配置环境参数
 
-![缺少环境变量导致的 Inspector 错误](/images/posts/2026/05/2026-05-24-mcp-inspector-env.png)
+![缺少环境变量导致的 Inspector 错误](../.vitepress/public/images/posts/2026/06/2026-06-09-mcp-inspector-env.png)
 
 说明 Inspector
 启动时没有传入环境变量，所以 MCP
