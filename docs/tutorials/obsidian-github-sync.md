@@ -283,6 +283,61 @@ docs/.obsidian/workspace.json
 docs/.obsidian/workspace-mobile.json
 ```
 
+## 第六步：配置自定义域名（阿里云 CNAME + GitHub Pages HTTPS）
+
+GitHub Pages 默认域名是 `<username>.github.io`，可以绑定自己的域名，让博客地址更专业。
+
+### 6.1 在阿里云添加 CNAME 记录
+
+打开阿里云 **云解析 DNS** 控制台，添加一条 CNAME 记录：
+
+| 字段 | 填写内容 |
+|------|---------|
+| 记录类型 | CNAME |
+| 主机记录 | `blog`（或你想用的子域名前缀） |
+| 记录值 | `<username>.github.io` |
+| TTL | 默认即可 |
+
+这里以 `blog` 为例，最终域名是 `blog.youwei-agent.com`。
+
+### 6.2 在 GitHub Pages 设置自定义域名
+
+1. 进入仓库 **Settings** → **Pages**。
+2. 在 **Custom domain** 输入框填入 `blog.youwei-agent.com`，点击 **Save**。
+3. GitHub 会自动在仓库根目录创建/更新 `CNAME` 文件。
+4. 等待 DNS 验证，页面会显示 **DNS check successful**。
+
+> 如果用的是 VitePress，可以在 `docs/.vitepress/public/` 目录下手动创建 `CNAME` 文件，写入域名（如 `blog.youwei-agent.com`），VitePress 构建时会把它复制到产物根目录，这样每次部署都会保留自定义域名。
+
+### 6.3 启用 HTTPS
+
+DNS 验证成功后，在同一个 **Pages** 设置页面，找到并勾选：
+
+- ✅ **Enforce HTTPS**
+
+这会让 GitHub 自动为自定义域名申请 SSL 证书，所有 HTTP 访问自动跳转到 HTTPS。
+
+### 6.4 验证访问
+
+等待 1~5 分钟（GitHub 生成 SSL 证书需要时间），然后在浏览器访问：
+
+```text
+https://blog.youwei-agent.com
+```
+
+应该能正常看到 GitHub Pages 博客网站。
+
+### 配置检查清单
+
+| 步骤 | 状态 | 说明 |
+|------|------|------|
+| 阿里云 CNAME 记录 | ✅ | `blog` → `<username>.github.io` |
+| GitHub Custom domain | ✅ | Settings → Pages 中填入域名 |
+| DNS check successful | ✅ | GitHub 显示 DNS 验证成功 |
+| Enforce HTTPS | ✅ | 勾选强制 HTTPS |
+
+> 相关域名购买和实名认证流程参考 [域名解析与反向代理部署](../dns-proxy/deploy-dns-nginx.md)。
+
 ## 日常使用清单
 
 电脑端：
@@ -304,7 +359,7 @@ docs/.obsidian/workspace-mobile.json
 
 1. GitHub 收到 Push。
 2. GitHub Actions 自动构建。
-3. 构建产物部署到 GitHub Pages（网页访问）。
+3. 构建产物部署到 GitHub Pages（通过自定义域名 `https://blog.youwei-agent.com` 访问）。
 4. 原始内容同步到 WebDAV（手机端获取）。
 
 ## 推荐最终方案
@@ -312,7 +367,7 @@ docs/.obsidian/workspace-mobile.json
 ```text
 电脑：Obsidian + Obsidian Git（与 GitHub 同步）
 手机：Obsidian + Remotely Save（与 WebDAV 同步原始内容）
-网页：GitHub Pages（GitHub Actions 自动构建发布）
+网页：GitHub Pages + 自定义域名 + HTTPS（GitHub Actions 自动构建发布）
 真源：GitHub 仓库 main 分支
 ```
 
