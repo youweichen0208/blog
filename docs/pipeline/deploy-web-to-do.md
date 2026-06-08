@@ -456,7 +456,7 @@ chmod 755 /opt/youwei-trading-agent/data
 
 ### Q：如何回滚到旧版本
 
-CI 每次部署都打 `:${{ github.sha }}` tag，可以精准回退：
+CI 每次部署都打 <code v-pre>&#58;${{ github.sha }}</code> tag，可以精准回退：
 
 ```bash
 cd /opt/youwei-trading-agent

@@ -8,7 +8,7 @@ export default withMermaid(
     lang: "zh-CN",
     title: "我的博客",
     description: "记录后端架构、AI开发与日常思考",
-    base: "/blog/",
+    base: "/",
 
     head: [
       ["link", { rel: "preconnect", href: "https://fonts.googleapis.com" }],

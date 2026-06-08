@@ -360,7 +360,7 @@ Docker Hub 免费配额有限。如果你的镜像依赖 Docker Hub（如 `golan
 
 ### Q: 如何回滚到上一个版本？
 
-workflow 默认打 `:${{ github.sha }}` 和 `:latest` 两个 tag。回滚时 SSH 到 Droplet：
+workflow 默认打 <code v-pre>&#58;${{ github.sha }}</code> 和 `:latest` 两个 tag。回滚时 SSH 到 Droplet：
 
 ```bash
 cd /opt/youwei-trading-agent
