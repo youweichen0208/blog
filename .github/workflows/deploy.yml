@@ -43,6 +43,12 @@ jobs:
         with:
           path: docs/.vitepress/dist
 
+      - name: Upload build artifact for WebDAV
+        uses: actions/upload-artifact@v4
+        with:
+          name: blog-dist
+          path: docs/.vitepress/dist
+
   deploy-pages:
     environment:
       name: github-pages
@@ -60,10 +66,11 @@ jobs:
     runs-on: ubuntu-latest
     name: Sync to WebDAV
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
         with:
-          fetch-depth: 0
+          name: blog-dist
+          path: dist
 
       - name: Install rclone
         run: curl https://rclone.org/install.sh | sudo bash
@@ -76,5 +83,5 @@ jobs:
             user="${{ secrets.WEBDAV_USER }}" \
             pass=$(rclone obscure "${{ secrets.WEBDAV_PASS }}")
 
-      - name: Sync docs to WebDAV
-        run: rclone sync docs mywebdav:/blog --progress
+      - name: Sync build output to WebDAV
+        run: rclone sync dist mywebdav:/blog --progress
