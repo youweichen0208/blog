@@ -163,7 +163,7 @@ npx @modelcontextprotocol/inspector \
 
 启动 Inspector 后，首先看到的是连接面板：
 
-![Inspector 连接界面](../.vitepress/public/images/posts/2026/06/2026-06-09-mcp-inspector-env.png)
+![Inspector 连接界面](/images/posts/2026/06/2026-06-09-mcp-inspector-env.png)
 
 **主要元素**：
 
@@ -248,7 +248,7 @@ Prompts:
 
 **错误表现**：
 
-![缺少环境变量导致的 Inspector 错误](../.vitepress/public/images/posts/2026/06/2026-06-09-mcp-inspector-env.png)
+![缺少环境变量导致的 Inspector 错误](/images/posts/2026/06/2026-06-09-mcp-inspector-env.png)
 
 Inspector 显示连接失败，服务器日志提示找不到配置文件或环境变量。
 
