@@ -84,4 +84,4 @@ jobs:
             pass=$(rclone obscure "${{ secrets.WEBDAV_PASS }}")
 
       - name: Sync build output to WebDAV
-        run: rclone sync dist mywebdav:/blog --progress
+        run: rclone sync dist mywebdav:/ --progress
