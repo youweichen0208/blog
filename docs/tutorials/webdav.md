@@ -307,6 +307,40 @@ https://dav.youwei-agent.com/
 rclone sync dist mywebdav:/ --progress
 ```
 
+#### 4.1.8 GitHub Environment secrets 还需要 workflow 显式绑定 environment
+
+这次排查里还有一个很容易忽略的坑：就算你已经把 `WEBDAV_URL`、`WEBDAV_USER`、`WEBDAV_PASS` 填到了 GitHub 的 **Environment secrets** 里，GitHub Actions 的 job 也不会自动读取它们。
+
+只有当具体 job 显式声明了同一个 environment 时，这些 secrets 才会生效。例如：
+
+```yaml
+sync-webdav:
+  environment:
+    name: github-pages
+```
+
+如果没有这段配置，job 仍然会去读 `Repository secrets`。这会造成一个很误导的现象：
+
+- 你明明已经在 `github-pages` environment 里把 `WEBDAV_URL` 改成了 `https://dav.youwei-agent.com/`
+- 但 Actions 实际仍然在访问旧地址 `http://服务器IP:8080/`
+- 结果日志继续报：
+
+```text
+couldn't list files: 405 Method Not Allowed
+```
+
+我这次就是用服务器日志确认的：
+
+- 新的 `blog-publish-webdav` 没有收到 GitHub 请求
+- 旧的 `obsidian-webdav` 还在收到 `rclone` 对 `http://服务器IP:8080/` 的 `PROPFIND /`
+
+所以当你确认服务端已经修好，但 GitHub Actions 还是报旧错误时，先检查两件事：
+
+1. secret 是不是配在 `Environment secrets` 而不是 `Repository secrets`
+2. `sync-webdav` 这个 job 有没有显式绑定对应的 environment
+
+这一步补上后，workflow 才会真正切到新的 WebDAV 入口。
+
 修复后，最终验证应该至少包括：
 
 - `GET https://dav.yourdomain.com/` 返回 `200`
@@ -314,7 +348,6 @@ rclone sync dist mywebdav:/ --progress
 - 能用认证成功创建和删除测试目录（例如 `MKCOL` / `DELETE`）
 
 这几项都通过后，再去看 GitHub Actions 日志，定位会清晰很多。
-
 
 ### 4.2 无域名方案
 

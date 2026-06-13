@@ -214,6 +214,8 @@ jobs:
   sync-webdav:
     needs: build
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
     name: Sync to WebDAV
     steps:
       - name: Checkout
@@ -251,6 +253,23 @@ jobs:
 2. 添加以下 secrets：
    - `WEBDAV_URL`：WebDAV 服务地址，必须是支持 DAV 方法的真实入口（如 `https://dav.jianguoyun.com/dav/`、`https://dav.yourdomain.com/` 或 `http://服务器IP:8080/`）
    - `WEBDAV_USER`：WebDAV 用户名
+
+> 还有一个容易漏掉的点：如果你把 `WEBDAV_URL`、`WEBDAV_USER`、`WEBDAV_PASS` 配在 GitHub 的 **Environment secrets** 里，那么执行 `rclone` 的 job 也必须显式绑定同一个 environment，例如：
+>
+> ```yaml
+> sync-webdav:
+>   environment:
+>     name: github-pages
+> ```
+>
+> 否则这个 job 仍然会去读 `Repository secrets`。我这次线上排查时，虽然已经把 `WEBDAV_URL` 改成了 `https://dav.youwei-agent.com/`，但 `sync-webdav` 没绑定 `github-pages`，结果 GitHub Actions 还是继续访问旧地址 `http://服务器IP:8080/`，日志里会看到：
+>
+> ```text
+> PROPFIND / HTTP/1.1 405
+> Referer: http://服务器IP:8080/
+> ```
+>
+> 如果你发现远程服务已经修好了，但 Actions 还是打旧地址，优先检查的不是密码，而是 job 有没有绑定正确的 environment。
    - `WEBDAV_PASS`：WebDAV 密码
 
 常见错误：
