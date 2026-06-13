@@ -64,6 +64,8 @@ jobs:
   sync-webdav:
     needs: build
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
     name: Sync to WebDAV
     steps:
       - name: Download build artifact
