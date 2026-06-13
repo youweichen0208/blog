@@ -314,6 +314,49 @@ rclone sync dist mywebdav:/ --progress
 
 注意：如果你还没有给 `dav.youwei-agent.com` 配 DNS 和 HTTPS，GitHub Actions 先不要切过去。先把域名解析到服务器，再配置证书。
 
+### 一次真实故障排查：为什么这里最终要改成同步到根目录
+
+我在实际部署里遇到过一次典型报错：
+
+```text
+CRITICAL: Failed to create file system for "mywebdav:/blog": read metadata failed: 405 Method Not Allowed
+```
+
+一开始最容易怀疑的是这几项：
+
+- `WEBDAV_USER` / `WEBDAV_PASS` 填错
+- `WEBDAV_URL` 指到了普通网站入口，而不是 WebDAV 入口
+- `rclone` 或 `vendor=other` 配置有问题
+
+但实际排查后，问题并不在认证。服务端和 GitHub Actions 两侧的账号密码都没问题，真正的根因有两层：
+
+1. 原来的 WebDAV 服务同时承担了“Obsidian 原始笔记同步”和“博客构建产物发布”两种用途。
+2. 这套基于 `bytemark/webdav` 的服务对 WebDAV 根目录 `/` 的 `PROPFIND` 正常，但对子目录 `/blog/` 的 `PROPFIND` 会返回 `405 Method Not Allowed`。
+
+而 `rclone sync dist mywebdav:/blog` 在真正开始上传前，会先对 `mywebdav:/blog` 做 metadata 探测，也就是发 `PROPFIND`。所以它会在“读取远程目录信息”这一步就直接失败，还没走到实际文件同步。
+
+我最终是按下面顺序确认并修复的：
+
+1. 先验证 WebDAV 根目录可用：`GET /` 返回 `200`，`PROPFIND /` 返回 `207 Multi-Status`。
+2. 再验证问题路径：`PROPFIND /blog/` 返回 `405 Method Not Allowed`。
+3. 不再把博客发布依赖在“笔记同步 WebDAV 的子目录”上。
+4. 新建一个**博客发布专用 WebDAV**，让它的远程根目录直接对应博客构建产物目录。
+5. 给它单独挂一个反向代理域名，例如 `https://dav.yourdomain.com/`。
+6. 把 GitHub Actions 改成：
+
+```bash
+rclone sync dist mywebdav:/ --progress
+```
+
+这样做之后，`rclone` 只需要对远程根目录做 `PROPFIND`，避开了 `/blog/` 这类子目录兼容性问题。
+
+如果你在自己的环境里也遇到同样的 `405`，更可靠的排查顺序是：
+
+1. 先检查 `WEBDAV_URL` 是否真的是 WebDAV 入口。
+2. 再用 `curl` 验证根目录的 `GET` 和 `PROPFIND`。
+3. 最后再检查你是不是把发布目标放到了一个不支持 `PROPFIND` 的子目录上。
+
+
 ### 配置 GitHub Pages
 
 1. 进入 Settings → Pages。

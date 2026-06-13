@@ -263,6 +263,59 @@ rclone sync dist mywebdav:/ --progress
 
 所以不要把“发布构建产物”直接依赖在“笔记同步 WebDAV 的子目录”上。
 
+#### 4.1.7 一次真实线上排查与修复过程
+
+这里补一段真实案例，方便你判断以后遇到 `405 Method Not Allowed` 时该先查哪里。
+
+实际现象是 GitHub Actions 在执行下面这条命令时报错：
+
+```bash
+rclone sync dist mywebdav:/blog --progress
+```
+
+报错内容：
+
+```text
+CRITICAL: Failed to create file system for "mywebdav:/blog": read metadata failed: 405 Method Not Allowed
+```
+
+第一眼看上去像是账号密码错了，或者 `WEBDAV_URL` 没填对。但线上逐项验证后，真实情况是：
+
+- `https://dav.youwei-agent.com/` 的认证本身是正常的
+- `GET /` 返回 `200 OK`
+- `PROPFIND /` 返回 `207 Multi-Status`
+- 对发布目标目录做 `PROPFIND /blog/` 时返回 `405 Method Not Allowed`
+
+这说明问题不在“能不能登录”，而在“远程路径是否真的是一个兼容的 WebDAV collection”。
+
+我最后采用的修复方案是拆分职责：
+
+1. 保留原来的 `obsidian-webdav`，继续给 Obsidian / Remotely Save 同步原始笔记。
+2. 新增一个 `blog-publish-webdav`，只负责接收博客构建产物。
+3. 让这个发布专用 WebDAV 只监听本机端口，例如 `127.0.0.1:18081`。
+4. 用 Nginx 新增单独站点，把 `dav.youwei-agent.com` 反代到 `127.0.0.1:18081`。
+5. 用 Certbot 给 `dav.youwei-agent.com` 配 HTTPS。
+6. 把 GitHub Actions 的 `WEBDAV_URL` 改成：
+
+```text
+https://dav.youwei-agent.com/
+```
+
+7. 把发布命令改成同步到远程根目录：
+
+```bash
+rclone sync dist mywebdav:/ --progress
+```
+
+修复后，最终验证应该至少包括：
+
+- `GET https://dav.yourdomain.com/` 返回 `200`
+- `PROPFIND https://dav.yourdomain.com/` 返回 `207 Multi-Status`
+- 能用认证成功创建和删除测试目录（例如 `MKCOL` / `DELETE`）
+
+这几项都通过后，再去看 GitHub Actions 日志，定位会清晰很多。
+
+
 ### 4.2 无域名方案
 
 在拿到域名之前，有以下几种临时方案：
