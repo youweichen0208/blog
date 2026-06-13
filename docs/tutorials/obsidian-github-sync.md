@@ -236,15 +236,83 @@ jobs:
         run: rclone sync docs mywebdav:/blog --progress
 ```
 
+> 关键点：
+>
+> - `WEBDAV_URL` 必须填写真正支持 WebDAV 的入口，例如 `https://dav.yourdomain.com/` 或 `http://服务器IP:8080/`。
+> - 不要把它填成博客前台域名或普通应用域名。那类入口通常只支持 GET/POST，`rclone` 在读取 WebDAV metadata 时会发 `PROPFIND`，很容易直接报 `405 Method Not Allowed`。
+> - 上面示例默认使用 `bytemark/webdav` 的目录布局。该镜像的 WebDAV 根目录通常对应容器内 `/var/lib/dav/data`，因此 `mywebdav:/blog` 会落到 `/var/lib/dav/data/blog`。
+> - 如果你换了别的 WebDAV 服务，远程路径可能不是 `/blog`，需要按服务端实际根目录调整。
+
 ### 配置 Secrets
 
 在 GitHub 仓库设置中添加 WebDAV 凭据：
 
 1. 进入 Settings → Secrets and variables → Actions。
 2. 添加以下 secrets：
-   - `WEBDAV_URL`：WebDAV 服务地址（如 `https://dav.jianguoyun.com/dav/`）
+   - `WEBDAV_URL`：WebDAV 服务地址，必须是支持 DAV 方法的真实入口（如 `https://dav.jianguoyun.com/dav/`、`https://dav.yourdomain.com/` 或 `http://服务器IP:8080/`）
    - `WEBDAV_USER`：WebDAV 用户名
    - `WEBDAV_PASS`：WebDAV 密码
+
+常见错误：
+
+- 把 `WEBDAV_URL` 填成博客站点域名，例如 `https://blog.yourdomain.com/`
+- 把 `WEBDAV_URL` 填成普通应用 API 域名
+- 反向代理没有正确转发 WebDAV 方法
+
+如果 Actions 日志里出现：
+
+```text
+read metadata failed: 405 Method Not Allowed
+```
+
+优先检查 `WEBDAV_URL` 是否指向了错误入口，而不是先怀疑 `rclone sync docs mywebdav:/blog` 这条命令本身。
+
+### 生产环境补充：不要把构建产物发布到笔记同步 WebDAV 的子目录
+
+如果你使用的是 `bytemark/webdav` 这类 Apache WebDAV 镜像，并且既想：
+
+- 用 WebDAV 同步 Obsidian 原始笔记
+- 又想用 GitHub Actions 发布博客构建产物
+
+不要直接把构建产物同步到现有 WebDAV 的子目录，例如：
+
+```bash
+rclone sync dist mywebdav:/blog --progress
+```
+
+原因是某些 WebDAV 服务对根目录 `/` 的 `PROPFIND` 支持正常，但对子目录（例如 `/blog/`）会被解析成 `/blog/index.html`，从而返回：
+
+```text
+405 Method Not Allowed
+Allow: OPTIONS,HEAD,GET,POST,TRACE
+```
+
+这会导致 `rclone` 在创建 `mywebdav:/blog` 文件系统、读取 metadata 时直接失败。
+
+更稳的做法是拆成两个用途：
+
+1. **原始笔记同步 WebDAV**
+   - 继续给 Obsidian / Remotely Save 使用
+   - 保持目录结构，例如 `blog/`、`docs/`
+
+2. **博客发布专用 WebDAV**
+   - 单独一个 WebDAV 入口
+   - 让 WebDAV 根目录直接对应博客构建产物目录
+   - GitHub Actions 直接同步到远程根目录：
+
+```bash
+rclone sync dist mywebdav:/ --progress
+```
+
+这样 `rclone` 只需要对 WebDAV 根目录做 `PROPFIND`，兼容性最好。
+
+在我的实际部署里，采用的是：
+
+- `obsidian-webdav`：保留给原始笔记同步
+- `blog-publish-webdav`：新增一个发布专用 WebDAV 服务
+- `dav.youwei-agent.com`：反代到发布专用 WebDAV
+
+注意：如果你还没有给 `dav.youwei-agent.com` 配 DNS 和 HTTPS，GitHub Actions 先不要切过去。先把域名解析到服务器，再配置证书。
 
 ### 配置 GitHub Pages
 

@@ -226,6 +226,43 @@ docker compose down
 docker compose up -d
 ```
 
+#### 4.1.6 如果要给博客构建产物做自动发布，建议单独准备一个发布专用 WebDAV
+
+如果这台 WebDAV 服务器除了给 Obsidian 同步原始笔记，还要接 GitHub Actions 自动发布博客构建产物，建议把两个用途拆开：
+
+- `obsidian-webdav`：给原始笔记同步使用
+- `blog-publish-webdav`：给博客构建产物发布使用
+
+原因是一些基于 Apache 的 WebDAV 镜像（例如 `bytemark/webdav`）虽然对根目录 `/` 的 `PROPFIND` 支持正常，但对子目录（例如 `/blog/`）可能会被解析到 `/blog/index.html`，从而返回：
+
+```text
+405 Method Not Allowed
+Allow: OPTIONS,HEAD,GET,POST,TRACE
+```
+
+这会导致 `rclone sync dist mywebdav:/blog` 之类的命令在读取 metadata 时直接失败。
+
+更稳的生产方案是：
+
+1. 保留现有 WebDAV 给 Obsidian 用。
+2. 新增一个发布专用 WebDAV，让它的**根目录**直接对应博客构建产物目录。
+3. 单独给它配置域名，例如：
+   - `dav.yourdomain.com`
+4. GitHub Actions 直接同步到远程根目录：
+
+```bash
+rclone sync dist mywebdav:/ --progress
+```
+
+这样 `rclone` 只需要对根目录做 `PROPFIND`，兼容性最好。
+
+我实际排查时验证到：
+
+- `PROPFIND /`：返回 `207 Multi-Status`
+- `PROPFIND /blog/`：返回 `405 Method Not Allowed`
+
+所以不要把“发布构建产物”直接依赖在“笔记同步 WebDAV 的子目录”上。
+
 ### 4.2 无域名方案
 
 在拿到域名之前，有以下几种临时方案：
