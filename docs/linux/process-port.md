@@ -59,6 +59,50 @@ node    18653  alice   21u  IPv4 0x1234      0t0  TCP *:http-alt (LISTEN)
 lsof -i
 ```
 
+#### 2.1 查看所有被占用的端口
+
+最常用的组合命令：
+
+```bash
+lsof -i -P -n | grep LISTEN
+```
+
+| 选项 | 全称 | 含义 |
+|------|------|------|
+| `-i` | internet | 只看网络连接（TCP/UDP） |
+| `-P` | Port（数字） | 显示端口号而非服务名（`8080` 而非 `http-alt`） |
+| `-n` | numeric | 显示 IP 而非主机名（更快，不做 DNS 反查） |
+| `grep LISTEN` | — | 只筛选处于监听状态的连接 |
+
+输出示例：
+
+```
+nginx    1551  root    6u  IPv4 0x1234  0t0  TCP *:80 (LISTEN)
+mysqld   3306  mysql  21u  IPv6 0x5678  0t0  TCP *:3306 (LISTEN)
+node     8080  www    18u  IPv4 0x9abc  0t0  TCP *:8080 (LISTEN)
+```
+
+> `lsof` 在 macOS 和 Linux 上都有。
+
+#### 2.2 ss：Linux 上的替代方案
+
+`ss`（**socket statistics**，套接字统计）是 `netstat` 的现代替代品，Linux 专属：
+
+```bash
+ss -tlnp
+```
+
+| 选项 | 含义 |
+|------|------|
+| `-t` | TCP |
+| `-l` | 只显示 listening |
+| `-n` | 显示数字端口 |
+| `-p` | 显示对应进程名 |
+
+`ss` 比 `lsof` / `netstat` 快得多，因为它通过内核 netlink 接口直接读数据，不用逐条解析 `/proc`。
+
+> macOS 没有 `ss`，用 `lsof -i -P -n | grep LISTEN` 代替。Linux 上如果 `ss` 找不到，需要安装 `iproute2`：`sudo apt install iproute2`。
+
 #### 3. 只看 TCP 或 UDP
 
 ```bash
@@ -267,11 +311,11 @@ kill <父进程PID>
 ### Q：如何找到所有监听端口的进程？
 
 ```bash
-# macOS
-lsof -nP -iTCP -sTCP:LISTEN
+# macOS / Linux 通用（推荐）
+lsof -i -P -n | grep LISTEN
 
-# Linux
-sudo ss -tlnp
+# Linux 专属（更快）
+ss -tlnp
 ```
 
 ### Q：进程占用内存过高怎么排查？
