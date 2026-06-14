@@ -47,7 +47,62 @@ systemd (PID 1)
     └── certbot.timer   ← 证书自动续期
 ```
 
-### 1.2 systemctl vs service
+### 1.2 命名惯例：d 后缀 = daemon（守护进程）
+
+Unix/Linux 有个长期命名惯例：**后台常驻的服务端进程名字末尾加 `d`，代表 daemon（守护进程）**。
+
+守护进程指在后台持续运行、无需用户交互、被动等待事件触发后才工作的进程。名字来自希腊神话中的 daemon（精灵/守护灵）——看不见但一直在默默运作。
+
+| 名称 | 全称 | 角色 |
+|------|------|------|
+| `systemd` | system daemon | 系统守护进程（PID 1） |
+| `mysqld` | MySQL daemon | MySQL 服务端 |
+| `sshd` | SSH daemon | SSH 服务端 |
+| `httpd` | HTTP daemon | HTTP 服务端（Apache） |
+| `dockerd` | Docker daemon | Docker 服务端 |
+
+对应的**客户端/命令行工具通常不带 `d`**：
+
+| 客户端工具 | 对应的守护进程 |
+|-----------|--------------|
+| `mysql` | `mysqld` |
+| `ssh` | `sshd` |
+| `systemctl` | `systemd` |
+| `docker`（CLI） | `dockerd` |
+
+> 记住这个规律：看到 `xxx` 和 `xxxd` 同根，通常前者是客户端，后者是后台守护进程。
+
+`ctl` 后缀是 **control** 的缩写，代表控制器/命令行客户端：
+
+| 工具 | 全称 | 含义 |
+|------|------|------|
+| `systemctl` | system control | systemd 的控制器 |
+| `mysqlctl` | MySQL control | MySQL 管理工具 |
+| `dockerctl` | Docker control | Docker 管理命令 |
+
+### 1.3 systemd vs systemctl
+
+`systemd` 和 `systemctl` 不是一个东西：
+
+| 对比 | `systemd` | `systemctl` |
+|------|-----------|-------------|
+| 是什么 | 常驻的后台 daemon 进程（PID 1） | 命令行工具（客户端） |
+| 谁在跑 | 系统启动后自动常驻，直到关机 | 你敲命令时才启动，执行完就退出 |
+| 职责 | 实际负责启动/停止/监控所有服务 | 向 systemd **发送操作指令** |
+| 类比 | 电视机本体 | 遥控器 |
+
+你无法直接操作 `systemd`，必须通过 `systemctl` 来给它下指令：
+
+```bash
+# systemd   在后台默默运行（你看不到它具体在干嘛）
+# system ct l 是遥控器，用来向它发指令：
+systemctl start nginx     # 启动
+systemctl stop nginx      # 停止
+systemctl status nginx    # 查看状态
+systemctl enable nginx    # 设置开机自启
+```
+
+### 1.4 systemctl vs service
 
 老系统用 `service`，新系统用 `systemctl`：
 
@@ -60,6 +115,63 @@ systemctl start nginx
 ```
 
 `service` 命令在 systemd 系统上只是 `systemctl` 的包装器，直接用 `systemctl` 更高效。
+
+### 1.5 systemctl 如何找到对应的服务
+
+执行 `systemctl start nginx` 时，systemd 做了两件隐式的事：
+
+**自动补全后缀**：`nginx` → `nginx.service`。不带后缀时默认当 `.service` 处理；如果写 `systemctl start backup.timer` 则找 timer。
+
+**按优先级搜索目录**：
+
+```
+1. /etc/systemd/system/       ← 管理员手写/覆盖的（最高优先级）
+2. /run/systemd/system/       ← 运行时动态生成的
+3. /usr/lib/systemd/system/   ← 软件包安装的（最低优先级）
+   /lib/systemd/system/       ← 同上（部分发行版路径不同）
+```
+
+比如 `apt install nginx` 会把 `nginx.service` 装到 `/lib/systemd/system/`，可以用以下命令确认：
+
+```bash
+# 查看 service 文件的实际路径
+systemctl show nginx -p FragmentPath
+# FragmentPath=/lib/systemd/system/nginx.service
+
+# 直接查看文件内容
+systemctl cat nginx
+```
+
+如果在 `/etc/systemd/system/` 放一个同名文件，会覆盖 `/lib/` 下的版本——这也是 `systemctl edit` 能"override"而不改原文件的原理。
+
+### 1.6 Docker 容器中的服务由谁管理
+
+Docker 容器内的服务**不归 systemd 管**，由 Docker 引擎自己管理。
+
+| 层级 | 谁管理 | 管理方式 |
+|------|--------|---------|
+| `dockerd` 本身（宿主机） | systemd | `systemctl start docker` |
+| 容器内的进程 | Docker 引擎 | `docker run` / `docker compose up` |
+
+容器有自己的 PID 1（entrypoint 进程），和宿主机的 systemd 完全隔离：
+
+```
+宿主机 systemd (PID 1)
+├── dockerd                  ← systemd 管的
+│   └── containerd
+│       ├── 容器A (PID 1 = nginx)     ← Docker 管
+│       ├── 容器B (PID 1 = java -jar) ← Docker 管
+│       └── 容器C (PID 1 = node)      ← Docker 管
+```
+
+所以排查容器问题时：
+
+- `systemctl status nginx` — 找不到，宿主机 systemd 看不到容器内进程
+- `docker ps` — 查看容器运行状态
+- `docker logs` — 查看容器日志（不是 `journalctl`）
+- 容器重启策略用 `docker compose` 的 `restart: always`，而不是 systemd 的 `Restart=always`
+
+> 简单记忆：**容器外 systemd 管，容器内 Docker 自己管**。
 
 ## 2. systemctl 常用命令
 
