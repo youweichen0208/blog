@@ -347,7 +347,87 @@ couldn't list files: 405 Method Not Allowed
 - `PROPFIND https://dav.yourdomain.com/` 返回 `207 Multi-Status`
 - 能用认证成功创建和删除测试目录（例如 `MKCOL` / `DELETE`）
 
-这几项都通过后，再去看 GitHub Actions 日志，定位会清晰很多。
+
+#### 4.1.9 一次真实目录清理与从 Git 重导入的过程
+
+在这次排查里，`obsidian-webdav` 还出现了另一个问题：远端数据目录本身被历史操作污染了。
+
+真实目录是：
+
+```text
+/opt/obsidian-webdav/data/data
+```
+
+理论上这里应该主要放原始笔记、`.obsidian` 和图片素材，但当时里面还混进了：
+
+- `index.html`
+- `404.html`
+- `README.html`
+- `hashmap.json`
+- `vp-icons.css`
+
+这些都是之前博客构建产物误同步进去留下的静态文件。它们会带来两个直接后果：
+
+1. Apache 会优先把 `/` 当成静态站点首页，而不是纯 WebDAV collection。
+2. 手机端虽然提示“同步成功”，但你看到的远端目录结构可能和预期不一致，排查时很容易被误导。
+
+为了把目录状态彻底收干净，我最后做了两步：
+
+1. 先清空远端同步数据目录，只保留 WebDAV 服务配置、证书和容器定义。
+2. 再从本地 Git 仓库把受版本控制的博客原始内容重新导回远端。
+
+这里的“从 Git 重导入”不是重新导入构建后的 `dist`，而是导入博客仓库里真正受版本控制的原始资料，例如：
+
+- `docs/.obsidian`
+- `docs/.vitepress`
+- `docs/**/*.md`
+- `docs/images/**`
+
+而不会带上这些无关内容：
+
+- `node_modules`
+- `.git`
+- 本地构建缓存
+- 未跟踪的临时文件
+
+导回后，真正保留的一份内容放在：
+
+```text
+/opt/obsidian-webdav/data/data/docs/blog
+```
+
+随后我又把旧的顶层副本：
+
+```text
+/opt/obsidian-webdav/data/data/blog
+```
+
+删除掉，只保留 `docs/blog` 这一份，避免以后再次出现“看起来有两套 blog，到底该同步哪套”的歧义。
+
+最后，针对 `obsidian-webdav` 根目录，我还加了两项 Apache 配置：
+
+```apache
+<Directory "/var/lib/dav/data/">
+  DirectoryIndex disabled
+  DavDepthInfinity On
+</Directory>
+```
+
+作用分别是：
+
+- `DirectoryIndex disabled`：避免根目录因为存在 `index.html` 就被当成静态首页
+- `DavDepthInfinity On`：让 WebDAV 客户端能正常递归列目录
+
+最终建议的客户端配置是：
+
+- `Server Address`：`https://notes.youwei-agent.com/`
+- `Remote Base Dir`：`docs/blog`
+
+这样客户端和服务器上的真实目录会完全对应：
+
+```text
+notes.youwei-agent.com/  +  docs/blog  ->  /opt/obsidian-webdav/data/data/docs/blog
+```
 
 ### 4.2 无域名方案
 

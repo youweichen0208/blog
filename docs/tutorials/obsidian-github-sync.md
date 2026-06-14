@@ -369,6 +369,47 @@ rclone sync dist mywebdav:/ --progress
 
 这样做之后，`rclone` 只需要对远程根目录做 `PROPFIND`，避开了 `/blog/` 这类子目录兼容性问题。
 
+
+### 手机端 Remotely Save 的最终推荐配置
+
+如果你的博客原始内容最终希望落在服务器上的：
+
+```text
+/opt/obsidian-webdav/data/data/docs/blog
+```
+
+那么手机端最稳的配置是：
+
+- `Server Address`：`https://notes.youwei-agent.com/`
+- `Remote Base Dir` / `远端文件夹`：`docs/blog`
+- `Username`：`obsidian`
+- `Password`：笔记同步 WebDAV 的密码
+
+这组配置的好处是路径关系最清楚：
+
+- 域名根 `/` 对应 WebDAV 根目录
+- `docs/blog` 明确表示这次同步的目标子目录
+- 不需要把路径重复写进 `Server Address` 里，后续排查也更直观
+
+等价配置也可以这样写：
+
+- `Server Address`：`https://notes.youwei-agent.com/docs/blog/`
+- `Remote Base Dir`：留空或 `/`
+
+但如果你已经确定远端目标就是 `docs/blog`，我更推荐前一种写法，因为它和服务器上的实际目录一一对应。
+
+有一个容易踩的坑需要注意：
+
+- 如果你把 `Server Address` 填成 `https://notes.youwei-agent.com/docs/`
+- 同时本地 Vault 根目录里又有一个 `blog/` 子目录
+
+那最终远端内容会落到：
+
+```text
+docs/blog/...
+```
+
+这不是同步失败，而是“客户端地址 + 本地目录结构”共同决定的结果。只有先把目标路径想清楚，才能判断这是正确行为还是路径多嵌了一层。
 如果你在自己的环境里也遇到同样的 `405`，更可靠的排查顺序是：
 
 1. 先检查 `WEBDAV_URL` 是否真的是 WebDAV 入口。
