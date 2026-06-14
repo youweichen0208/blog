@@ -144,7 +144,33 @@ systemctl cat nginx
 
 如果在 `/etc/systemd/system/` 放一个同名文件，会覆盖 `/lib/` 下的版本——这也是 `systemctl edit` 能"override"而不改原文件的原理。
 
-### 1.6 Docker 容器中的服务由谁管理
+### 1.6 /etc/ 应用配置 vs systemd 配置
+
+配置分散在两个地方，容易混淆，但它们职责完全不同：
+
+| 路径 | 放什么 | 谁读 |
+|------|--------|------|
+| `/etc/my.cnf`、`/etc/nginx/nginx.conf` | **应用自己的配置** | 应用程序本身 |
+| `/etc/systemd/system/xxx.service` | **怎么管理这个应用** | systemd |
+
+`/etc/` 是 Unix 几十年来的传统——**所有软件的全局配置文件都放这里**，名字本身就是 etcetera（杂项）的意思。
+
+以 nginx 和 MySQL 为例，实际上每个服务都有两份配置各管各的：
+
+```
+/etc/nginx/nginx.conf              ← nginx 自己的配置（监听哪个端口、代理到哪）
+/lib/systemd/system/nginx.service  ← systemd 的管理配置（如何启停、挂掉怎么重启）
+
+/etc/mysql/my.cnf                  ← MySQL 自己的配置（端口、字符集、内存）
+/lib/systemd/system/mysql.service  ← systemd 的管理配置
+```
+
+- `my.cnf` 告诉 mysqld："你监听 3306 端口，最大连接数 200"
+- `mysql.service` 告诉 systemd："用 `mysqld` 命令启动它，挂了自动重启"
+
+> systemd 的 `.service` 文件只负责**拉起进程**，进程起来后读什么配置、监听什么端口，是应用自己决定的事。
+
+### 1.7 Docker 容器中的服务由谁管理
 
 Docker 容器内的服务**不归 systemd 管**，由 Docker 引擎自己管理。
 
