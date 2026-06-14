@@ -152,6 +152,35 @@ systemctl list-dependencies nginx
 | `systemctl cat nginx` | 直接查看 service 文件内容 |
 | `systemctl edit nginx` | 创建 override 配置（不修改原文件） |
 
+## 2.5 Nginx 配置检查与安全重载
+
+虽然 `nginx -t` 不是 `systemctl` 命令，但在真实运维里它经常和 `systemctl reload nginx` 连着用。
+
+```bash
+nginx -t
+systemctl reload nginx
+systemctl status nginx
+```
+
+推荐顺序：
+
+1. 先 `nginx -t` 验证语法
+2. 再 `systemctl reload nginx` 平滑重载
+3. 最后 `systemctl status nginx` 确认服务仍然是 `active (running)`
+
+如果你想顺手看最近访问和错误：
+
+```bash
+tail -n 120 /var/log/nginx/access.log
+tail -n 120 /var/log/nginx/error.log
+```
+
+这个组合特别适合排查：
+
+- 反向代理是不是命中了预期域名
+- 请求路径是不是 `/docs/blog/...`
+- 改完站点配置后是否立即生效
+
 ## 3. 编写自定义 .service 文件
 
 当你需要把一个应用作为后台服务运行时（比如 Node.js 后端、Go 应用、Python 脚本），需要自己写 `.service` 文件。

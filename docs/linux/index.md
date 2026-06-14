@@ -19,7 +19,7 @@ tags:
 |------|---------|------|
 | 进程与端口 | lsof、ps、kill、top、netstat | ✅ 已写 |
 | 网络诊断 | curl、ping、dig、ss、traceroute | 🔄 进行中 |
-| 磁盘与文件 | df、du、find、chmod、chown | 📝 计划中 |
+| 磁盘与文件 | df、du、find、chmod、chown | ✅ 已补充 |
 | 服务与日志 | systemctl、journalctl、crontab | ✅ 已写 |
 | 用户与权限 | useradd、sudo、passwd、umask | 📝 计划中 |
 
@@ -31,7 +31,7 @@ tags:
 
 ### 网络诊断
 
-- [curl 命令实战指南](./network-curl.md) - HTTP 调试、API 测试、文件上传下载、DNS 解析验证
+- [curl 命令实战指南](./network-curl.md) - HTTP 调试、API 测试、文件上传下载、DNS 解析验证，以及 WebDAV 方法校验
 
 计划覆盖：
 - ping：连通性测试与丢包判断
@@ -39,17 +39,19 @@ tags:
 - ss：网络连接状态（替代 netstat）
 - traceroute：路由追踪与延迟定位
 
-### 磁盘与文件（计划中）
+### 磁盘与文件
+
+- [文件与目录排查实战](./file-find-rm.md) - 用 ls、find、rm 和 Git 重导入定位并重建远端目录
 
 计划覆盖：
 - df / du：磁盘使用率与目录大小
-- find：文件搜索与批量操作
 - chmod / chown：权限修改与所有权
 - tar / gzip：压缩与解压
 
 ### 服务与日志
 
-- [systemd 与 systemctl 实战](./systemd-systemctl.md) - 服务启停、开机自启、journalctl 日志与自定义 .service 文件
+- [systemd 与 systemctl 实战](./systemd-systemctl.md) - 服务启停、开机自启、journalctl 日志，以及 Nginx 配置检查与安全重载
+- [Docker 与 Docker Compose 排障实战](./docker-compose-ops.md) - 容器、端口映射、日志、docker exec 和 compose 服务重启
 
 计划覆盖：
 - ufw：防火墙基础操作

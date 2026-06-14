@@ -410,3 +410,46 @@ curl -N https://api.your-domain.com/openai/v1/chat/completions \
 - [Linux 实用指南](./) - 更多 Linux 命令与运维场景
 - [DNS 与代理](../dns-proxy/) - Nginx 反向代理配置
 - [进程与端口排查](./process-port.md) - lsof、ps、kill
+
+
+## 场景六：用 curl 验证 WebDAV 与同步路径
+
+当你在排查 Obsidian、Remotely Save 或 GitHub Actions 的 WebDAV 问题时，`curl` 最有价值的地方不是“能不能访问网页”，而是直接验证 DAV 方法和真实路径。
+
+### 验证认证和目录是否可访问
+
+```bash
+curl -u obsidian:你的密码 https://notes.youwei-agent.com/
+curl -u obsidian:你的密码 https://notes.youwei-agent.com/docs/blog/
+```
+
+### 验证 WebDAV collection 是否正常
+
+```bash
+curl -u obsidian:你的密码 -X PROPFIND -H 'Depth: 1' https://notes.youwei-agent.com/
+curl -u obsidian:你的密码 -X PROPFIND -H 'Depth: 1' https://notes.youwei-agent.com/docs/blog/
+```
+
+如果返回 `207 Multi-Status`，说明这个路径本身是一个可正常工作的 WebDAV collection。
+
+### 验证创建和删除目录
+
+```bash
+curl -u obsidian:你的密码 -X MKCOL https://notes.youwei-agent.com/test-dir/
+curl -u obsidian:你的密码 -X DELETE https://notes.youwei-agent.com/test-dir/
+```
+
+### 为什么这比只看客户端提示更可靠
+
+这组命令可以很快区分：
+
+- 认证错了
+- 路径填错了
+- 反向代理没转对
+- 服务端能 `GET`，但不能真正做 WebDAV 方法
+
+在我这次真实排查里，最关键的判断之一就是：
+
+- `GET /` 正常，不代表 WebDAV 正常
+- 真正要看的是 `PROPFIND` 是否返回 `207`
+- 如果它返回 `405`，通常说明你命中的不是一个真正的 DAV collection

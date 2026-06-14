@@ -429,6 +429,8 @@ couldn't list files: 405 Method Not Allowed
 notes.youwei-agent.com/  +  docs/blog  ->  /opt/obsidian-webdav/data/data/docs/blog
 ```
 
+服务器侧定位用到的命令已经按类别拆到 Linux 专栏里：`curl` 的 WebDAV 校验在 [curl 命令实战指南](../linux/network-curl.md)，容器相关命令在 [Docker 与 Docker Compose 排障实战](../linux/docker-compose-ops.md)，目录结构与重导入命令在 [文件与目录排查实战](../linux/file-find-rm.md)。
+
 ### 4.2 无域名方案
 
 在拿到域名之前，有以下几种临时方案：
