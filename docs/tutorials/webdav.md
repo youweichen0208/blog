@@ -393,16 +393,16 @@ couldn't list files: 405 Method Not Allowed
 导回后，真正保留的一份内容放在：
 
 ```text
-/opt/obsidian-webdav/data/data/docs/blog
+/opt/obsidian-webdav/data/data/blog
 ```
 
 随后我又把旧的顶层副本：
 
 ```text
-/opt/obsidian-webdav/data/data/blog
+/opt/obsidian-webdav/data/data/docs/blog
 ```
 
-删除掉，只保留 `docs/blog` 这一份，避免以后再次出现“看起来有两套 blog，到底该同步哪套”的歧义。
+删除掉，只保留 `blog` 这一份，避免以后再次出现"看起来有两套 blog，到底该同步哪套"的歧义。
 
 最后，针对 `obsidian-webdav` 根目录，我还加了两项 Apache 配置：
 
@@ -421,12 +421,12 @@ couldn't list files: 405 Method Not Allowed
 最终建议的客户端配置是：
 
 - `Server Address`：`https://notes.youwei-agent.com/`
-- `Remote Base Dir`：`docs/blog`
+- `Remote Base Dir`：`blog`
 
 这样客户端和服务器上的真实目录会完全对应：
 
 ```text
-notes.youwei-agent.com/  +  docs/blog  ->  /opt/obsidian-webdav/data/data/docs/blog
+notes.youwei-agent.com/  +  blog  ->  /opt/obsidian-webdav/data/data/blog
 ```
 
 服务器侧定位用到的命令已经按类别拆到 Linux 专栏里：`curl` 的 WebDAV 校验在 [curl 命令实战指南](../linux/network-curl.md)，容器相关命令在 [Docker 与 Docker Compose 排障实战](../linux/docker-compose-ops.md)，目录结构与重导入命令在 [文件与目录排查实战](../linux/file-find-rm.md)。
