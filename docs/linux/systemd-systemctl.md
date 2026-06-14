@@ -199,6 +199,26 @@ Docker 容器内的服务**不归 systemd 管**，由 Docker 引擎自己管理�
 
 > 简单记忆：**容器外 systemd 管，容器内 Docker 自己管**。
 
+#### Docker 可以理解为"子 systemd"吗？
+
+可以这样理解，Docker 在容器内确实扮演了类似 systemd 的角色：
+
+| 能力 | systemd | Docker |
+|------|---------|--------|
+| 管理进程生命周期 | start/stop/restart | start/stop/restart |
+| 挂掉自动重启 | `Restart=always` | `restart: always` |
+| 有自己的 PID 1 | 宿主机 PID 1 | 每个容器内 PID 1 |
+| 日志管理 | `journalctl` | `docker logs` |
+| 开机自启 | `systemctl enable` | `restart_policy` |
+| 声明式配置 | `.service` 文件 | `Dockerfile` + `compose.yml` |
+
+但 Docker 多了一层 systemd 没有的能力——**隔离**：
+
+- **systemd**：所有服务共享同一个系统环境（文件系统、网络、进程空间），像公寓物业管理员，管同一栋楼的住户
+- **Docker**：每个容器是隔离的（独立的文件系统、网络、进程命名空间），像酒店经理，每个房间独立互不可见
+
+所以 Docker 不只是"子 systemd"，它是 **容器运行时 + 进程管理 + 环境隔离** 的组合体。
+
 ## 2. systemctl 常用命令
 
 ### 2.1 服务生命周期
