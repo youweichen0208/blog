@@ -203,6 +203,21 @@ function generateSidebar() {
       },
     ],
 
+    "/internet/": [
+      {
+        text: "网络协议与 IP 地址",
+        items: getSidebarItems("/internet", {
+          sortBy: "order",
+          order: {
+            "ipv4-fundamentals": 1,
+            "ipv6-fundamentals": 2,
+            "dns-fundamentals": 3,
+            "cloud-networking": 4,
+          },
+        }),
+      },
+    ],
+
     "/agent/": [
       {
         text: "Agent 开发",

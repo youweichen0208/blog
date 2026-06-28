@@ -5,6 +5,9 @@ import { generateSidebar } from "./sidebar.js";
 export default withMermaid(
   defineConfig({
     appearance: false,
+    mermaid: {
+      securityLevel: "loose",
+    },
     lang: "zh-CN",
     title: "我的博客",
     description: "记录后端架构、AI开发与日常思考",

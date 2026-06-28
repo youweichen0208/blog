@@ -53,3 +53,13 @@ DNS（Domain Name System）是互联网的「电话簿」。人类记忆域名�
 - Cloudflare Tunnel 与 Nginx 对比
 - Nginx 负载均衡策略详解
 - API Gateway 选型：Kong / APISIX / Nginx
+
+## 前置知识
+
+本专栏假设你对 IP 地址和 DNS 有基本了解。如果需要补充网络层基础：
+
+→ [网络协议与 IP 地址](/internet/) — IPv4/IPv6 地址结构、子网划分、Linux 网络配置
+
+如果需要深入理解 DNS 协议本身（解析流程、报文格式、DNSSEC、DoH/DoT、自建 DNS）：
+
+→ [DNS 全面指南](/internet/dns-fundamentals.html) — DNS 协议原理与运维深度指南

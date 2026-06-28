@@ -67,7 +67,7 @@ Chrome DevTools MCP 让 Claude Code 可以通过 MCP 协议操作 Chrome 浏览�
 
 Claude 可以通过 Chrome DevTools MCP 自动操作浏览器，完成点击、填写、导航等操作：
 
-![Claude 使用 Chrome DevTools MCP](/images/posts/2026/06/2026-06-09-screenshot.png)
+![Claude 使用 Chrome DevTools MCP](../.vitepress/public/images/posts/2026/06/2026-06-28-screenshot.png)
 
 上图展示了 Claude 使用 Chrome DevTools MCP 自动打开网页并进行操作的过程。
 ---

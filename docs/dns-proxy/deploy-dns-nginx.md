@@ -40,16 +40,44 @@ whois youwei-agent.com | grep -i status
 | 记录值 | 你的服务器公网 IPv4 地址 |
 
 > 使用 DigitalOcean Reserved IP 作为记录值，即使重建 Droplet 也不需要改 DNS，只要保持 Reserved IP 绑定当前 Droplet 即可。
+![](../images/posts/inbox/Pasted%20image%2020260614175939.png)
 
-### 1.3 验证解析生效
+### 1.3 子域名解析配置
 
-```bash
-dig youwei-agent.com +short
-# 或
-ping -c 3 youwei-agent.com
+**理解主机记录和记录值：**
+
+DNS 本质上是一张映射表，每条记录都由「主机记录」和「记录值」组成：
+
+- **主机记录**：域名中主域名前面的那一段，拼上主域名就是完整域名。`@` 是特例，代表主域名本身。
+- **记录值**：这条记录指向的目标，根据类型不同可以是 IP 地址（A 记录）或另一个域名（CNAME 记录）。
+
+```text
+主机记录 + 主域名 = 完整域名
+
+@     + youwei-agent.com = youwei-agent.com       （主域名本身）
+www   + youwei-agent.com = www.youwei-agent.com   （www 子域名）
+notes + youwei-agent.com = notes.youwei-agent.com （notes 子域名）
+blog  + youwei-agent.com = blog.youwei-agent.com  （blog 子域名）
 ```
 
-返回正确的 IP 地址即说明解析已生效。
+**子域名配置表：**
+
+除了主站 `@` 和 `www`，还需要配置三个子域名，各自承担不同服务：
+
+| 主机记录 | 记录类型 | 记录值 | 用途 | 映射关系 |
+|---------|---------|-------|------|---------|
+| `notes` | A | `xxx.xxx.xxx.xxx` | 笔记应用 | 域名 → 服务器 IP |
+| `dav` | A | `xxx.xxx.xxx.xxx` | WebDAV 文件同步服务 | 域名 → 服务器 IP |
+| `blog` | CNAME | `xxx.github.io` | 博客站点（GitHub Pages） | 域名 → 另一个域名 |
+
+**A 记录 vs CNAME 的选择逻辑：**
+
+| 场景 | 选择 | 原因 |
+|------|------|------|
+| 服务跑在自己的服务器上 | A 记录 | 你知道服务器 IP 且控制它，直接指向 IP 解析更快 |
+| 服务托管在第三方平台 | CNAME 记录 | 你不知道对方的 IP（如 GitHub Pages），用域名别名跟随对方 DNS 变化 |
+
+`notes` 和 `dav` 都部署在同一台 DigitalOcean 服务器上，Nginx 通过请求中的 `server_name` 区分它们，路由到不同的后端端口。`blog` 托管在 GitHub Pages，GitHub 的出口 IP 不固定，所以用 CNAME 指向 GitHub 分配的域名，由 GitHub 的 DNS 负责最终解析。
 
 ## 2. 服务器安装 nginx 与 SSL 证书
 
@@ -70,6 +98,10 @@ systemctl start nginx
 systemctl enable nginx
 ```
 
+**Certbot 是什么：**
+
+Certbot 是 Let's Encrypt 的官方客户端，用来自动申请免费的 HTTPS 证书，并自动续期，避免手动去证书机构网站申请、续费。
+
 安装 certbot 并自动获取证书：
 
 ```bash
@@ -77,7 +109,70 @@ apt install -y certbot python3-certbot-nginx
 certbot --nginx -d youwei-agent.com -d www.youwei-agent.com
 ```
 
-certbot 会自动修改 nginx 配置，填入 `ssl_certificate` 和 `ssl_certificate_key`。
+**命令拆解：**
+
+```text
+certbot --nginx -d youwei-agent.com -d www.youwei-agent.com
+         │       │                  │
+         │       │                  └ 同一张证书同时保护 www 子域名
+         │       └ 为哪个域名申请证书（-d = domain，可重复多次）
+         └ 自动识别 Nginx 并重写其配置（插入 ssl_certificate 等指令）
+```
+
+**什么是 HTTP-01 验证：**
+
+Let's Encrypt 提供多种域名所有权验证方式，HTTP-01 是最常用的一种。核心思路：
+
+> 如果你能在域名对应的服务器上放一个特定文件，并让 CA 主动访问到它，就证明你控制了这个域名。
+
+```text
+HTTP-01 验证三步：
+
+步骤 1：CA 给你一个随机 token，如 abc123
+步骤 2：你把这个 token 放到服务器上特定路径：
+        http://yourdomain.com/.well-known/acme-challenge/abc123
+步骤 3：CA 主动访问这个地址，能读到正确内容 → 验证通过
+```
+
+**HTTP-01 vs DNS-01 对比：**
+
+| 维度 | HTTP-01 | DNS-01 |
+|-----|---------|--------|
+| 验证方式 | 服务器上放临时文件 | DNS 里加一条 TXT 记录 |
+| 通配符支持 | ❌ 不支持 `*.example.com` | ✅ 支持 |
+| 端口要求 | 必须开放 80 端口 | 无端口要求 |
+| 是否需要真实 IP | 必须（需要 HTTP 访问） | 不需要 |
+| 自动化程度 | 全自动，无需人工干预 | 需手动配置 DNS（或接入 Cloudflare API） |
+| 适用场景 | 普通单域名 | 子域名多、需要通配符证书 |
+
+**HTTP-01 验证流程：**
+
+Certbot 申请证书时，需要证明「你能控制这个域名指向的服务器」。验证是在你的 **DigitalOcean 服务器**上完成的，与阿里云域名注册商无关（阿里云只负责 DNS 解析）。
+
+```text
+Let's Encrypt CA
+      │
+      │ 访问 http://youwei-agent.com/.well-known/acme-challenge/<token>
+      │
+      ▼
+DNS 解析（阿里云）→ 返回服务器 IP
+      │
+      ▼
+DigitalOcean 服务器上的 Nginx（Certbot 已在此放好临时验证文件）
+      │
+      ▼
+返回验证文件 → 验证通过 → 签发证书
+```
+
+Certbot 会自动完成整个流程：生成验证文件 → 请求证书 → 修改 Nginx 配置 → 重载 Nginx。
+
+```text
+certbot --nginx 执行的四件事：
+1. 与 Let's Encrypt 通信，完成域名的 HTTP-01 验证
+2. 下载证书到 /etc/letsencrypt/live/youwei-agent.com/
+3. 自动修改 Nginx 配置，插入 ssl_certificate / ssl_certificate_key
+4. 重载 Nginx 使证书生效
+```
 
 证书默认 90 天过期，certbot 会自动设置 systemd timer 续期，可以用以下命令验证：
 
@@ -183,51 +278,5 @@ nginx -t            # 检查配置语法
 systemctl reload nginx
 ```
 
-## 4. 企业微信回调 URL 配置
+  
 
-域名和 nginx 都就绪后，在企业微信管理后台配置：
-
-1. 登录 [企业微信管理后台](https://work.weixin.qq.com/)
-2. 进入 **应用管理** → 你的自建应用
-3. 找到 **"接收消息"** 区域，点击 **"设置 API 接收"**
-4. 填写：
-
-   | 字段 | 值 |
-   |------|---|
-   | URL | `https://youwei-agent.com/wecom/callback` |
-   | Token | 点击 **随机获取** 或自定义，写入 `.env` 的 `WECOM_TOKEN` |
-   | EncodingAESKey | 点击 **随机获取**（自动生成 43 位），写入 `.env` 的 `WECOM_AES_KEY` |
-
-5. 先启动 `bot-wecom` 服务，再点击企业微信后台的 **保存** 完成验证
-
-### Token 与 AESKey 格式要求
-
-从 `internal/wecom/crypto.go` 的实现可知：
-
-- `WECOM_TOKEN`：任意字符串，无长度限制
-- `WECOM_AES_KEY`：必须恰好 **43 个字符**，由企业微信生成，Base64 解码后为 32 字节 AES-256 密钥
-
-## 常见问题
-
-### clientHold 状态无法解析
-
-域名注册当天完成实名认证后，`clientHold` 通常需要 **12~24 小时** 自动解除。开发阶段可以先用 ngrok 顶着：
-
-```bash
-brew install ngrok && ngrok http 8080
-```
-
-把 ngrok 给的 HTTPS 地址填到企业微信后台，调通后再切回域名。
-
-### certbot 申请证书失败
-
-- 确认 nginx 已启动且 80 端口未被其他进程占用
-- 确认 DNS 解析已生效，`dig youwei-agent.com +short` 能返回服务器 IP
-- 如果有防火墙，确保开放 80 和 443 端口：
-  ```bash
-  ufw allow 80/tcp && ufw allow 443/tcp
-  ```
-
-### Cloudflare 代理 vs DNS 直连
-
-如果域名托管在 Cloudflare，注意代理状态（橙色云朵）会经过 CF 节点，可能与企业微信证书校验冲突。调试时建议设为 **DNS Only**（灰色云朵），直连服务器。
