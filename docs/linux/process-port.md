@@ -254,7 +254,7 @@ lsof -i :8080
 lsof -i :18789
 ```
 
-![lsof 命令输出](../.vitepress/public/images/posts/2026/06/2026-06-28-screenshot.png)
+![lsof 命令输出](../images/posts/2026/06/2026-06-28-screenshot.png)
 
 ```bash
 # 2. 逐个检查每个 PID 的启动命令
