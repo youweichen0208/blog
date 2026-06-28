@@ -40,7 +40,7 @@ whois youwei-agent.com | grep -i status
 | 记录值 | 你的服务器公网 IPv4 地址 |
 
 > 使用 DigitalOcean Reserved IP 作为记录值，即使重建 Droplet 也不需要改 DNS，只要保持 Reserved IP 绑定当前 Droplet 即可。
-![](../images/posts/inbox/Pasted%20image%2020260614175939.png)
+![](../images/posts/2026/06/2026-06-28-screenshot.png)
 
 ### 1.3 子域名解析配置
 

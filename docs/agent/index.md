@@ -74,7 +74,7 @@ Agent（智能代理）是能够感知环境、做出决策并采取行动以实
 
 - [MCP (Model Context Protocol) 完全指南](../mcp/) - 先理解模型如何连接工具和外部系统。
 - [RDS CLI 开发教程：Go + Cobra 从零开始](../cli/) - 理解为什么 CLI 很适合作为 Agent 的工具边界。
-- [Skill 实战记录](../skill/) - 记录一次 Codex + Skill + MCP 的真实工作流。
+- [Skill 实战记录](../claude-code/skill/) - 记录一次 Codex + Skill + MCP 的真实工作流。
 - [OpenClaw 实战](../openclaw/boss-recruiting-practice.md) - 一个浏览器自动化和业务流程结合的 Agent 场景。
 
 ## 后续写作计划
