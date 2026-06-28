@@ -20,7 +20,10 @@ import path from "path";
 import { glob } from "glob";
 
 const docsDir = path.join(process.cwd(), "docs");
-const publicImagesDir = path.join(docsDir, ".vitepress/public/images/posts");
+// 真实归档目录：docs/images/posts/（git 实际跟踪图片的位置）。
+// docs/.vitepress/public/images 是指向这里的相对符号链接，仅供 Obsidian 粘贴图片用，
+// markdown 链接一律用真实路径 images/posts/...，不依赖符号链接，CI 也能解析。
+const publicImagesDir = path.join(docsDir, "images/posts");
 const inboxDir = path.join(publicImagesDir, "inbox");
 
 const DRY_RUN = process.argv.includes("--dry-run");
@@ -61,7 +64,8 @@ function getRelativeImagePath(mdPath, year, month, filename) {
   const mdDir = path.dirname(mdPath);
   const depth = mdDir.replace(/^docs\/?/, "").split("/").filter(Boolean).length;
   const prefix = Array(depth).fill("..").join("/");
-  const imagePath = `.vitepress/public/images/posts/${year}/${month}/${filename}`;
+  // 用真实路径 images/posts/...，不依赖 .vitepress/public/images 符号链接
+  const imagePath = `images/posts/${year}/${month}/${filename}`;
   return prefix ? `${prefix}/${imagePath}` : imagePath;
 }
 
@@ -119,12 +123,11 @@ async function findImagesToOrganize() {
     }
   }
 
-  // 2. 扫描 docs 目录下不在 public/images 内的图片
+  // 2. 扫描 docs 目录下不在归档目录内的图片（真正散落的）
   const allImages = await glob(`docs/**/*.{${IMAGE_EXTENSIONS.join(",")}}`, {
     ignore: [
-      "docs/.vitepress/public/images/**",
-      "docs/.vitepress/dist/**",
-      "docs/.vitepress/cache/**",
+      "docs/images/**", // 已归档图片（含 inbox，inbox 由上面单独扫描）
+      "docs/.vitepress/**",
     ],
   });
 
@@ -285,7 +288,7 @@ async function main() {
   } else {
     console.log("");
     console.log("=== 整理完成 ===");
-    console.log(`图片已移动到: docs/.vitepress/public/images/posts/${year}/${month}/`);
+    console.log(`图片已移动到: docs/images/posts/${year}/${month}/`);
     console.log("请运行 npm run docs:build 检查构建是否正常。");
   }
 }
