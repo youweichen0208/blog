@@ -19,6 +19,8 @@ date: 2026-05-10
 | 自动部署 | [Jenkins CI/CD 从入门到实战：部署项目到阿里云](./jenkins-cicd.md) | 从 Jenkins 安装到 Pipeline 部署的完整流程 |
 | 博客同步 | [Obsidian + GitHub 多端同步博客方案](./obsidian-github-sync.md) | 让电脑、手机 Obsidian 和 GitHub Pages 共享同一批 Markdown |
 | 内容规范 | [博客内容同步与附件规则](./blog-content-rules.md) | 约定 Obsidian 配置、图片路径和手机只读同步边界 |
+| 缓存与运维 | [Redis 实战：服务器部署、日常使用与可观测性](./redis-guide.md) | 部署 Redis、数据类型、配置与 INFO/SLOWLOG/MONITOR 观测 |
+| 数据库与运维 | [PostgreSQL 实战：Linux 部署、日常使用与可观测性](./postgres-guide.md) | apt/Docker 部署、角色库表、配置与 pg_stat_activity/pg_stat_statements 观测 |
 
 ## 实战检查清单
 

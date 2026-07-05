@@ -56,6 +56,10 @@ tags:
 计划覆盖：
 - ufw：防火墙基础操作
 
+### 发行版认知
+
+- [EulerOS 2.0 是什么？和主流 Linux 有什么区别](./euleros-intro.md) - 概念入门：EulerOS 就是华为的企业级 Linux 发行版，讲清它与 CentOS/Ubuntu 的区别及与 openEuler 的关系
+
 ## 使用建议
 
 1. **遇到问题先确定场景**：是网络不通、进程异常、磁盘满了还是服务挂了？
