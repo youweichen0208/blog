@@ -2,7 +2,7 @@
 
 ## 概述
 
-Sentry 是一个实时的应用错误监控和性能追踪平台。线上服务发生异常时，自动捕获并上报到 Sentry，它会自动聚合相同类型的错误为 issue，记录堆栈追踪、用户影响范围、性能指标等关键信息。
+Sentry 是一个实时的应用错误监控和性能追踪平台。线上服务发生异常时，自动捕获并上报到 Sentry，它会自动聚合相同类型的错误为 issue，记录堆栈追踪、用户影响范围、性能指标等关键信息
 
 **核心价值**：
 - **实时告警**：异常秒级上报，支持邮件/Slack/钉钉告警
@@ -71,9 +71,10 @@ async def get_user(user_id: int):
             raise ValueError(f"User {user_id} not found")
         return user
     except Exception as e:
-        # 方式1：让 Sentry 自动捕获（推荐）
+        # 方式1：手动捕获异常并附加上下文（捕获后仍需自行返回错误响应）
         sentry_sdk.capture_exception(e)
         raise HTTPException(status_code=500, detail=str(e))
+        # 注意：不要同时依赖 FastAPI 集成自动捕获，否则同一异常会被上报两次。
 ```
 
 **添加上下文信息**：
@@ -105,17 +106,21 @@ import (
     "time"
 )
 
-func init() {
+func main() {
     err := sentry.Init(sentry.ClientOptions{
-        Dsn:             "your-sentry-dsn-here",
-        Environment:     "production",
-        TracesSampleRate: 0.1,
+        Dsn:               "your-sentry-dsn-here",
+        Environment:       "production",
+        TracesSampleRate:  0.1,
         ProfilesSampleRate: 0.1,
     })
     if err != nil {
         panic(err)
     }
+    // Flush 必须放在进程退出路径上（如 main 返回前），
+    // 放在 init() 中的 defer 会在 init 结束时立即执行，无法等到程序退出。
     defer sentry.Flush(2 * time.Second)
+
+    // ... 启动服务 ...
 }
 ```
 
@@ -127,14 +132,11 @@ import (
 )
 
 func main() {
-    // 创建带 Sentry 的 HTTP 客户端
-    sentryClient := sentryhttp.NewClient(sentry.GetCurrentClient())
-
-    // 或在 mux 中使用中间件
+    // 使用 sentryhttp 中间件包裹 mux，自动捕获未处理异常和 panic
     mux := http.NewServeMux()
     handler := sentryhttp.New(sentryhttp.Options{}).Handle(mux)
 
-    // 所有未处理异常和 panic 都会自动捕获
+    http.ListenAndServe(":8080", handler)
 }
 ```
 
@@ -335,9 +337,11 @@ sentry_sdk.init(
 
 ```python
 def scrub_sensitive_data(event, hint):
-    # 移除 headers 中的 Authorization
+    # 移除 headers 中的 Authorization（需条件判断，不能对 None 执行 del）
     if "request" in event:
-        del event["request"]["headers"].get("Authorization", None)
+        headers = event["request"].get("headers", {})
+        if headers and "Authorization" in headers:
+            del headers["Authorization"]
     # 移除 POST body 中的敏感字段
     if "request" in event and "data" in event["request"]:
         event["request"]["data"].pop("password", None)

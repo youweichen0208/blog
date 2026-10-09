@@ -34,8 +34,6 @@ CLI 的核心特点：
 
 **关键洞察**：CLI 是最适合 AI Agent 的交互方式。LLM 本质是文本模型，CLI 的输入输出都是文本，天然契合。相比之下，让 AI 操作 GUI 需要"看屏幕"，调 API 需要理解复杂的 JSON Schema，而 CLI 命令本身就是自然语言——`rds slowlog list` 人和 AI 都能一眼看懂。
 
----
-
 ## 为什么是 CLI + Agent？
 
 传统 CLI 和 AI Agent 结合后，产生了一种新的产品形态：**Agent CLI**。
