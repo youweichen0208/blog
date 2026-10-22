@@ -74,8 +74,11 @@ const showIntro = computed(() => {
 
 <style scoped>
 .doc-intro {
-  display: grid;
-  gap: 10px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 20px;
   margin-bottom: 22px;
 }
 

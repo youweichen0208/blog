@@ -98,6 +98,16 @@ function getSidebarItems(dirPath, options = {}) {
  */
 function generateSidebar() {
   return {
+    "/claude-code/": [
+      {
+        text: "Claude Code",
+        items: [
+          ...getSidebarItems("/claude-code"),
+          ...getSidebarItems("/claude-code/skill"),
+        ],
+      },
+    ],
+
     "/stock/": [
       {
         text: "股票投资",
@@ -138,7 +148,9 @@ function generateSidebar() {
     "/data-structures/": [
       {
         text: "数据结构",
-        items: getSidebarItems("/data-structures", { sortBy: "alpha" }),
+        link: "/data-structures/",
+        collapsed: false,
+        items: getSidebarItems("/data-structures", { sortBy: "alpha", exclude: ["index.md"] }),
       },
     ],
 

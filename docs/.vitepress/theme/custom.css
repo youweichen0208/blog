@@ -217,6 +217,7 @@ button,
 
 .VPNavBarMenu {
   gap: 4px;
+  align-items: center;
 }
 
 .VPNavBarMenuLink,
@@ -231,11 +232,37 @@ button,
 }
 
 .VPNavBarMenuLink.active {
-  box-shadow: inset 0 -2px var(--blog-accent);
   color: var(--blog-accent) !important;
-  background: transparent !important;
-  border-radius: 0;
+  background: #eff6ff !important;
+  border-radius: 8px;
+  box-shadow: none;
 }
+
+.VPNavBarMenuLink {
+  height: 36px !important;
+}
+
+.vp-doc .article-descriptions {
+  margin: 20px 0 32px;
+}
+
+.vp-doc .article-descriptions dt {
+  margin-top: 18px;
+  font-weight: 600;
+}
+
+.vp-doc .article-descriptions dd {
+  margin: 6px 0 0 16px;
+  color: var(--blog-ink-soft);
+  line-height: 1.75;
+}
+
+.VPSidebarItem.level-0.is-link > .items {
+  margin-left: 14px;
+  padding-left: 10px !important;
+  border-left: 1px solid var(--blog-border);
+}
+
 
 .VPContent,
 .VPDoc,
@@ -473,7 +500,7 @@ button,
 
 .vp-doc h1 {
   margin: 0 0 30px;
-  font-size: clamp(32px, 3.4vw, 46px);
+  font-size: clamp(28px, 2.6vw, 36px);
   line-height: 1.06;
   text-wrap: pretty;
 }
@@ -481,7 +508,7 @@ button,
 .VPDoc.has-sidebar .vp-doc h1,
 .VPDoc.has-aside .vp-doc h1 {
   max-width: none;
-  font-size: clamp(32px, 3.4vw, 46px);
+  font-size: clamp(28px, 2.6vw, 36px);
   line-height: 1.08;
 }
 
@@ -510,7 +537,7 @@ button,
   .VPDoc.has-sidebar .vp-doc h1,
   .VPDoc.has-aside .vp-doc h1 {
     max-width: none;
-    font-size: clamp(32px, 3.4vw, 46px);
+    font-size: clamp(28px, 2.6vw, 36px);
     line-height: 1.08;
     text-wrap: pretty;
     overflow-wrap: break-word;
@@ -520,14 +547,14 @@ button,
 .vp-doc h2 {
   margin-top: 48px;
   padding-top: 0;
-  font-size: clamp(26px, 2.2vw, 32px);
+  font-size: clamp(24px, 2vw, 28px);
   line-height: 1.12;
   border-top: 0;
 }
 
 .vp-doc h3 {
   margin-top: 36px;
-  font-size: clamp(21px, 1.8vw, 25px);
+  font-size: clamp(20px, 1.7vw, 23px);
   line-height: 1.2;
 }
 
@@ -702,7 +729,7 @@ button,
   :root {
     --blog-rail-width: clamp(200px, 16vw, 240px);
     --blog-column-gap: clamp(24px, 2.5vw, 40px);
-    --blog-page-gutter: max(24px, calc((100vw - 1200px) / 2));
+    --blog-page-gutter: max(24px, calc((100vw - 1160px) / 2));
   }
 
   .VPContent.has-sidebar {
@@ -741,14 +768,14 @@ button,
   }
 
   .VPDoc.has-sidebar > .container > .content {
-    flex: 1 1 640px;
-    max-width: 640px;
+    flex: 1 1 600px;
+    max-width: 600px;
     margin: 0;
   }
 
   .VPDoc.has-sidebar > .container > .content > .content-container {
     padding: 10px 0 48px !important;
-    max-width: 640px !important;
+    max-width: 600px !important;
   }
 
   .VPDoc.has-sidebar > .container > .aside {

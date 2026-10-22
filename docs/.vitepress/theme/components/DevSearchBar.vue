@@ -127,6 +127,7 @@ const filteredItems = computed(() => {
 }
 
 .dev-search-dropdown {
+  visibility: hidden;
   position: absolute;
   top: calc(100% + 10px);
   left: 0;
@@ -145,6 +146,7 @@ const filteredItems = computed(() => {
 }
 
 .dev-search-bar:focus-within .dev-search-dropdown {
+  visibility: visible;
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
