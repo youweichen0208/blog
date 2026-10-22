@@ -173,7 +173,7 @@ button,
 .VPNavBar .title,
 .VPNavBarTitle .title {
   font-family: var(--blog-font-body);
-  font-size: 26px;
+  font-size: 20px;
   font-weight: 600;
   color: #171717;
   letter-spacing: -0.045em;
@@ -217,12 +217,12 @@ button,
 }
 
 /* The static navbar already occupies space in the document flow. */
-.VPContent:not(.is-home) {
+.VPContent {
   padding-top: 0 !important;
 }
 
 .VPHome {
-  padding-top: 44px !important;
+  padding-top: 16px !important;
 }
 
 .custom-home .VPHero,
@@ -650,6 +650,13 @@ button,
   display: none;
 }
 
+@media (min-width: 961px) {
+  .VPSidebar {
+    /* Align with the outline at 112px, accounting for nav and group padding. */
+    padding: 70px 0 0 !important;
+  }
+}
+
 .VPDocAside .outline-link {
   color: var(--blog-ink-soft);
 }
@@ -894,7 +901,7 @@ button,
   }
 
   .VPHome {
-    padding-top: 32px !important;
+    padding-top: 16px !important;
   }
 
   .VPDoc.has-sidebar > .container {
@@ -920,7 +927,7 @@ button,
 
 @media (max-width: 640px) {
   .VPHome {
-    padding-top: 24px !important;
+    padding-top: 16px !important;
   }
 
   .VPLocalNav {
@@ -938,7 +945,7 @@ button,
 
   .VPNavBar .title,
   .VPNavBarTitle .title {
-    font-size: 22px;
+    font-size: 18px;
   }
 
   .VPNavBarTitle {
