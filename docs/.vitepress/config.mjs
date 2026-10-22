@@ -9,7 +9,7 @@ export default withMermaid(
       securityLevel: "loose",
     },
     lang: "zh-CN",
-    title: "Youwei Blog",
+    title: "Youwei 知识星球",
     description: "记录后端架构、AI开发与日常思考",
     base: "/",
 
