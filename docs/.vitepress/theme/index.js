@@ -1,6 +1,6 @@
 import DefaultTheme from 'vitepress/theme'
-import { useData } from 'vitepress'
-import { h, onMounted, onUnmounted } from 'vue'
+import { useData, useRoute } from 'vitepress'
+import { h, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import './custom.css'
 import PaperHome from './components/PaperHome.vue'
 import DevSearchBar from './components/DevSearchBar.vue'
@@ -31,9 +31,27 @@ export default {
   },
   setup() {
     let outlineObserver
-    onUnmounted(() => outlineObserver?.disconnect())
+    let sidebarObserver
+    let observeSidebar = () => {}
+    const route = useRoute()
+    watch(() => route.path, () => nextTick(observeSidebar))
+    onUnmounted(() => {
+      outlineObserver?.disconnect()
+      sidebarObserver?.disconnect()
+      document.documentElement.style.removeProperty('--blog-left-rail-width')
+    })
 
     onMounted(() => {
+      sidebarObserver = new ResizeObserver(([entry]) => {
+        document.documentElement.style.setProperty('--blog-left-rail-width', `${entry.contentRect.width}px`)
+      })
+      observeSidebar = () => {
+        sidebarObserver.disconnect()
+        const nav = document.querySelector('.VPSidebar .nav')
+        if (nav) sidebarObserver.observe(nav)
+      }
+      observeSidebar()
+
       const contentRoot = document.querySelector('.VPContent')
       if (contentRoot && !contentRoot.id) {
         contentRoot.id = 'main-content'

@@ -661,13 +661,56 @@ button,
 }
 
 @media (min-width: 961px) {
+  :root {
+    --blog-rail-width: clamp(180px, 16vw, 260px);
+    --blog-page-gutter: clamp(20px, 2.1vw, 48px);
+    --blog-column-gap: clamp(24px, 2.6vw, 56px);
+  }
+
   .VPContent.has-sidebar {
+    padding-left: calc(var(--blog-page-gutter) + var(--blog-left-rail-width, var(--blog-rail-width))) !important;
     padding-right: 0 !important;
   }
 
   .VPSidebar {
+    width: calc(var(--blog-page-gutter) + var(--blog-left-rail-width, var(--blog-rail-width))) !important;
     /* Align with the outline at 112px, accounting for nav and group padding. */
     padding: 70px 0 0 !important;
+  }
+
+  .VPSidebar .nav {
+    margin-left: var(--blog-page-gutter);
+    width: max-content;
+    max-width: var(--blog-rail-width);
+  }
+
+  .VPSidebar .group {
+    width: auto;
+  }
+
+  .VPDoc.has-sidebar {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .VPDoc.has-sidebar > .container {
+    padding-left: var(--blog-column-gap) !important;
+    padding-right: var(--blog-page-gutter) !important;
+  }
+
+  .VPDoc.has-sidebar > .container > .aside {
+    flex-basis: var(--blog-rail-width);
+    width: var(--blog-rail-width);
+    max-width: var(--blog-rail-width);
+  }
+
+  .VPDoc.has-sidebar .aside-container {
+    width: var(--blog-rail-width);
+  }
+
+  .VPDoc.has-sidebar > .container > .content > .content-container {
+    padding-left: 0 !important;
+    padding-right: var(--blog-column-gap) !important;
   }
 }
 
