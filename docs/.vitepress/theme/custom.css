@@ -172,10 +172,9 @@ button,
 
 .VPNavBar .title,
 .VPNavBarTitle .title {
-  font-family: "Fraunces", Georgia, serif;
+  font-family: var(--blog-font-body);
   font-size: 26px;
   font-weight: 600;
-  font-optical-sizing: auto;
   color: #171717;
   letter-spacing: -0.045em;
 }
@@ -644,18 +643,11 @@ button,
 .VPDoc .aside-container {
   width: 288px;
   overscroll-behavior-y: contain;
-  scrollbar-width: thin;
-  scrollbar-color: var(--blog-border-strong) transparent;
+  scrollbar-width: none;
 }
 
 .VPDoc .aside-container::-webkit-scrollbar {
-  display: block;
-  width: 6px;
-}
-
-.VPDoc .aside-container::-webkit-scrollbar-thumb {
-  border-radius: 3px;
-  background: var(--blog-border-strong);
+  display: none;
 }
 
 .VPDocAside .outline-link {

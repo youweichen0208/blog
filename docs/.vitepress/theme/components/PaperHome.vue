@@ -111,7 +111,7 @@ function postImage(post) {
 .popular-header h1 {
   margin: 0;
   color: var(--blog-ink-strong);
-  font-size: 28px;
+  font-size: 22px;
   line-height: 1.1;
   font-weight: 800;
 }
@@ -121,7 +121,7 @@ function postImage(post) {
   align-items: center;
   gap: 12px;
   color: #7b838e;
-  font-size: 26px;
+  font-size: 15px;
   line-height: 1;
   white-space: nowrap;
 }
@@ -143,9 +143,9 @@ function postImage(post) {
   grid-template-columns: auto auto minmax(0, 1fr);
   align-items: center;
   gap: 16px;
-  margin-bottom: 48px;
+  margin-bottom: 32px;
   color: #7b838e;
-  font-size: 28px;
+  font-size: 16px;
   font-weight: 800;
   letter-spacing: 0.14em;
   line-height: 1;
@@ -159,8 +159,8 @@ function postImage(post) {
 }
 
 .section-dot {
-  width: 16px;
-  height: 16px;
+  width: 10px;
+  height: 10px;
   border-radius: 999px;
   background: #2563eb;
 }
@@ -170,9 +170,9 @@ function postImage(post) {
   grid-template-columns: minmax(320px, 0.48fr) minmax(0, 1fr);
   gap: 40px;
   align-items: center;
-  min-height: 430px;
+  min-height: 320px;
   margin-bottom: 48px;
-  padding: 40px;
+  padding: 32px;
   border: 1px solid #cfd5dc;
   border-radius: 28px;
   background: rgba(255, 255, 255, 0.88);
@@ -230,7 +230,7 @@ function postImage(post) {
 
 .generated-cover strong {
   max-width: 520px;
-  font-size: 28px;
+  font-size: 22px;
   line-height: 1.08;
 }
 
@@ -257,20 +257,20 @@ function postImage(post) {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  min-height: 42px;
+  min-height: 30px;
   margin-bottom: 22px;
-  padding: 0 20px;
+  padding: 0 12px;
   border-radius: 999px;
   background: #34a853;
   color: #ffffff;
-  font-size: 24px;
+  font-size: 16px;
   font-weight: 800;
   line-height: 1;
 }
 
 .live-pill span {
-  width: 14px;
-  height: 14px;
+  width: 8px;
+  height: 8px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.82);
 }
@@ -278,7 +278,7 @@ function postImage(post) {
 .lead-content h2 {
   margin: 0 0 24px;
   color: var(--blog-ink-strong);
-  font-size: clamp(38px, 4.4vw, 52px);
+  font-size: clamp(28px, 2.6vw, 36px);
   font-weight: 900;
   line-height: 1.04;
 }
@@ -289,7 +289,7 @@ function postImage(post) {
   margin: 0 0 26px;
   overflow: hidden;
   color: #20242a;
-  font-size: 32px;
+  font-size: 20px;
   line-height: 1.45;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -301,7 +301,7 @@ function postImage(post) {
   flex-wrap: wrap;
   gap: 10px;
   color: #808892;
-  font-size: 26px;
+  font-size: 15px;
   line-height: 1.25;
 }
 
@@ -320,12 +320,12 @@ function postImage(post) {
 }
 
 .lead-action {
-  margin-top: 28px;
-  padding: 16px 28px;
+  margin-top: 20px;
+  padding: 10px 18px;
   border-radius: 12px;
   background: #2559db;
   color: #ffffff;
-  font-size: 24px;
+  font-size: 16px;
   font-weight: 800;
 }
 
@@ -382,7 +382,7 @@ function postImage(post) {
   margin: 12px 0 10px;
   overflow: hidden;
   color: var(--blog-ink-strong);
-  font-size: 30px;
+  font-size: 22px;
   font-weight: 900;
   line-height: 1.28;
   -webkit-box-orient: vertical;
@@ -394,7 +394,7 @@ function postImage(post) {
   margin: 0;
   overflow: hidden;
   color: #5f6874;
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1.55;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -403,7 +403,7 @@ function postImage(post) {
 @media (max-width: 1100px) {
   .popular-stats,
   .post-meta {
-    font-size: 20px;
+    font-size: 16px;
   }
 
   .lead-card {
@@ -446,7 +446,7 @@ function postImage(post) {
   }
 
   .popular-header h1 {
-    font-size: 24px;
+    font-size: 22px;
   }
 
   .popular-stats {
@@ -462,7 +462,7 @@ function postImage(post) {
   .section-rule {
     gap: 10px;
     margin-bottom: 28px;
-    font-size: 18px;
+    font-size: 14px;
     letter-spacing: 0.12em;
   }
 
@@ -497,12 +497,12 @@ function postImage(post) {
 
   .lead-content h2 {
     margin-bottom: 14px;
-    font-size: 32px;
+    font-size: 28px;
   }
 
   .lead-content p {
     margin-bottom: 16px;
-    font-size: 20px;
+    font-size: 18px;
   }
 
   .lead-action {
@@ -520,7 +520,7 @@ function postImage(post) {
 
   .post-body h3 {
     margin-top: 8px;
-    font-size: 20px;
+    font-size: 18px;
   }
 
   .post-body p {
@@ -541,7 +541,7 @@ function postImage(post) {
   }
 
   .generated-cover strong {
-    font-size: 20px;
+    font-size: 18px;
   }
 
   .generated-cover.small {

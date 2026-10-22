@@ -1,6 +1,6 @@
 import DefaultTheme from 'vitepress/theme'
 import { useData } from 'vitepress'
-import { h, onMounted } from 'vue'
+import { h, onMounted, onUnmounted } from 'vue'
 import './custom.css'
 import PaperHome from './components/PaperHome.vue'
 import DevSearchBar from './components/DevSearchBar.vue'
@@ -30,10 +30,50 @@ export default {
     )
   },
   setup() {
+    let outlineObserver
+    onUnmounted(() => outlineObserver?.disconnect())
+
     onMounted(() => {
       const contentRoot = document.querySelector('.VPContent')
       if (contentRoot && !contentRoot.id) {
         contentRoot.id = 'main-content'
+      }
+
+      // Follow VitePress's active heading without scrolling the article itself.
+      let previousActiveLink = null
+      const followActiveHeading = () => {
+        const container = contentRoot?.querySelector('.aside-container')
+        if (!container || !container.getClientRects().length) return
+
+        const activeLink = container.querySelector('.outline-link.active')
+        if (activeLink === previousActiveLink) return
+        previousActiveLink = activeLink
+
+        if (!activeLink) {
+          container.scrollTo({ top: 0, behavior: 'instant' })
+          return
+        }
+
+        const bounds = container.getBoundingClientRect()
+        const linkBounds = activeLink.getBoundingClientRect()
+        const inset = 32
+        if (linkBounds.top < bounds.top + inset || linkBounds.bottom > bounds.bottom - inset) {
+          container.scrollTo({
+            top: container.scrollTop + linkBounds.top - bounds.top - container.clientHeight / 2 + linkBounds.height / 2,
+            behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+          })
+        }
+      }
+
+      if (contentRoot) {
+        outlineObserver = new MutationObserver(followActiveHeading)
+        outlineObserver.observe(contentRoot, {
+          subtree: true,
+          childList: true,
+          attributes: true,
+          attributeFilter: ['class'],
+        })
+        followActiveHeading()
       }
 
       // Proxy left-sidebar wheel events only; the article outline scrolls independently.
