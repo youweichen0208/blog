@@ -727,9 +727,10 @@ button,
 /* A single width budget keeps all three document columns together. */
 @media (min-width: 961px) {
   :root {
-    --blog-rail-width: clamp(200px, 16vw, 240px);
-    --blog-column-gap: clamp(24px, 2.5vw, 40px);
-    --blog-page-gutter: max(24px, calc((100vw - 1160px) / 2));
+    --blog-rail-width: clamp(220px, 18vw, 300px);
+    --blog-outline-width: clamp(220px, 17vw, 280px);
+    --blog-column-gap: clamp(24px, 2.7vw, 50px);
+    --blog-page-gutter: max(24px, calc((100vw - 1400px) / 2));
   }
 
   .VPContent.has-sidebar {
@@ -741,6 +742,9 @@ button,
     width: calc(var(--blog-page-gutter) + var(--blog-rail-width)) !important;
     padding: 102px 0 24px !important;
     pointer-events: auto;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-width: thin;
   }
 
   .VPSidebar .nav {
@@ -755,6 +759,7 @@ button,
   .VPSidebar .group {
     width: 100%;
     padding-top: 0;
+    border-top: 0;
   }
 
   .VPDoc.has-sidebar {
@@ -768,24 +773,24 @@ button,
   }
 
   .VPDoc.has-sidebar > .container > .content {
-    flex: 1 1 600px;
-    max-width: 600px;
+    flex: 1 1 720px;
+    max-width: 720px;
     margin: 0;
   }
 
   .VPDoc.has-sidebar > .container > .content > .content-container {
     padding: 10px 0 48px !important;
-    max-width: 600px !important;
+    max-width: 720px !important;
   }
 
   .VPDoc.has-sidebar > .container > .aside {
-    flex: 0 0 var(--blog-rail-width);
-    width: var(--blog-rail-width);
-    max-width: var(--blog-rail-width);
+    flex: 0 0 var(--blog-outline-width);
+    width: var(--blog-outline-width);
+    max-width: var(--blog-outline-width);
   }
 
   .VPDoc.has-sidebar .aside-container {
-    width: var(--blog-rail-width);
+    width: var(--blog-outline-width);
     padding-top: 102px;
   }
 }

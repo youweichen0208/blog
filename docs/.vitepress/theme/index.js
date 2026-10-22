@@ -5,8 +5,8 @@ import './custom.css'
 import PaperHome from './components/PaperHome.vue'
 import DevSearchBar from './components/DevSearchBar.vue'
 import DocIntro from './components/DocIntro.vue'
+import ReadingInfo from './components/ReadingInfo.vue'
 
-const FIXED_RAIL_SELECTOR = '.VPSidebar'
 
 export default {
   extends: DefaultTheme,
@@ -21,6 +21,7 @@ export default {
           h('a', { href: '#main-content', class: 'skip-link' }, '跳到正文'),
         'nav-bar-content-before': () => h(DevSearchBar),
         'doc-before': () => h(DocIntro),
+        'aside-outline-after': () => h(ReadingInfo),
         ...(frontmatter.value.layout === 'home'
           ? {
               'home-hero-before': () => h(PaperHome),
@@ -75,32 +76,6 @@ export default {
         })
         followActiveHeading()
       }
-
-      // Proxy left-sidebar wheel events only; the article outline scrolls independently.
-      document.addEventListener(
-        'wheel',
-        (event) => {
-          if (!window.matchMedia('(min-width: 961px)').matches) {
-            return
-          }
-
-          if (Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
-            return
-          }
-
-          if (!event.target.closest(FIXED_RAIL_SELECTOR)) {
-            return
-          }
-
-          window.scrollBy({
-            top: event.deltaY,
-            left: 0,
-            behavior: 'auto',
-          })
-          event.preventDefault()
-        },
-        { passive: false },
-      )
 
       // Mermaid lightbox 功能
       let overlay = document.getElementById('mermaid-overlay')

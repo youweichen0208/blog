@@ -97,7 +97,7 @@ function getSidebarItems(dirPath, options = {}) {
  * 生成完整 sidebar 配置
  */
 function generateSidebar() {
-  return {
+  const sections = {
     "/claude-code/": [
       {
         text: "Claude Code",
@@ -294,6 +294,17 @@ function generateSidebar() {
       },
     ],
   };
+  return Object.fromEntries(
+    Object.entries(sections).map(([currentPath, currentGroups]) => [
+      currentPath,
+      [
+        ...currentGroups.map((group) => ({ ...group, collapsed: false })),
+        ...Object.entries(sections)
+          .filter(([sectionPath]) => sectionPath !== currentPath)
+          .flatMap(([, groups]) => groups.map((group) => ({ ...group, collapsed: true }))),
+      ],
+    ]),
+  );
 }
 
 export { generateSidebar, getSidebarItems };
