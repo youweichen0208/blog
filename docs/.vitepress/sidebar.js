@@ -98,16 +98,6 @@ function getSidebarItems(dirPath, options = {}) {
  */
 function generateSidebar() {
   const sections = {
-    "/claude-code/": [
-      {
-        text: "Claude Code",
-        items: [
-          ...getSidebarItems("/claude-code"),
-          ...getSidebarItems("/claude-code/skill"),
-        ],
-      },
-    ],
-
     "/stock/": [
       {
         text: "股票投资",
@@ -294,13 +284,24 @@ function generateSidebar() {
       },
     ],
   };
+  const hiddenGoSections = new Set([
+    "/stock/",
+    "/posts/",
+    "/tutorials/",
+    "/aiops/",
+    "/data-structures/",
+  ]);
+
   return Object.fromEntries(
     Object.entries(sections).map(([currentPath, currentGroups]) => [
       currentPath,
       [
         ...currentGroups.map((group) => ({ ...group, collapsed: false })),
         ...Object.entries(sections)
-          .filter(([sectionPath]) => sectionPath !== currentPath)
+          .filter(([sectionPath]) =>
+            sectionPath !== currentPath &&
+            !(currentPath === "/go/" && hiddenGoSections.has(sectionPath)),
+          )
           .flatMap(([, groups]) => groups.map((group) => ({ ...group, collapsed: true }))),
       ],
     ]),
