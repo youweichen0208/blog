@@ -11,24 +11,24 @@ tags:
 
 # OpenClaw 部署与实战
 
-## 1. OpenClaw是什么
+## 1. OpenClaw 是什么
 
-OpenClaw是一个自托管AI Gateway。可以把他理解成：各种聊天入口，控制面板，CLI，移动端节点，统一节点，统一接到一个本地或远程运行的网关上，再由网关把消息转给AI Agent。官方文档描述的典型人物结构是: 聊天应用/插件 -> Gateway -> Agent，同时还可接CLI, Web Control UI, macOS App，移动端节点。
+OpenClaw 是一个自托管 AI Gateway。可以把它理解成：各种聊天入口、控制面板、CLI、移动端节点统一接到一个本地或远程运行的网关上，再由网关把消息转给 AI Agent。官方文档描述的典型架构是：聊天应用 / 插件 → Gateway → Agent，同时还可接 CLI、Web Control UI、macOS App 与移动端节点。
 
 相关配置文章：
 
 - [OpenClaw Docker 部署下如何配置 Chrome Browser Relay](./browser-relay-docker.md)
 - [OpenClaw 实战：在 BOSS 直聘里做低频打招呼、信息采集和 Excel 落表](./boss-recruiting-practice.md)
 
-## 2. 先建立正确认知：OpenClaw的几个核心概念
+## 2. 先建立正确认知：OpenClaw 的几个核心概念
 
 ### 2.1 Gateway
 
-Gateway是核心进程，是会话，路由，认证，频道连接的“单一真相源”。本地部署OpenClaw，本质上就是先把这个Gateway跑起来。
+Gateway 是核心进程，是会话、路由、认证、频道连接的“单一真相源”。本地部署 OpenClaw，本质上就是先把这个 Gateway 跑起来。
 
 ### 2.2 Control UI / Dashboard
 
-这是浏览器里的控制台界面。官方Getting Started明确建议在网关起来后，用`openclaw dashboard`打开控制台。也就是说，更推荐用命令打开Dashboard，而不是手动猜某个URL根路径。
+这是浏览器里的控制台界面。官方 Getting Started 明确建议在网关起来后，用 `openclaw dashboard` 打开控制台。也就是说，更推荐用命令打开 Dashboard，而不是手动猜某个 URL 根路径。
 
 ### 2.3 Onboarding
 
@@ -46,7 +46,7 @@ Skills是OpenClaw非常关键的一层。它像**Agent Skills兼容目录** 来�
 
 ## 3. 如何判断是否安装成功
 
-### 3.1 看Gateway状态
+### 3.1 看 Gateway 状态
 
 ```bash
 openclaw gateway status
@@ -70,7 +70,7 @@ openclaw dashboard
 
 如果dashboard能正常打开，通常说明基础链路是通的。
 
-## 如何部署到OpenClaw到Docker上
+## 4. 如何部署 OpenClaw 到 Docker
 
 **step 1: 创建工作目录**
 
@@ -190,7 +190,7 @@ Step 5: 运行配置向导
 docker compose run --rm openclaw-cn-cli onboard
 ```
 
-## OpenClaw Docker部署排查问题总结
+## OpenClaw Docker 部署排查问题总结
 
 ### 部署背景
 

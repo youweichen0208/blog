@@ -1,10 +1,23 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, withBase } from 'vitepress'
 import { data as homeData } from '../home.data.mjs'
 
 const route = useRoute()
 const query = ref('')
+const searchInput = ref(null)
+const shortcut = ref('Ctrl K')
+const focusSearch = (event) => {
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault()
+    searchInput.value?.focus()
+  }
+}
+onMounted(() => {
+  shortcut.value = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K'
+  window.addEventListener('keydown', focusSearch)
+})
+onUnmounted(() => window.removeEventListener('keydown', focusSearch))
 
 const filteredItems = computed(() => {
   const keyword = query.value.trim().toLowerCase()
@@ -27,6 +40,7 @@ const filteredItems = computed(() => {
   <div class="dev-search-bar">
     <span class="dev-search-icon">⌕</span>
     <input
+      ref="searchInput"
       v-model="query"
       type="text"
       class="dev-search-input"
@@ -34,9 +48,7 @@ const filteredItems = computed(() => {
       aria-label="Search blog content"
     />
     <div class="dev-search-shortcuts" aria-hidden="true">
-      <span class="dev-search-key">⌘</span>
-      <span class="dev-search-key">⇧</span>
-      <span class="dev-search-key">P</span>
+      <span class="dev-search-key">{{ shortcut }}</span>
     </div>
 
     <div class="dev-search-dropdown">
@@ -65,7 +77,7 @@ const filteredItems = computed(() => {
   padding: 0 10px 0 12px;
   border: 1px solid rgba(15, 23, 42, 0.16);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.98);
+  background: #f8fafc;
   box-shadow: none;
 }
 

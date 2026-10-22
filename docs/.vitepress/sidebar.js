@@ -72,7 +72,7 @@ function getSidebarItems(dirPath, options = {}) {
       const name = f.replace(".md", "");
       return {
         text: getTitleFromFile(filePath),
-        link: `${dirPath}/${name}`,
+        link: name === "index" ? `${dirPath}/` : `${dirPath}/${name}`,
         date: getDateFromFile(filePath),
         order: order[name] ?? 999,
       };

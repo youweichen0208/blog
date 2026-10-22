@@ -96,6 +96,10 @@ button,
   background: transparent;
 }
 
+.Layout:has(.VPDoc) {
+  background: var(--blog-bg);
+}
+
 .VPNav {
   position: static !important;
   padding-top: 0;
@@ -132,7 +136,7 @@ button,
   width: min(calc(100vw - 40px), 1720px);
 }
 
-.VPNavBar .container {
+.VPNavBar > .wrapper > .container {
   max-width: none !important;
   min-height: 78px !important;
   padding: 0 20px !important;
@@ -227,6 +231,8 @@ button,
 }
 
 .VPNavBarMenuLink.active {
+  box-shadow: inset 0 -2px var(--blog-accent);
+  color: var(--blog-accent) !important;
   background: transparent !important;
   border-radius: 0;
 }
@@ -280,7 +286,7 @@ button,
 .VPSidebarItem.level-0 > .items {
   margin-left: 2px;
   padding-left: 0 !important;
-  border-left: 1px solid rgba(148, 163, 184, 0.26);
+  border-left: 0;
 }
 
 .VPSidebarItem .item {
@@ -297,10 +303,10 @@ button,
 
 .VPSidebarItem .link {
   display: block;
-  margin-left: 20px;
-  padding: 9px 0;
+  margin-left: 0;
+  padding: 4px 12px;
   border: 1px solid transparent;
-  border-radius: 0 !important;
+  border-radius: 8px !important;
   transition:
     background-color 0.2s ease,
     border-color 0.2s ease,
@@ -308,7 +314,7 @@ button,
 }
 
 .VPSidebarItem .link:hover {
-  background: transparent !important;
+  background: var(--blog-bg-muted) !important;
   border-color: transparent !important;
 }
 
@@ -332,14 +338,22 @@ button,
 }
 
 .VPSidebarItem.is-active > .item .link .text {
-  color: #3b49df !important;
+  color: var(--blog-accent) !important;
   font-weight: 700;
 }
 
 .VPSidebarItem.is-active > .item .link {
   border-color: transparent !important;
-  background: transparent !important;
-  box-shadow: none;
+  background: #eff6ff !important;
+  box-shadow: inset 3px 0 var(--blog-accent);
+}
+
+.VPSidebarItem .link .text {
+  padding: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
 .VPDoc {
@@ -526,7 +540,7 @@ button,
 .vp-doc p,
 .vp-doc li {
   color: var(--blog-ink);
-  line-height: 1.86;
+  line-height: 1.75;
 }
 
 .vp-doc > p:first-of-type {
@@ -536,13 +550,15 @@ button,
 }
 
 .vp-doc a {
+  text-decoration: none;
   color: var(--blog-accent);
   text-decoration-thickness: 1px;
   text-underline-offset: 0.18em;
 }
 
 .vp-doc a:hover {
-  color: #99365b;
+  color: var(--blog-accent);
+  text-decoration: underline;
 }
 
 .vp-doc blockquote {
@@ -681,70 +697,75 @@ button,
   display: none;
 }
 
+/* A single width budget keeps all three document columns together. */
 @media (min-width: 961px) {
   :root {
-    --blog-rail-width: clamp(180px, 16vw, 260px);
-    --blog-page-gutter: max(20px, 2.1vw, calc((100vw - 1680px) / 2));
-    --blog-column-gap: clamp(24px, 2.6vw, 56px);
+    --blog-rail-width: clamp(200px, 16vw, 240px);
+    --blog-column-gap: clamp(24px, 2.5vw, 40px);
+    --blog-page-gutter: max(24px, calc((100vw - 1200px) / 2));
   }
 
   .VPContent.has-sidebar {
     padding-left: calc(var(--blog-page-gutter) + var(--blog-rail-width)) !important;
-    padding-right: 0 !important;
+    padding-right: var(--blog-page-gutter) !important;
   }
 
   .VPSidebar {
     width: calc(var(--blog-page-gutter) + var(--blog-rail-width)) !important;
-    /* Align with the outline at 112px, accounting for nav and group padding. */
-    padding: 70px 0 0 !important;
+    padding: 102px 0 24px !important;
+    pointer-events: auto;
   }
 
   .VPSidebar .nav {
     margin-left: var(--blog-page-gutter);
     width: var(--blog-rail-width);
+    padding-top: 0 !important;
+    padding-right: 16px;
+    min-height: calc(100vh - 126px);
+    border-right: 1px solid var(--blog-border);
   }
 
   .VPSidebar .group {
     width: 100%;
+    padding-top: 0;
   }
 
   .VPDoc.has-sidebar {
-    padding-left: 0;
-    padding-right: 0;
+    padding-inline: 0;
   }
 
   .VPDoc.has-sidebar > .container {
+    gap: var(--blog-column-gap);
     padding-left: var(--blog-column-gap) !important;
-    padding-right: var(--blog-page-gutter) !important;
+    padding-right: 0 !important;
+  }
+
+  .VPDoc.has-sidebar > .container > .content {
+    flex: 1 1 640px;
+    max-width: 640px;
+    margin: 0;
+  }
+
+  .VPDoc.has-sidebar > .container > .content > .content-container {
+    padding: 10px 0 48px !important;
+    max-width: 640px !important;
   }
 
   .VPDoc.has-sidebar > .container > .aside {
-    flex-basis: var(--blog-rail-width);
+    flex: 0 0 var(--blog-rail-width);
     width: var(--blog-rail-width);
     max-width: var(--blog-rail-width);
   }
 
   .VPDoc.has-sidebar .aside-container {
     width: var(--blog-rail-width);
-  }
-
-  .VPDoc.has-sidebar > .container > .content > .content-container {
-    max-width: calc(960px + var(--blog-column-gap)) !important;
-    padding-left: 0 !important;
-    padding-right: var(--blog-column-gap) !important;
+    padding-top: 102px;
   }
 }
 
-@media (min-width: 1440px) {
-  /* Keep the article and outline together when the viewport grows. */
-  .VPDoc.has-sidebar > .container {
-    max-width: 1320px !important;
-    margin-inline: auto;
-    padding-inline: var(--blog-column-gap) !important;
-  }
-
-  .VPDoc.has-sidebar > .container > .content > .content-container {
-    max-width: none !important;
+@media (min-width: 961px) and (max-width: 1279px) {
+  .VPDoc.has-sidebar > .container > .aside {
+    display: none !important;
   }
 }
 
@@ -757,13 +778,7 @@ button,
 }
 
 .VPDocAsideOutline > .content::before {
-  content: "";
-  position: absolute;
-  top: 48px;
-  bottom: 0;
-  left: 0;
-  width: 1px;
-  background: var(--blog-border);
+  display: none;
 }
 
 .VPDocAside .outline,
@@ -830,7 +845,8 @@ button,
 .VPDocAside .outline-link {
   display: block;
   padding: 6px 0;
-  border-left: 0;
+  border-left: 2px solid transparent;
+  padding-left: 10px;
   border-radius: 0;
   font-size: 14px;
   white-space: normal;
@@ -858,7 +874,8 @@ button,
 }
 
 .VPDocAside .outline-link.active {
-  border-left-color: transparent;
+  color: var(--blog-accent) !important;
+  border-left-color: var(--blog-accent);
   background: transparent;
   font-weight: 700;
 }
@@ -1065,7 +1082,7 @@ button,
     width: calc(100vw - 8px);
   }
 
-  .VPNavBar .container {
+  .VPNavBar > .wrapper > .container {
     padding: 0 12px !important;
   }
 
@@ -1094,7 +1111,7 @@ button,
 
   .vp-doc {
     font-size: 16px;
-    line-height: 1.86;
+    line-height: 1.75;
   }
 
   .VPDoc .content-container {
