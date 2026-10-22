@@ -9,7 +9,7 @@ export default withMermaid(
       securityLevel: "loose",
     },
     lang: "zh-CN",
-    title: "我的博客",
+    title: "Youwei Blog",
     description: "记录后端架构、AI开发与日常思考",
     base: "/",
 
@@ -69,6 +69,7 @@ export default withMermaid(
       socialLinks: [{ icon: "github", link: "https://github.com" }],
       outline: { level: [2, 3] },
       outlineTitle: "ON THIS PAGE",
+      docFooter: { prev: "← 上一篇", next: "下一篇 →" },
     },
   }),
 );

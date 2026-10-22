@@ -6,7 +6,7 @@ import PaperHome from './components/PaperHome.vue'
 import DevSearchBar from './components/DevSearchBar.vue'
 import DocIntro from './components/DocIntro.vue'
 
-const FIXED_RAIL_SELECTOR = '.VPSidebar, .VPDocAside .outline, .VPDocAside .VPDocAsideOutline'
+const FIXED_RAIL_SELECTOR = '.VPSidebar'
 
 export default {
   extends: DefaultTheme,
@@ -36,7 +36,7 @@ export default {
         contentRoot.id = 'main-content'
       }
 
-      // Fixed side rails can swallow wheel events on desktop, so proxy them to window scroll.
+      // Proxy left-sidebar wheel events only; the article outline scrolls independently.
       document.addEventListener(
         'wheel',
         (event) => {
