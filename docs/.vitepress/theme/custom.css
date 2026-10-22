@@ -663,29 +663,28 @@ button,
 @media (min-width: 961px) {
   :root {
     --blog-rail-width: clamp(180px, 16vw, 260px);
-    --blog-page-gutter: clamp(20px, 2.1vw, 48px);
+    --blog-page-gutter: max(20px, 2.1vw, calc((100vw - 1680px) / 2));
     --blog-column-gap: clamp(24px, 2.6vw, 56px);
   }
 
   .VPContent.has-sidebar {
-    padding-left: calc(var(--blog-page-gutter) + var(--blog-left-rail-width, var(--blog-rail-width))) !important;
+    padding-left: calc(var(--blog-page-gutter) + var(--blog-rail-width)) !important;
     padding-right: 0 !important;
   }
 
   .VPSidebar {
-    width: calc(var(--blog-page-gutter) + var(--blog-left-rail-width, var(--blog-rail-width))) !important;
+    width: calc(var(--blog-page-gutter) + var(--blog-rail-width)) !important;
     /* Align with the outline at 112px, accounting for nav and group padding. */
     padding: 70px 0 0 !important;
   }
 
   .VPSidebar .nav {
     margin-left: var(--blog-page-gutter);
-    width: max-content;
-    max-width: var(--blog-rail-width);
+    width: var(--blog-rail-width);
   }
 
   .VPSidebar .group {
-    width: auto;
+    width: 100%;
   }
 
   .VPDoc.has-sidebar {
@@ -709,6 +708,7 @@ button,
   }
 
   .VPDoc.has-sidebar > .container > .content > .content-container {
+    max-width: calc(960px + var(--blog-column-gap)) !important;
     padding-left: 0 !important;
     padding-right: var(--blog-column-gap) !important;
   }
