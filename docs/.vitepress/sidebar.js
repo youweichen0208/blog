@@ -284,14 +284,6 @@ function generateSidebar() {
       },
     ],
   };
-  const hiddenGoSections = new Set([
-    "/stock/",
-    "/posts/",
-    "/tutorials/",
-    "/aiops/",
-    "/data-structures/",
-  ]);
-
   return Object.fromEntries(
     Object.entries(sections).map(([currentPath, currentGroups]) => [
       currentPath,
@@ -299,8 +291,7 @@ function generateSidebar() {
         ...currentGroups.map((group) => ({ ...group, collapsed: false })),
         ...Object.entries(sections)
           .filter(([sectionPath]) =>
-            sectionPath !== currentPath &&
-            !(currentPath === "/go/" && hiddenGoSections.has(sectionPath)),
+            currentPath !== "/go/" && sectionPath !== currentPath,
           )
           .flatMap(([, groups]) => groups.map((group) => ({ ...group, collapsed: true }))),
       ],
