@@ -1,4 +1,4 @@
-name: Deploy VitePress to GitHub Pages and WebDAV
+name: Deploy VitePress to GitHub Pages
 
 on:
   push:
@@ -43,12 +43,6 @@ jobs:
         with:
           path: docs/.vitepress/dist
 
-      - name: Upload build artifact for WebDAV
-        uses: actions/upload-artifact@v4
-        with:
-          name: blog-dist
-          path: docs/.vitepress/dist
-
   deploy-pages:
     environment:
       name: github-pages
@@ -60,30 +54,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
-  sync-webdav:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-    name: Sync to WebDAV
-    steps:
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: blog-dist
-          path: dist
-
-      - name: Install rclone
-        run: curl https://rclone.org/install.sh | sudo bash
-
-      - name: Configure rclone
-        run: |
-          rclone config create mywebdav webdav \
-            url="${{ secrets.WEBDAV_URL }}" \
-            vendor=other \
-            user="${{ secrets.WEBDAV_USER }}" \
-            pass=$(rclone obscure "${{ secrets.WEBDAV_PASS }}")
-
-      - name: Sync build output to WebDAV
-        run: rclone sync dist mywebdav:/ --progress
