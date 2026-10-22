@@ -112,7 +112,11 @@ function generateSidebar() {
       {
         text: "股票投资",
         collapsed: false,
-        items: getSidebarItems("/stock"),
+        items: getSidebarItems("/stock").map((item) =>
+          item.link === "/stock/basics"
+            ? { ...item, text: "估值基础：EPS / PE / PB" }
+            : item,
+        ),
       },
     ],
 
