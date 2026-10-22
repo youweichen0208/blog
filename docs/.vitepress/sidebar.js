@@ -287,14 +287,7 @@ function generateSidebar() {
   return Object.fromEntries(
     Object.entries(sections).map(([currentPath, currentGroups]) => [
       currentPath,
-      [
-        ...currentGroups.map((group) => ({ ...group, collapsed: false })),
-        ...Object.entries(sections)
-          .filter(([sectionPath]) =>
-            currentPath !== "/go/" && sectionPath !== currentPath,
-          )
-          .flatMap(([, groups]) => groups.map((group) => ({ ...group, collapsed: true }))),
-      ],
+      currentGroups.map((group) => ({ ...group, collapsed: false })),
     ]),
   );
 }
