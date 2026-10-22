@@ -108,6 +108,15 @@ button,
   position: static !important;
 }
 
+.VPNav:has(.screen-open) {
+  /* Let the fixed menu use the viewport instead of the blurred header. */
+  backdrop-filter: none;
+}
+
+.VPNavScreen {
+  z-index: 3;
+}
+
 .VPNavBar {
   width: min(calc(100vw - 40px), 1720px);
   margin: 0 auto;
@@ -131,7 +140,19 @@ button,
 }
 
 .VPNavBar .content {
-  padding-left: 6px;
+  min-width: 0;
+  padding: 0 0 0 6px !important;
+}
+
+/* The centered navbar uses its own flex layout, independent of the sidebar. */
+.VPNavBar.has-sidebar .container > .title {
+  position: static;
+  width: auto;
+  padding: 0;
+}
+
+.VPNavBar .dev-search-bar {
+  margin-right: auto;
 }
 
 .VPNavBar .content,
@@ -714,6 +735,19 @@ button,
   }
 }
 
+@media (min-width: 1440px) {
+  /* Keep the article and outline together when the viewport grows. */
+  .VPDoc.has-sidebar > .container {
+    max-width: 1320px !important;
+    margin-inline: auto;
+    padding-inline: var(--blog-column-gap) !important;
+  }
+
+  .VPDoc.has-sidebar > .container > .content > .content-container {
+    max-width: none !important;
+  }
+}
+
 .VPDocAside .outline-link {
   color: var(--blog-ink-soft);
 }
@@ -931,6 +965,27 @@ button,
   background: #fff;
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 30px 60px rgba(0, 0, 0, 0.32);
+}
+
+@media (min-width: 768px) and (max-width: 1279px) {
+  .VPNavBar .menu,
+  .VPNavBar .social-links,
+  .VPNavBar .extra {
+    display: none !important;
+  }
+
+  .VPNavBar .hamburger {
+    display: flex !important;
+  }
+
+  .VPNavBar.screen-open + .VPNavScreen {
+    display: block !important;
+  }
+
+  .VPNavBar .dev-search-bar {
+    flex: 0 1 320px;
+    margin-right: 16px;
+  }
 }
 
 @media (max-width: 960px) {
