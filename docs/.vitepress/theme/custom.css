@@ -352,16 +352,16 @@ button,
 }
 
 .VPDoc.has-sidebar > .container > .aside {
-  flex: 0 0 332px;
-  width: 332px;
-  max-width: 332px;
+  flex: 0 0 288px;
+  width: 288px;
+  max-width: 288px;
   padding-left: 0;
   margin-left: 0;
 }
 
 .VPDoc.has-sidebar > .container > .content {
-  flex: 0 1 920px;
-  width: min(920px, 100%);
+  flex: 1 1 920px;
+  width: 100%;
   min-width: 0;
   padding: 0;
 }
@@ -661,6 +661,10 @@ button,
 }
 
 @media (min-width: 961px) {
+  .VPContent.has-sidebar {
+    padding-right: 0 !important;
+  }
+
   .VPSidebar {
     /* Align with the outline at 112px, accounting for nav and group padding. */
     padding: 70px 0 0 !important;
@@ -669,6 +673,20 @@ button,
 
 .VPDocAside .outline-link {
   color: var(--blog-ink-soft);
+}
+
+.VPDocAsideOutline > .content {
+  border-left: 0;
+}
+
+.VPDocAsideOutline > .content::before {
+  content: "";
+  position: absolute;
+  top: 48px;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  background: var(--blog-border);
 }
 
 .VPDocAside .outline,
