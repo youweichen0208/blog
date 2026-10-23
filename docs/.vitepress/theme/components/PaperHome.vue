@@ -563,6 +563,36 @@ function postImage(post) {
   }
 }
 
+@media (min-width: 1920px) {
+  .popular-home {
+    width: min(calc(100vw - 48px), clamp(1420px, calc(100vw - 500px), 2400px));
+  }
+
+  .lead-card {
+    grid-template-columns: minmax(320px, 0.7fr) minmax(0, 1fr);
+    gap: clamp(40px, 3vw, 80px);
+  }
+
+  .lead-content h2 { font-size: clamp(36px, 1.5vw, 46px); }
+  .lead-content p { font-size: clamp(20px, 0.85vw, 26px); }
+}
+
+@media (min-width: 2400px) {
+  .post-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: 40px;
+  }
+
+  .post-card:nth-child(n) {
+    grid-template-columns: minmax(160px, 0.8fr) minmax(0, 1fr);
+    padding: 32px 0;
+    border-right: 0;
+    border-top: 1px solid #cfd5dc;
+  }
+
+  .post-card:nth-child(-n + 3) { border-top: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lead-card,
   .post-card {

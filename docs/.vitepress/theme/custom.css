@@ -773,14 +773,14 @@ button,
   }
 
   .VPDoc.has-sidebar > .container > .content {
-    flex: 1 1 720px;
-    max-width: 720px;
+    flex: 1 1 var(--blog-doc-width, 720px);
+    max-width: var(--blog-doc-width, 720px);
     margin: 0;
   }
 
   .VPDoc.has-sidebar > .container > .content > .content-container {
     padding: 10px 0 48px !important;
-    max-width: 720px !important;
+    max-width: var(--blog-doc-width, 720px) !important;
   }
 
   .VPDoc.has-sidebar > .container > .aside {
@@ -792,6 +792,39 @@ button,
   .VPDoc.has-sidebar .aside-container {
     width: var(--blog-outline-width);
     padding-top: 102px;
+  }
+}
+
+/* Scale the reading layout together on ultra-wide displays, keeping line lengths
+   comparable to the desktop layout instead of stretching paragraphs alone. */
+@media (min-width: 1920px) {
+  :root {
+    --blog-doc-width: clamp(720px, calc(18.75vw + 360px), 960px);
+    --blog-rail-width: clamp(300px, calc(7.8125vw + 150px), 400px);
+    --blog-outline-width: clamp(280px, calc(6.25vw + 160px), 360px);
+    --blog-column-gap: clamp(50px, calc(3.125vw - 10px), 90px);
+    --blog-page-gutter: max(24px, calc((100vw - var(--blog-rail-width) - var(--blog-doc-width) - var(--blog-outline-width) - 2 * var(--blog-column-gap)) / 2));
+  }
+
+  .VPNavBar,
+  .VPNavBar.has-sidebar {
+    width: min(calc(100vw - 40px), clamp(1720px, calc(100vw - 200px), 2400px));
+  }
+
+  .vp-doc {
+    font-size: clamp(17px, calc(0.46875vw + 8px), 23px);
+  }
+
+  .VPDoc.has-sidebar .vp-doc h1 {
+    font-size: clamp(36px, calc(0.78125vw + 21px), 46px);
+  }
+
+  .vp-doc h2 { font-size: clamp(28px, calc(0.625vw + 16px), 36px); }
+  .vp-doc h3 { font-size: clamp(23px, calc(0.46875vw + 14px), 29px); }
+
+  .VPSidebarItem .text,
+  .VPDoc .VPDocAside .outline-link {
+    font-size: clamp(14px, calc(0.3125vw + 8px), 18px);
   }
 }
 
