@@ -12,9 +12,9 @@ date: 2026-05-10
 ## 当前可读文章
 
 <dl class="article-descriptions">
-  <dt><a href="./recursion.html">递归详解</a></dt>
+  <dt><a href="./recursion">递归详解</a></dt>
   <dd>从递归终止条件、调用栈、回溯到动态规划前置思维。</dd>
-  <dt><a href="./linked-list.html">链表专栏</a></dt>
+  <dt><a href="./linked-list">链表专栏</a></dt>
   <dd>以 LeetCode 链表题为主，整理双指针、反转、合并和环检测。</dd>
 </dl>
 

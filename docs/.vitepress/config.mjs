@@ -12,6 +12,7 @@ export default withMermaid(
     title: "Youwei 知识星球",
     description: "记录后端架构、AI开发与日常思考",
     base: "/",
+    cleanUrls: true,
 
     head: [
       ["link", { rel: "preconnect", href: "https://fonts.googleapis.com" }],
