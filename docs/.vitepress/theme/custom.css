@@ -122,7 +122,7 @@ button,
 }
 
 .VPNavBar {
-  width: min(calc(100vw - 40px), 1720px);
+  width: var(--blog-shell-width, min(calc(100vw - 40px), 1720px));
   margin: 0 auto;
   border: 0 !important;
   border-radius: 0;
@@ -133,7 +133,7 @@ button,
 }
 
 .VPNavBar.has-sidebar {
-  width: min(calc(100vw - 40px), 1720px);
+  width: var(--blog-shell-width, min(calc(100vw - 40px), 1720px));
 }
 
 .VPNavBar > .wrapper > .container {
@@ -727,10 +727,11 @@ button,
 /* A single width budget keeps all three document columns together. */
 @media (min-width: 961px) {
   :root {
+    --blog-shell-width: min(calc(100vw - 40px), 1720px);
     --blog-rail-width: clamp(220px, 18vw, 300px);
     --blog-outline-width: clamp(220px, 17vw, 280px);
     --blog-column-gap: clamp(24px, 2.7vw, 50px);
-    --blog-page-gutter: max(24px, calc((100vw - 1400px) / 2));
+    --blog-page-gutter: calc((100vw - var(--blog-shell-width)) / 2 + 20px);
   }
 
   .VPContent.has-sidebar {
@@ -767,6 +768,7 @@ button,
   }
 
   .VPDoc.has-sidebar > .container {
+    max-width: none !important;
     gap: var(--blog-column-gap);
     padding-left: var(--blog-column-gap) !important;
     padding-right: 0 !important;
@@ -774,11 +776,12 @@ button,
 
   .VPDoc.has-sidebar > .container > .content {
     flex: 1 1 var(--blog-doc-width, 720px);
-    max-width: var(--blog-doc-width, 720px);
+    max-width: none;
     margin: 0;
   }
 
   .VPDoc.has-sidebar > .container > .content > .content-container {
+    margin-inline: auto;
     padding: 10px 0 48px !important;
     max-width: var(--blog-doc-width, 720px) !important;
   }
@@ -803,12 +806,7 @@ button,
     --blog-rail-width: clamp(300px, calc(7.8125vw + 150px), 400px);
     --blog-outline-width: clamp(280px, calc(6.25vw + 160px), 360px);
     --blog-column-gap: clamp(50px, calc(3.125vw - 10px), 90px);
-    --blog-page-gutter: max(24px, calc((100vw - var(--blog-rail-width) - var(--blog-doc-width) - var(--blog-outline-width) - 2 * var(--blog-column-gap)) / 2));
-  }
-
-  .VPNavBar,
-  .VPNavBar.has-sidebar {
-    width: min(calc(100vw - 40px), clamp(1720px, calc(100vw - 200px), 2400px));
+    --blog-shell-width: min(calc(100vw - 40px), clamp(1720px, calc(100vw - 200px), 2400px));
   }
 
   .vp-doc {
