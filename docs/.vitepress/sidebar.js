@@ -101,7 +101,6 @@ function generateSidebar() {
     "/stock/": [
       {
         text: "股票投资",
-        collapsed: false,
         items: getSidebarItems("/stock").map((item) =>
           item.link === "/stock/basics"
             ? { ...item, text: "估值基础：EPS / PE / PB" }
@@ -143,7 +142,6 @@ function generateSidebar() {
       {
         text: "数据结构",
         link: "/data-structures/",
-        collapsed: false,
         items: getSidebarItems("/data-structures", { sortBy: "alpha", exclude: ["index.md"] }),
       },
     ],
@@ -284,12 +282,7 @@ function generateSidebar() {
       },
     ],
   };
-  return Object.fromEntries(
-    Object.entries(sections).map(([currentPath, currentGroups]) => [
-      currentPath,
-      currentGroups.map((group) => ({ ...group, collapsed: false })),
-    ]),
-  );
+  return sections;
 }
 
 export { generateSidebar, getSidebarItems };
