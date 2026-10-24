@@ -193,6 +193,14 @@ function generateSidebar() {
       },
     ],
 
+    "/database/": [
+      {
+        text: "数据库",
+        link: "/database/",
+        items: getSidebarItems("/database", { sortBy: "date", exclude: ["index.md"] }),
+      },
+    ],
+
     "/cli/": [
       {
         text: "CLI 开发",

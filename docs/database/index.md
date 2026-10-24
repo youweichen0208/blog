@@ -11,12 +11,16 @@ date: 2026-04-28
 
 ## 目录
 
-- [数据库基础概念](/database/basics)（待写）
-- [SQL 入门](/database/sql)（待写）
-- [索引与查询优化](/database/indexing)（待写）
-- [事务与隔离级别](/database/transactions)（待写）
-- [PostgreSQL WAL 机制：从数据页到崩溃恢复](/database/postgresql-wal)
-- [Neon 入门指南](/database/neon)
+| 主题 | 状态 |
+| --- | --- |
+| [PostgreSQL WAL 机制：从数据页到崩溃恢复](/database/postgresql-wal) | ✅ 已写 |
+| [Neon 入门指南](/database/neon) | ✅ 已写 |
+| 数据库基础概念 | 📝 计划中 |
+| SQL 入门 | 📝 计划中 |
+| 索引与查询优化 | 📝 计划中 |
+| 事务与隔离级别 | 📝 计划中 |
+
+> 计划中的文章尚未撰写，写好后会补上链接。
 
 ## 学习路线
 
