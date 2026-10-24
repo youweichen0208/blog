@@ -48,6 +48,7 @@ export default withMermaid(
         { text: "股票", link: "/stock/" },
         { text: "Go", link: "/go/" },
         { text: "数据结构", link: "/data-structures/" },
+        { text: "数据库", link: "/database/" },
         { text: "OpenClaw", link: "/openclaw/" },
         { text: "Linux", link: "/linux/" },
         {
