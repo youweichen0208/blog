@@ -1,0 +1,27 @@
+---
+lang: zh-CN
+title: 数据库
+description: 数据库学习笔记，涵盖基础概念、SQL、索引与事务、常见数据库的实践。
+date: 2026-04-28
+---
+
+# 数据库
+
+> 记录数据库相关的学习笔记，从基础概念到实际应用。
+
+## 目录
+
+- [数据库基础概念](/database/basics)（待写）
+- [SQL 入门](/database/sql)（待写）
+- [索引与查询优化](/database/indexing)（待写）
+- [事务与隔离级别](/database/transactions)（待写）
+- [PostgreSQL WAL 机制：从数据页到崩溃恢复](/database/postgresql-wal)
+- [Neon 入门指南](/database/neon)
+
+## 学习路线
+
+1. **基础**：理解关系模型、表 / 行 / 列、主键与外键
+2. **SQL**：SELECT / JOIN / 聚合、子查询、窗口函数
+3. **进阶**：索引原理（B+ 树）、执行计划、慢查询优化
+4. **事务**：ACID、隔离级别、锁与 MVCC
+5. **实践**：MySQL / PostgreSQL 的使用与运维

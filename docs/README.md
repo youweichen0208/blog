@@ -26,3 +26,4 @@ features:
 
 - [Hello World](/posts/hello-world)
 - [股票投资入门教程](/stock/)
+- [数据库](/database/)
