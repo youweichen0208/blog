@@ -13,7 +13,8 @@ date: 2026-04-28
 
 | 主题 | 状态 |
 | --- | --- |
-| [PostgreSQL WAL 机制：从数据页到崩溃恢复](/database/postgresql-wal) | ✅ 已写 |
+| [PostgreSQL WAL：数据页没写回，为什么能提交？](/database/postgresql-wal) | ✅ 已写 |
+| [动手验证 PostgreSQL WAL：脏页、崩溃恢复与检查点](/database/postgresql-wal-lab) | ✅ 已写 |
 | [Neon 入门指南](/database/neon) | ✅ 已写 |
 | 数据库基础概念 | 📝 计划中 |
 | SQL 入门 | 📝 计划中 |
