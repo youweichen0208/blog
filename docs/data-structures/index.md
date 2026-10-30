@@ -12,6 +12,8 @@ date: 2026-05-10
 ## 当前可读文章
 
 <dl class="article-descriptions">
+  <dt><a href="../tutorials/python-data-structures">Python 数据结构：从基础容器到栈、队列与二叉树</a></dt>
+  <dd>面向 Java 开发者，用完整 Python 示例学习基础容器、栈、队列、最小堆和二叉树遍历。</dd>
   <dt><a href="./recursion">递归详解</a></dt>
   <dd>从递归终止条件、调用栈、回溯到动态规划前置思维。</dd>
   <dt><a href="./linked-list">链表专栏</a></dt>

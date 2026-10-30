@@ -13,6 +13,7 @@ date: 2026-05-10
 
 | 场景 | 文章 | 适合解决的问题 |
 | --- | --- | --- |
+| Python 入门 | [Python 数据结构：从基础容器到栈、队列与二叉树](./python-data-structures) | 面向 Java 开发者，从容器操作学到栈、队列、最小堆与树遍历 |
 | 服务器基础 | [Linux 实用指南](../linux/) | 进程管理、端口排查、磁盘与系统运维 |
 | 网络代理 | [基于 Hysteria2 的高性能代理服务器搭建指南](./build-vpn.md) | 用 VPS 和 Hysteria2 搭建可用代理链路 |
 | LLM API 代理 | [海外 VPS 部署多 LLM API 代理](./vps-llm-proxy.md) | 用 Nginx 反向代理搭建 OpenAI/Claude/Gemini 统一入口 |
